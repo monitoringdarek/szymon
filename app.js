@@ -1,7 +1,7 @@
-const VERSION = '1.7';
+const VERSION = '1.8';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV17Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV18Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -371,6 +371,8 @@ function fromDb(row){
     latitude: notes.latitude || null,
     longitude: notes.longitude || null,
     rawDescription: notes.rawDescription || '',
+    metrics: notes.metrics || {},
+    rawAdvancedText: notes.rawAdvancedText || '',
     cloud: true
   };
 }
@@ -398,6 +400,8 @@ function toDb(item){
       latitude: item.latitude || null,
       longitude: item.longitude || null,
       rawDescription: item.rawDescription || '',
+      metrics: item.metrics || {},
+      rawAdvancedText: item.rawAdvancedText || '',
       version: VERSION
     })
   };
@@ -650,6 +654,121 @@ function detailAiText(item){
   if(type === 'run') return `Bieg ${formatKm(km)} km ze średnim tempem ${item.pace || pace}${item.elevation ? ` i przewyższeniem +${Math.round(Number(item.elevation))} m` : ''}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze. Zadbaj o regenerację łydek i sen.`;
   return `Trening zapisany w historii. Każda aktywność dokłada cegiełkę do Road to Kalmar 2026.`;
 }
+
+const metricLabels = {
+  avgPower: 'Śr. moc', maxPower: 'Maks. moc', npPower: 'Normalized Power', intensityFactor: 'IF', tss: 'TSS', ftp: 'FTP', workKj: 'Praca',
+  avgHr: 'Śr. tętno', maxHr: 'Maks. tętno', avgCadence: 'Śr. kadencja', maxCadence: 'Maks. kadencja',
+  movingTime: 'Czas ruchu', elapsedTime: 'Upłynęło czasu', avgSpeed: 'Śr. prędkość', movingSpeed: 'Śr. prędkość ruchu', maxSpeed: 'Maks. prędkość',
+  elevationGain: 'Wznios', elevationLoss: 'Spadek', minElevation: 'Min. wysokość', maxElevation: 'Maks. wysokość',
+  restingCalories: 'Kalorie spocz.', activeCalories: 'Kalorie aktywne', totalCalories: 'Kalorie suma', fluidLoss: 'Utrata płynów',
+  staminaStart: 'Stamina start', staminaEnd: 'Stamina koniec', staminaMin: 'Stamina min.', bodyBattery: 'Body Battery',
+  aerobicTE: 'Aerobowy TE', anaerobicTE: 'Beztlenowy TE', trainingLoad: 'Obciążenie', benefit: 'Korzyść treningu',
+  standingTime: 'Czas stojąc', standingPowerAvg: 'Śr. moc stojąc', seatedTime: 'Czas siedząc', seatedPowerAvg: 'Śr. moc siedząc', revolutions: 'Obroty'
+};
+const metricOrder = ['avgPower','maxPower','npPower','intensityFactor','tss','ftp','workKj','avgHr','maxHr','avgCadence','maxCadence','movingTime','elapsedTime','avgSpeed','movingSpeed','maxSpeed','elevationGain','elevationLoss','minElevation','maxElevation','restingCalories','activeCalories','totalCalories','fluidLoss','staminaStart','staminaEnd','staminaMin','bodyBattery','aerobicTE','anaerobicTE','trainingLoad','benefit','standingTime','standingPowerAvg','seatedTime','seatedPowerAvg','revolutions'];
+function renderAdvancedStats(item){
+  const box = $('advancedStats');
+  if(!box) return;
+  const m = item.metrics || {};
+  const rows = metricOrder.filter(k => m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== '').map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(String(m[k]))}</b></div>`);
+  if(!rows.length){
+    box.className = 'advanced-stats empty';
+    box.innerHTML = 'Brak dodatkowych danych. Wklej tekst ze szczegółów Garmin poniżej i kliknij „Odczytaj dane”.';
+    return;
+  }
+  box.className = 'advanced-stats';
+  box.innerHTML = rows.join('');
+}
+function escapeHtml(text){
+  return String(text || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+}
+function firstMatch(text, patterns){
+  for(const pat of patterns){
+    const m = text.match(pat);
+    if(m) return (m[1] || '').trim();
+  }
+  return '';
+}
+function normalizeGarminText(text){
+  return String(text || '').replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/\n{2,}/g,'\n').trim();
+}
+function parseGarminAdvancedText(text){
+  const t = normalizeGarminText(text);
+  const metrics = {};
+  const set = (key, value, unit='') => { if(value) metrics[key] = `${String(value).trim()}${unit ? ' ' + unit : ''}`; };
+  set('avgPower', firstMatch(t, [/\n(\d+)\s*W\s*\nŚrednia moc/i, /Średnia moc\s*\n(\d+)\s*W/i]), '');
+  set('maxPower', firstMatch(t, [/\n(\d+)\s*W\s*\nMaksymalna moc/i, /Maksymalna moc\s*\n(\d+)\s*W/i]), '');
+  set('npPower', firstMatch(t, [/\n(\d+)\s*W\s*\nNormalized Power/i, /Normalized Power[^\n]*\n(\d+)\s*W/i]), '');
+  set('intensityFactor', firstMatch(t, [/\n([0-9]+[,.][0-9]+)\s*\nIntensity Factor/i, /Intensity Factor[^\n]*\n([0-9]+[,.][0-9]+)/i]));
+  set('tss', firstMatch(t, [/\n([0-9]+[,.][0-9]+)\s*\nTraining Stress Score/i, /Training Stress Score[^\n]*\n([0-9]+[,.][0-9]+)/i]));
+  set('ftp', firstMatch(t, [/\n(\d+)\s*W\s*\nUstawienia FTP/i, /Ustawienia FTP\s*\n(\d+)\s*W/i]));
+  set('workKj', firstMatch(t, [/\n([0-9,.]+)\s*kJ\s*\nPraca/i, /Praca\s*\n([0-9,.]+)\s*kJ/i]), 'kJ');
+  set('avgHr', firstMatch(t, [/\n(\d+)\s*bpm\s*\nŚrednie tętno/i, /Średnie tętno\s*\n(\d+)\s*bpm/i]), 'bpm');
+  set('maxHr', firstMatch(t, [/\n(\d+)\s*bpm\s*\nMaksymalne tętno/i, /Maksymalne tętno\s*\n(\d+)\s*bpm/i]), 'bpm');
+  set('avgCadence', firstMatch(t, [/\n(\d+)\s*rpm\s*\nŚrednia kadencja/i, /Średnia kadencja[^\n]*\n(\d+)\s*rpm/i]), 'rpm');
+  set('maxCadence', firstMatch(t, [/\n(\d+)\s*rpm\s*\nMaksymalna kadencja/i, /Maksymalna kadencja[^\n]*\n(\d+)\s*rpm/i]), 'rpm');
+  set('movingTime', firstMatch(t, [/\n([0-9:]+)\s*\nCzas ruchu/i, /Czas ruchu\s*\n([0-9:]+)/i]));
+  set('elapsedTime', firstMatch(t, [/\n([0-9:]+)\s*\nUpłynęło czasu/i, /Upłynęło czasu\s*\n([0-9:]+)/i]));
+  set('avgSpeed', firstMatch(t, [/\n([0-9,.]+)\s*km\/h\s*\nŚrednia prędkość/i, /Średnia prędkość\s*\n([0-9,.]+)\s*km\/h/i]), 'km/h');
+  set('movingSpeed', firstMatch(t, [/\n([0-9,.]+)\s*km\/h\s*\nŚrednia prędkość ruchu/i, /Średnia prędkość ruchu\s*\n([0-9,.]+)\s*km\/h/i]), 'km/h');
+  set('maxSpeed', firstMatch(t, [/\n([0-9,.]+)\s*km\/h\s*\nMaksymalna prędkość/i, /Maksymalna prędkość\s*\n([0-9,.]+)\s*km\/h/i]), 'km/h');
+  set('elevationGain', firstMatch(t, [/\n([0-9,.]+)\s*m\s*\nCałkowity wznios/i, /Całkowity wznios\s*\n([0-9,.]+)\s*m/i]), 'm');
+  set('elevationLoss', firstMatch(t, [/\n([0-9,.]+)\s*m\s*\nCałkowity spadek/i, /Całkowity spadek\s*\n([0-9,.]+)\s*m/i]), 'm');
+  set('minElevation', firstMatch(t, [/\n([0-9,.]+)\s*m\s*\nMinimalna wysokość/i, /Minimalna wysokość\s*\n([0-9,.]+)\s*m/i]), 'm');
+  set('maxElevation', firstMatch(t, [/\n([0-9,.]+)\s*m\s*\nMaksymalna wysokość/i, /Maksymalna wysokość\s*\n([0-9,.]+)\s*m/i]), 'm');
+  set('restingCalories', firstMatch(t, [/\n([0-9,.]+)\s*\nSpoczynkowe kalorie/i, /Spoczynkowe kalorie\s*\n([0-9,.]+)/i]), 'kcal');
+  set('activeCalories', firstMatch(t, [/\n([0-9,.]+)\s*\nAktywne kalorie/i, /Aktywne kalorie\s*\n([0-9,.]+)/i]), 'kcal');
+  set('totalCalories', firstMatch(t, [/\n([0-9,.]+)\s*\nSuma spalonych kalorii/i, /Suma spalonych kalorii\s*\n([0-9,.]+)/i]), 'kcal');
+  set('fluidLoss', firstMatch(t, [/\n([0-9,.]+)\s*ml\s*\nSz\.utrata płyn/i, /Sz\.utrata płyn\.\s*\n([0-9,.]+)\s*ml/i]), 'ml');
+  set('staminaStart', firstMatch(t, [/\n(\d+%)\s*\nPotencjał początkowy/i, /Potencjał początkowy\s*\n(\d+%)/i]));
+  set('staminaEnd', firstMatch(t, [/\n(\d+%)\s*\nPotencjał końcowy/i, /Potencjał końcowy\s*\n(\d+%)/i]));
+  set('staminaMin', firstMatch(t, [/\n(\d+%)\s*\nMin\. stamina/i, /Min\. stamina\s*\n(\d+%)/i]));
+  set('bodyBattery', firstMatch(t, [/\n(-?\d+)\s*\nWpływ netto/i, /Wpływ netto\s*\n(-?\d+)/i]));
+  set('aerobicTE', firstMatch(t, [/\n([0-9,.]+\s+[^\n]+)\s*\nAerobowy/i, /Aerobowy\s*\n([0-9,.]+\s+[^\n]+)/i]));
+  set('anaerobicTE', firstMatch(t, [/\n([0-9,.]+\s+[^\n]+)\s*\nBeztlenowy/i, /Beztlenowy\s*\n([0-9,.]+\s+[^\n]+)/i]));
+  set('trainingLoad', firstMatch(t, [/\n(\d+)\s*\nObciążenie wysiłkiem/i, /Obciążenie wysiłkiem\s*\n(\d+)/i]));
+  set('benefit', firstMatch(t, [/\n([^\n]+)\s*\nPodstawowa korzyść/i, /Podstawowa korzyść\s*\n([^\n]+)/i]));
+  set('standingTime', firstMatch(t, [/\n([0-9:]+)\s*\nCałkowity czas na stojąco/i, /Całkowity czas na stojąco\s*\n([0-9:]+)/i]));
+  set('standingPowerAvg', firstMatch(t, [/\n(\d+)\s*W\s*\nŚrednia moc na stojąco/i, /Średnia moc na stojąco\s*\n(\d+)\s*W/i]), 'W');
+  set('seatedTime', firstMatch(t, [/\n([0-9:]+)\s*\nCałkowity czas na siedząco/i, /Całkowity czas na siedząco\s*\n([0-9:]+)/i]));
+  set('seatedPowerAvg', firstMatch(t, [/\n(\d+)\s*W\s*\nŚrednia moc na siedząco/i, /Średnia moc na siedząco\s*\n(\d+)\s*W/i]), 'W');
+  set('revolutions', firstMatch(t, [/\n([0-9,.]+)\s*\nŁącznie obrotów/i, /Łącznie obrotów\s*\n([0-9,.]+)/i]));
+  const avgHr = firstMatch(t, [/\n(\d+)\s*bpm\s*\nŚrednie tętno/i]);
+  const maxHr = firstMatch(t, [/\n(\d+)\s*bpm\s*\nMaksymalne tętno/i]);
+  const cal = firstMatch(t, [/\n([0-9,.]+)\s*\nSuma spalonych kalorii/i, /Suma spalonych kalorii\s*\n([0-9,.]+)/i]);
+  const elev = firstMatch(t, [/\n([0-9,.]+)\s*m\s*\nCałkowity wznios/i, /Całkowity wznios\s*\n([0-9,.]+)\s*m/i]);
+  return { metrics, avgHr: avgHr ? Number(avgHr) : null, maxHr: maxHr ? Number(maxHr) : null, calories: cal ? Number(String(cal).replace(/,/g,'')) : null, elevation: elev ? Number(String(elev).replace(/,/g,'')) : null, rawAdvancedText: t };
+}
+function mergeAdvancedIntoSelected(clear=false){
+  if(!selectedWorkoutId) return;
+  const item = trainings.find(x => String(x.id) === String(selectedWorkoutId));
+  if(!item) return;
+  if(clear){
+    item.metrics = {};
+    item.rawAdvancedText = '';
+    item.avgHr = null;
+    item.maxHr = null;
+    renderAdvancedStats(item);
+    if($('editGarminPaste')) $('editGarminPaste').value = '';
+    setSync('Dodatkowe dane Garmin wyczyszczone. Kliknij „Zapisz zmiany”, aby zapisać w Supabase.', 'warn');
+    return;
+  }
+  const text = $('editGarminPaste')?.value || '';
+  if(!text.trim()){ alert('Wklej tekst ze szczegółów Garmin Connect.'); return; }
+  const parsed = parseGarminAdvancedText(text);
+  item.metrics = {...(item.metrics || {}), ...parsed.metrics};
+  item.rawAdvancedText = parsed.rawAdvancedText;
+  if(parsed.avgHr) item.avgHr = parsed.avgHr;
+  if(parsed.maxHr) item.maxHr = parsed.maxHr;
+  if(parsed.calories) item.calories = parsed.calories;
+  if(parsed.elevation) { item.elevation = parsed.elevation; item.ascent = parsed.elevation; }
+  renderAdvancedStats(item);
+  $('detailsHeart').textContent = item.avgHr ? `${Math.round(Number(item.avgHr))} bpm${item.maxHr ? ` / max ${Math.round(Number(item.maxHr))}` : ''}` : '--';
+  $('detailsCalories').textContent = item.calories ? `${Math.round(Number(item.calories))} kcal` : '--';
+  $('detailsElevation').textContent = item.elevation || item.ascent ? `+${Math.round(Number(item.elevation || item.ascent || 0))} m` : '--';
+  setSync(`Odczytano ${Object.keys(parsed.metrics).length} dodatkowych pól Garmin. Kliknij „Zapisz zmiany”.`, 'ok');
+}
+
 function openWorkoutDetails(id){
   const item = trainings.find(x => String(x.id) === String(id));
   if(!item) return;
@@ -672,6 +791,8 @@ function openWorkoutDetails(id){
   $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
   $('editMinutes').value = Math.round(Number(item.minutes || 0));
   $('editNote').value = item.note || '';
+  if($('editGarminPaste')) $('editGarminPaste').value = item.rawAdvancedText || '';
+  renderAdvancedStats(item);
   const garminBtn = $('openGarminBtn');
   const hasUrl = !!item.sourceUrl;
   garminBtn.disabled = !hasUrl;
@@ -694,6 +815,13 @@ async function saveWorkoutDetails(){
     distanceKm: Number($('editDistance').value || item.distanceKm || 0),
     minutes: Number($('editMinutes').value || item.minutes || 0),
     note: $('editNote').value.trim(),
+    metrics: item.metrics || {},
+    rawAdvancedText: $('editGarminPaste')?.value.trim() || item.rawAdvancedText || '',
+    avgHr: item.avgHr || null,
+    maxHr: item.maxHr || null,
+    calories: item.calories || 0,
+    elevation: item.elevation || 0,
+    ascent: item.ascent || item.elevation || 0,
     workout_date: String(item.workout_date || item.date || todayDate()).slice(0,10)
   };
   setSync('Zapisywanie zmian treningu...', 'info');
@@ -946,6 +1074,8 @@ if($('workoutDetails')) $('workoutDetails').addEventListener('click', (event) =>
 if($('saveDetailsBtn')) $('saveDetailsBtn').addEventListener('click', saveWorkoutDetails);
 if($('openGarminBtn')) $('openGarminBtn').addEventListener('click', openSelectedGarmin);
 if($('deleteDetailsBtn')) $('deleteDetailsBtn').addEventListener('click', deleteSelectedWorkout);
+if($('parseGarminTextBtn')) $('parseGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(false));
+if($('clearGarminTextBtn')) $('clearGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(true));
 document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !$('workoutDetails')?.hidden) closeWorkoutDetails(); });
 
 const savedLink = localStorage.getItem('lastGarminLink');
