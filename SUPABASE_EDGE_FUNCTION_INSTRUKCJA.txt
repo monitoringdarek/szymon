@@ -1,8 +1,8 @@
-Szymon AI Coach v1.6.2 — Garmin Public Metadata przez Supabase Edge Function
+Szymon AI Coach v1.7 — Garmin Public Metadata przez Supabase Edge Function
 
 CEL:
 Przeglądarka z GitHub Pages nie może stabilnie pobierać danych z Garmin Connect przez CORS.
-Dlatego v1.6.2 przygotowuje funkcję Supabase Edge Function:
+Dlatego v1.7 przygotowuje funkcję Supabase Edge Function:
   garmin-public-import
 
 Funkcja pobiera publiczne źródło strony Garmin i czyta meta tagi Open Graph:
@@ -44,4 +44,7 @@ TEST po deploy:
 Jeśli funkcja nie jest wdrożona, aplikacja pokaże spokojny komunikat i wróci do trybu ręcznego.
 
 
-Uwaga v1.6.2: po wgraniu plików na GitHub trzeba ponownie wdrożyć funkcję Edge, bo poprawka parsowania przewyższenia jest w pliku supabase/functions/garmin-public-import/index.ts.
+Uwaga v1.7: po wgraniu plików na GitHub trzeba ponownie wdrożyć funkcję Edge, bo poprawka parsowania przewyższenia jest w pliku supabase/functions/garmin-public-import/index.ts.
+
+
+Uwaga v1.7: w tej wersji zmieniono głównie frontend i zapis danych z importu. Jeśli Edge Function z v1.6.2 działa, nie trzeba jej wdrażać ponownie.

@@ -1,7 +1,7 @@
-const VERSION = '1.6.2';
+const VERSION = '1.7';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV162Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV17Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -646,8 +646,8 @@ function detailAiText(item){
   const min = Number(item.minutes || 0);
   const type = item.type || 'run';
   if(type === 'swim') return `Pływanie ${formatKm(km)} km w czasie ${minutesToClock(min)}. Dobry element techniczny i tlenowy pod Kalmar. Kontroluj spokojny rytm i jakość ruchu.`;
-  if(type === 'bike') return `Rower ${formatKm(km)} km. To ważne budowanie bazy pod 180 km w Kalmar. Jeśli trening był mocny, następnego dnia warto rozważyć lżejsze pływanie albo spokojny bieg.`;
-  if(type === 'run') return `Bieg ${formatKm(km)} km ze średnim tempem ${pace}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze. Zadbaj o regenerację łydek i sen.`;
+  if(type === 'bike') return `Rower ${formatKm(km)} km${item.elevation ? `, przewyższenie +${Math.round(Number(item.elevation))} m` : ''}${item.speed ? `, średnia ${item.speed}` : ''}. To ważne budowanie bazy pod 180 km w Kalmar. Jeśli trening był mocny, następnego dnia warto rozważyć lżejsze pływanie albo spokojny bieg.`;
+  if(type === 'run') return `Bieg ${formatKm(km)} km ze średnim tempem ${item.pace || pace}${item.elevation ? ` i przewyższeniem +${Math.round(Number(item.elevation))} m` : ''}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze. Zadbaj o regenerację łydek i sen.`;
   return `Trening zapisany w historii. Każda aktywność dokłada cegiełkę do Road to Kalmar 2026.`;
 }
 function openWorkoutDetails(id){
@@ -895,32 +895,38 @@ $('saveManualBtn').addEventListener('click', async () => {
   const minutes = Number($('minutesInput').value);
   if(!distanceKm || !minutes){ alert('Wpisz dystans i czas.'); return; }
   const meta = sportMeta[type] || sportMeta.other;
+  const manualNote = $('noteInput').value.trim();
+  const link = normalizeGarminLink($('garminLink').value);
+  const garminId = extractGarminActivityId(link);
   const item = {
+    ...(parsedGarmin || {}),
     type,
-    name: `${meta.pl} — trening Kalmar`,
+    name: parsedGarmin?.name || (manualNote && manualNote.length < 80 ? manualNote : `${meta.pl} — trening Kalmar`),
     distanceKm,
     minutes,
-    elevation: type === 'run' ? 80 : type === 'bike' ? 250 : 0,
-    calories: Math.round(minutes * (type === 'bike' ? 9 : type === 'swim' ? 8 : 11)),
-    note: $('noteInput').value.trim(),
-    source: parsedGarmin ? parsedGarmin.source : (extractGarminActivityId($('garminLink').value) ? 'Garmin Link — ręcznie uzupełnione' : 'ręczny wpis'),
-    sourceUrl: parsedGarmin?.sourceUrl || normalizeGarminLink($('garminLink').value),
-    garminActivityId: parsedGarmin?.garminActivityId || extractGarminActivityId(normalizeGarminLink($('garminLink').value)),
+    elevation: Number(parsedGarmin?.elevation || parsedGarmin?.ascent || 0),
+    ascent: Number(parsedGarmin?.ascent || parsedGarmin?.elevation || 0),
+    calories: Number(parsedGarmin?.calories || 0),
+    note: manualNote,
+    source: parsedGarmin?.source || (garminId ? 'Garmin Link — ręcznie uzupełnione' : 'ręczny wpis'),
+    sourceUrl: parsedGarmin?.sourceUrl || link,
+    garminActivityId: parsedGarmin?.garminActivityId || garminId,
     avgHr: parsedGarmin?.avgHr || null,
     maxHr: parsedGarmin?.maxHr || null,
-    parsedBy: parsedGarmin?.parsedBy || '',
+    parsedBy: parsedGarmin?.parsedBy || (garminId ? 'manual-with-garmin-link' : 'manual'),
     pace: parsedGarmin?.pace || null,
     speed: parsedGarmin?.speed || null,
     latitude: parsedGarmin?.latitude || null,
     longitude: parsedGarmin?.longitude || null,
     rawDescription: parsedGarmin?.rawDescription || '',
     workout_date: parsedGarmin?.workout_date || todayDate(),
-    date: todayDate()
+    date: parsedGarmin?.workout_date || todayDate()
   };
   await addTraining(item);
   parsedGarmin = null;
-  setGarminStatus('Gotowe. Trening zapisany. Link Garmin/ID aktywności zostały zachowane w szczegółach, jeśli były podane.', 'ok');
+  setGarminStatus('Gotowe. Trening zapisany w Supabase razem z danymi Garmin: nazwa, dystans, czas, źródło, ID i przewyższenie.', 'ok');
   setImportReport(null);
+  updatePreview();
 });
 $('refreshBtn').addEventListener('click', loadTrainings);
 $('refreshBtn2').addEventListener('click', loadTrainings);
