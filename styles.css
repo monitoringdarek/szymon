@@ -205,3 +205,24 @@ body.details-open{overflow:hidden}
 .details-stats span,.details-grid span{display:block;color:#9facbf;font-size:12px;font-weight:850;margin-bottom:5px}.details-stats b{display:block;font-size:20px;color:#fff}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.details-grid b{display:block;font-size:15px;color:#fff;word-break:break-word}.ai-mini-card,.edit-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}.ai-mini-card h3,.edit-block h3{margin:0 0 8px;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}.ai-mini-card p{color:#d6e2f5}.edit-block label{display:block;margin-top:10px}.edit-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px}.edit-block input{width:100%;min-height:50px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:15px;padding:0 13px;font-weight:850;outline:none}.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.details-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.details-actions .main-cta{margin:0}.details-actions .danger{grid-column:1/-1}
 .workout-item{transition:transform .12s ease,border-color .12s ease,background .12s ease}.workout-item:active{transform:scale(.99);border-color:rgba(255,90,22,.42);background:rgba(255,90,22,.06)}
 @media(max-width:390px){.details-stats{grid-template-columns:1fr}.details-grid,.edit-grid,.details-actions{grid-template-columns:1fr}.details-top h2{font-size:26px}}
+
+/* v1.3 — ukrycie widocznych pasków przewijania, przewijanie nadal działa */
+html, body, .phone-app, .details-panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.phone-app::-webkit-scrollbar,
+.details-panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.details-overlay {
+  overflow: hidden;
+}
+.details-panel {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
