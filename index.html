@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Szymon AI Coach v0.1</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div>
+        <div class="badge">GARMIN PUBLIC LINK • DEMO v0.1</div>
+        <h1>Szymon AI Coach</h1>
+        <p>Polski prototyp trenera AI na podstawie aktywności Garmin. Wklej link, zobacz analizę i plan regeneracji.</p>
+      </div>
+      <div class="score-card">
+        <span>Gotowość</span>
+        <strong id="readiness">78</strong>
+        <small>/100</small>
+      </div>
+    </header>
+
+    <section class="panel importer">
+      <label for="garminLink">Link Garmin Connect</label>
+      <div class="row">
+        <input id="garminLink" value="https://connect.garmin.com/modern/activity/23153515128" />
+        <button id="loadBtn">Analizuj</button>
+      </div>
+      <p class="hint">Na razie wersja pokazuje dane demo z aktywności publicznej. W VS Code sprawdzimy automatyczny odczyt API/proxy.</p>
+    </section>
+
+    <main class="grid">
+      <section class="panel activity-card">
+        <div class="section-title">Ostatnia aktywność</div>
+        <h2 id="activityName">Mogilany Bieganie</h2>
+        <p class="muted" id="activityMeta">Bieganie • wczoraj 16:37 • Garmin Fenix 7X</p>
+        <div class="stats">
+          <div><strong id="distance">15.08</strong><span>km</span><small>Dystans</small></div>
+          <div><strong id="time">1:09:11</strong><span></span><small>Czas</small></div>
+          <div><strong id="pace">4:35</strong><span>/km</span><small>Tempo</small></div>
+          <div><strong id="elev">225</strong><span>m</span><small>Wznios</small></div>
+          <div><strong id="cal">1089</strong><span>kcal</span><small>Kalorie</small></div>
+        </div>
+        <div class="route-box">
+          <div class="route-line"></div>
+          <span>Trasa GPS: Mogilany / Włosań / okolice</span>
+        </div>
+      </section>
+
+      <section class="panel ai-card">
+        <div class="section-title">Analiza AI</div>
+        <div id="aiSummary" class="ai-text"></div>
+        <div class="decision" id="decision">🟡 Jutro: lekki trening albo regeneracja aktywna</div>
+      </section>
+
+      <section class="panel plan-card">
+        <div class="section-title">Plan na jutro</div>
+        <ul id="planList"></ul>
+      </section>
+
+      <section class="panel history-card">
+        <div class="section-title">Mini historia</div>
+        <div class="bars">
+          <div style="--h:65%"><span></span><small>Pon</small></div>
+          <div style="--h:30%"><span></span><small>Wt</small></div>
+          <div style="--h:85%"><span></span><small>Śr</small></div>
+          <div style="--h:20%"><span></span><small>Czw</small></div>
+          <div style="--h:70%"><span></span><small>Pt</small></div>
+          <div style="--h:45%"><span></span><small>Sob</small></div>
+          <div style="--h:15%"><span></span><small>Nd</small></div>
+        </div>
+        <p class="muted">Docelowo tu wpadnie tygodniowy kilometraż, obciążenie i trend formy.</p>
+      </section>
+    </main>
+
+    <footer>
+      Szymon AI Coach v0.1 • lokalny prototyp • kolejny krok: prawdziwy importer Garmin
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
