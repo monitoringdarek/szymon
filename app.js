@@ -1,7 +1,7 @@
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV161Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV162Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -56,7 +56,7 @@ function setImportReport(item=null, mode='empty'){
     ['Dystans', item.distanceKm ? `✓ ${formatKm(item.distanceKm)} km` : 'uzupełnij'],
     ['Czas', item.minutes ? `✓ ${item.minutes} min` : 'uzupełnij'],
     ['Data', item.workout_date ? `✓ ${item.workout_date}` : 'dzisiaj / ręcznie'],
-    ['Nazwa', item.name ? '✓' : 'ręcznie'],
+    ['Nazwa', item.name ? `✓ ${item.name}` : 'ręcznie'],
     ['Przewyższenie', item.elevation ? `✓ +${Math.round(item.elevation)} m` : 'brak'],
     ['Kalorie', item.calories ? `✓ ${Math.round(item.calories)} kcal` : 'brak'],
     ['Tętno', item.avgHr ? `✓ ${Math.round(item.avgHr)} bpm` : 'brak']
@@ -160,10 +160,12 @@ function flexibleNumber(value){
   if(value === null || value === undefined || value === '') return 0;
   if(typeof value === 'number') return Number.isFinite(value) ? value : 0;
   let v = String(value).trim().replace(/\s/g, '');
-  // 1,022 m = 1022, ale 50,73 = 50.73
+  // usuń jednostki przed rozpoznaniem separatorów: "1,022 m" -> "1,022"
+  v = v.replace(/[^0-9,.-]/g, '');
+  // 1,022 = 1022, ale 50,73 = 50.73
   if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(v)) v = v.replace(/,/g, '');
-  else v = v.replace(',', '.');
-  const n = Number(v.replace(/[^0-9.\-]/g, ''));
+  else if(v.includes(',') && !v.includes('.')) v = v.replace(',', '.');
+  const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 async function fetchGarminThroughEdge(link, id){
