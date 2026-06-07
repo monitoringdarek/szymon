@@ -48,3 +48,5 @@ h2{margin:0 0 12px;font-size:18px;line-height:1.1;letter-spacing:.06em;text-tran
 .garmin-status.ok{ border-color: rgba(34,197,94,.45); color:#d7ffe5; background: rgba(16,80,51,.22); }
 .garmin-status.warn{ border-color: rgba(251,146,60,.52); color:#ffe8cf; background: rgba(120,61,18,.22); }
 .garmin-status.info{ border-color: rgba(56,189,248,.28); color:#cfefff; }
+.main-cta:disabled{opacity:.62;filter:grayscale(.15);cursor:not-allowed;box-shadow:none;background:linear-gradient(135deg,#5f6b7e,#334155)}
+.garmin-status.warn{border-color:rgba(255,186,90,.45);color:#ffd28a;background:rgba(255,140,20,.08)}

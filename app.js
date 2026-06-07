@@ -1,7 +1,7 @@
-const VERSION = '0.7';
+const VERSION = '0.7.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV07Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV071Backup';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -35,6 +35,44 @@ function setGarminStatus(message, type='info'){
 }
 function extractGarminActivityId(link){
   return (String(link||'').match(/activity\/(\d+)/)||[])[1] || (String(link||'').match(/activityId=(\d+)/)||[])[1] || '';
+}
+
+function normalizeNumber(n){
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+function duplicateReason(candidate){
+  if(!candidate) return '';
+  const candidateGarminId = candidate.garminActivityId || extractGarminActivityId(candidate.sourceUrl || candidate.url || $('garminLink')?.value || '');
+  if(candidateGarminId){
+    const found = trainings.find(t => {
+      const existingId = t.garminActivityId || extractGarminActivityId(t.sourceUrl || '');
+      return existingId && String(existingId) === String(candidateGarminId);
+    });
+    if(found) return `Ta aktywność Garmin jest już w historii: ${activityNameFor(found)} (${formatKm(found.distanceKm)} km).`;
+  }
+  const cDate = String(candidate.workout_date || candidate.date || todayDate()).slice(0,10);
+  const foundSimilar = trainings.find(t =>
+    String(t.type) === String(candidate.type) &&
+    String(t.date || t.workout_date || '').slice(0,10) === cDate &&
+    normalizeNumber(t.distanceKm) === normalizeNumber(candidate.distanceKm) &&
+    Math.round(Number(t.minutes || 0)) === Math.round(Number(candidate.minutes || 0))
+  );
+  if(foundSimilar) return `Bardzo podobny trening już istnieje w historii: ${activityNameFor(foundSimilar)} (${formatKm(foundSimilar.distanceKm)} km, ${foundSimilar.minutes} min).`;
+  return '';
+}
+function updateDuplicateHint(candidate){
+  const btn = $('saveManualBtn');
+  if(!btn) return false;
+  const reason = duplicateReason(candidate);
+  if(reason){
+    btn.disabled = true;
+    btn.textContent = '✓ Już jest w historii';
+    setGarminStatus(`⚠️ ${reason} Nie zapisuję duplikatu.`, 'warn');
+    return true;
+  }
+  btn.disabled = false;
+  btn.textContent = '✓ Zapisz do historii';
+  return false;
 }
 function mapGarminSport(typeKey){
   const key = String(typeKey||'').toLowerCase();
@@ -97,6 +135,7 @@ function applyParsedWorkout(item){
   $('minutesInput').value = Math.round(item.minutes || 0);
   $('noteInput').value = item.name ? `${item.name}${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}` : '';
   updatePreview();
+  if(updateDuplicateHint(item)) return;
   const meta = sportMeta[item.type] || sportMeta.other;
   setGarminStatus(`${meta.icon} Odczytano: ${item.name || meta.pl} • ${formatKm(item.distanceKm)} km • ${item.minutes} min${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}`, 'ok');
 }
@@ -245,8 +284,17 @@ async function loadTrainings(){
     console.warn(err);
   }
   renderAll();
+  updatePreview();
 }
 async function addTraining(item){
+  const reason = duplicateReason(item);
+  if(reason){
+    setSync('Nie zapisano duplikatu — ten trening jest już w historii','warn');
+    setGarminStatus(`⚠️ ${reason}`, 'warn');
+    updateDuplicateHint(item);
+    showTab('history');
+    return;
+  }
   const localItem = { id:`local-${Date.now()}`, date:todayDate(), ...item };
   const backup = [localItem, ...localBackup()];
   saveLocalBackup(backup);
@@ -368,6 +416,19 @@ function updatePreview(){
   $('previewSport').textContent = `${meta.icon} ${meta.label}`;
   $('previewDistance').textContent = `${formatKm(dist)} km`;
   $('previewTime').textContent = `${min} min`;
+  if(dist && min){
+    const candidate = parsedGarmin || {
+      type,
+      distanceKm: dist,
+      minutes: min,
+      workout_date: todayDate(),
+      date: todayDate(),
+      sourceUrl: $('garminLink')?.value || '',
+      garminActivityId: extractGarminActivityId($('garminLink')?.value || '')
+    };
+    const duplicated = updateDuplicateHint(candidate);
+    if(!duplicated && $('garminStatus')?.textContent?.includes('duplikatu')) setGarminStatus('Sprawdź dane przed zapisaniem do historii.', 'info');
+  }
 }
 function showTab(tab){
   $all('.screen').forEach(s => s.classList.remove('active'));
@@ -432,4 +493,4 @@ renderAll();
 loadProfile();
 loadTrainings();
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=07').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=071').catch(()=>{}); }
