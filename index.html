@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v1.4</title>
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <title>Szymon AI Coach • Road to Kalmar v1.5</title>
+  <link rel="stylesheet" href="styles.css?v=15" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.4</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.5</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.4</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.5</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -93,7 +93,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.5</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -143,7 +143,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.5</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -192,7 +192,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.5</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -246,6 +246,52 @@
           <div id="profileStatus" class="sync-status info">Profil gotowy do edycji.</div>
         </section>
 
+
+
+        <section class="card data-sources-card">
+          <div class="card-head">
+            <h2>Źródła danych</h2>
+            <span class="source-badge auto">v1.5</span>
+          </div>
+          <p class="muted-small">Docelowo aplikacja będzie korzystać z dwóch źródeł: Strava jako automat do codziennej historii oraz Garmin jako szczegółowa analiza ważnych treningów.</p>
+
+          <div class="source-list">
+            <div class="source-item strava-source">
+              <div class="source-icon">⚡</div>
+              <div>
+                <h3>Strava Auto</h3>
+                <p>Planowane: automatyczne pobieranie nowych aktywności zsynchronizowanych z Garmina przez Stravę.</p>
+                <small>Najlepsze do codziennego zbierania historii Swim / Bike / Run.</small>
+              </div>
+              <span class="source-state planned">Planowane</span>
+            </div>
+
+            <div class="source-item garmin-source">
+              <div class="source-icon">🔗</div>
+              <div>
+                <h3>Garmin Link</h3>
+                <p>Działa teraz: wklejasz publiczny link do pojedynczego treningu i aplikacja próbuje uzupełnić dane.</p>
+                <small>Najlepsze do szczegółów: ważny bieg, długi rower, zawody, testy.</small>
+              </div>
+              <span class="source-state active">Aktywne</span>
+            </div>
+
+            <div class="source-item file-source">
+              <div class="source-icon">📁</div>
+              <div>
+                <h3>FIT / TCX</h3>
+                <p>Opcja później: import pliku treningowego, gdy link albo Strava nie da pełnych danych.</p>
+                <small>Rezerwowe źródło dokładnych danych z Garmina.</small>
+              </div>
+              <span class="source-state later">Później</span>
+            </div>
+          </div>
+
+          <div class="source-note">
+            <b>Strategia Road to Kalmar:</b>
+            <span>Strava ma sama tworzyć bazę treningów, a Garmin Link ma uzupełniać szczegóły najważniejszych aktywności.</span>
+          </div>
+        </section>
         <section class="card settings-card">
           <h2>Supabase</h2>
           <div id="syncStatus" class="sync-status info">Łączenie z Supabase...</div>
@@ -258,7 +304,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v1.4 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v1.5 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -320,6 +366,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
