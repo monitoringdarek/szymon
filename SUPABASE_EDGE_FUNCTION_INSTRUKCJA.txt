@@ -1,0 +1,44 @@
+Szymon AI Coach v1.6 — Garmin Public Metadata przez Supabase Edge Function
+
+CEL:
+Przeglądarka z GitHub Pages nie może stabilnie pobierać danych z Garmin Connect przez CORS.
+Dlatego v1.6 przygotowuje funkcję Supabase Edge Function:
+  garmin-public-import
+
+Funkcja pobiera publiczne źródło strony Garmin i czyta meta tagi Open Graph:
+  og:title
+  og:description
+  og:latitude
+  og:longitude
+
+Dzięki temu z linku można automatycznie pobrać np.:
+  Nazwa: Mogilany Kolarstwo
+  Distance: 50.73 km
+  Time: 2:07:49
+  Speed: 23.8 kph
+  Elevation: 1,022 m
+
+PLIK FUNKCJI:
+  supabase/functions/garmin-public-import/index.ts
+
+DEPLOY przez Supabase CLI:
+  supabase login
+  supabase link --project-ref ktfjdngmvrnqkzjxvzoc
+  supabase functions deploy garmin-public-import --no-verify-jwt
+
+Po deploy aplikacja używa adresu:
+  https://ktfjdngmvrnqkzjxvzoc.supabase.co/functions/v1/garmin-public-import
+
+WAŻNE:
+- Tego folderu supabase/functions nie musisz wgrywać na GitHub Pages jako część strony.
+- Na GitHub Pages wgrywasz normalnie: index.html, styles.css, app.js, manifest.json, service-worker.js, icon-180.png.
+- Funkcję trzeba wdrożyć w Supabase osobno.
+- SQL nie trzeba teraz uruchamiać ponownie, bo dane dodatkowe zapisujemy w notes JSON.
+
+TEST po deploy:
+1. W aplikacji wklej:
+   https://connect.garmin.com/modern/activity/2313713753
+2. Kliknij Analizuj.
+3. Powinno uzupełnić: Mogilany Kolarstwo, 50.73 km, 128 min, +1022 m.
+
+Jeśli funkcja nie jest wdrożona, aplikacja pokaże spokojny komunikat i wróci do trybu ręcznego.
