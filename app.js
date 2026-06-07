@@ -1,7 +1,7 @@
-const VERSION = '1.5';
+const VERSION = '1.5.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV15Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV151Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -48,22 +48,31 @@ function setImportReport(item=null, mode='empty'){
   if(!el) return;
   if(!item){ el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
+  const id = item.garminActivityId || extractGarminActivityId(item.sourceUrl || item.url || '');
   const checks = [
-    ['Dyscyplina', item.type ? `✓ ${sportMeta[item.type]?.label || item.type}` : '—'],
-    ['Dystans', item.distanceKm ? `✓ ${formatKm(item.distanceKm)} km` : '—'],
-    ['Czas', item.minutes ? `✓ ${item.minutes} min` : '—'],
-    ['Data', item.workout_date ? `✓ ${item.workout_date}` : '—'],
-    ['Nazwa', item.name ? '✓' : '—'],
-    ['Przewyższenie', item.elevation ? `✓ +${Math.round(item.elevation)} m` : '—'],
-    ['Kalorie', item.calories ? `✓ ${Math.round(item.calories)} kcal` : '—'],
-    ['Tętno', item.avgHr ? `✓ ${Math.round(item.avgHr)} bpm` : '—']
+    ['Garmin ID', id ? `✓ ${id}` : '—'],
+    ['Dyscyplina', item.type ? `✓ ${sportMeta[item.type]?.label || item.type}` : 'uzupełnij'],
+    ['Dystans', item.distanceKm ? `✓ ${formatKm(item.distanceKm)} km` : 'uzupełnij'],
+    ['Czas', item.minutes ? `✓ ${item.minutes} min` : 'uzupełnij'],
+    ['Data', item.workout_date ? `✓ ${item.workout_date}` : 'dzisiaj / ręcznie'],
+    ['Nazwa', item.name ? '✓' : 'ręcznie'],
+    ['Przewyższenie', item.elevation ? `✓ +${Math.round(item.elevation)} m` : 'brak'],
+    ['Kalorie', item.calories ? `✓ ${Math.round(item.calories)} kcal` : 'brak'],
+    ['Tętno', item.avgHr ? `✓ ${Math.round(item.avgHr)} bpm` : 'brak']
   ];
   const title = mode === 'fallback'
-    ? 'Odczyt częściowy / fallback'
+    ? 'Garmin — odczyt częściowy'
     : mode === 'manual'
-      ? 'Odczyt nieudany — wpis ręczny'
+      ? 'Garmin zablokował odczyt — wpis ręczny'
       : 'Raport importu Garmin';
   el.innerHTML = `<b>${title}</b><div>${checks.map(([k,v])=>`<span><em>${k}</em><strong>${v}</strong></span>`).join('')}</div>`;
+}
+function normalizeGarminLink(link){
+  let v = String(link || '').trim();
+  if(!v) return '';
+  if(!/^https?:\/\//i.test(v)) v = 'https://' + v.replace(/^\/+/, '');
+  v = v.replace('connect.garmin.com/app/activity/', 'connect.garmin.com/modern/activity/');
+  return v;
 }
 function extractGarminActivityId(link){
   return (String(link||'').match(/activity\/(\d+)/)||[])[1] || (String(link||'').match(/activityId=(\d+)/)||[])[1] || '';
@@ -173,11 +182,12 @@ function applyParsedWorkout(item){
   setImportReport(item, item.parsedBy && String(item.parsedBy).includes('fallback') ? 'fallback' : 'ok');
 }
 async function analyzeGarminLink(){
-  const link = $('garminLink').value.trim();
+  const link = normalizeGarminLink($('garminLink').value);
+  $('garminLink').value = link;
   const id = extractGarminActivityId(link);
   if(!id){ alert('Wklej poprawny link Garmin Connect z numerem aktywności.'); return; }
   localStorage.setItem('lastGarminLink', link);
-  setGarminStatus('Próbuję pobrać publiczne dane z Garmin Connect...', 'info');
+  setGarminStatus(`Rozpoznano Garmin ID ${id}. Próbuję pobrać publiczne dane z Garmin Connect...`, 'info');
   const publicEndpoint = `https://connect.garmin.com/modern/proxy/activity-service/activity/${id}`;
   try{
     const json = await fetchJsonThroughProxy(publicEndpoint);
@@ -187,11 +197,11 @@ async function analyzeGarminLink(){
     console.warn(err);
     if(id === '23153515128'){
       applyParsedWorkout({ ...demo, id: undefined, garminActivityId:id, sourceUrl:link, source:'Garmin public fallback', parsedBy:'fallback-known-public-link', workout_date:todayDate(), date:todayDate() });
-      setGarminStatus('Garmin/CORS nie zwrócił JSON, ale rozpoznano testowy publiczny link i uzupełniono dane. Docelowo warto dodać mały backend/proxy.', 'warn');
+      setGarminStatus('Garmin nie zwrócił pełnego JSON w przeglądarce, ale rozpoznano testowy publiczny link i uzupełniono dane fallbackiem.', 'warn');
     }else{
       parsedGarmin = null;
-      setGarminStatus('Nie udało się pobrać automatycznie. Uzupełnij ręcznie — link zapisze się razem z treningiem.', 'warn');
-      setImportReport({ sourceUrl: link }, 'manual');
+      setGarminStatus(`Garmin zablokował automatyczny odczyt. Link i Garmin ID ${id} zostaną zapisane jako źródło szczegółów — uzupełnij podstawowe dane ręcznie.`, 'warn');
+      setImportReport({ sourceUrl: link, garminActivityId: id }, 'manual');
     }
   }
 }
@@ -804,9 +814,9 @@ $('saveManualBtn').addEventListener('click', async () => {
     elevation: type === 'run' ? 80 : type === 'bike' ? 250 : 0,
     calories: Math.round(minutes * (type === 'bike' ? 9 : type === 'swim' ? 8 : 11)),
     note: $('noteInput').value.trim(),
-    source: parsedGarmin ? parsedGarmin.source : 'ręczny wpis',
-    sourceUrl: parsedGarmin?.sourceUrl || $('garminLink').value.trim(),
-    garminActivityId: parsedGarmin?.garminActivityId || extractGarminActivityId($('garminLink').value),
+    source: parsedGarmin ? parsedGarmin.source : (extractGarminActivityId($('garminLink').value) ? 'Garmin Link — ręcznie uzupełnione' : 'ręczny wpis'),
+    sourceUrl: parsedGarmin?.sourceUrl || normalizeGarminLink($('garminLink').value),
+    garminActivityId: parsedGarmin?.garminActivityId || extractGarminActivityId(normalizeGarminLink($('garminLink').value)),
     avgHr: parsedGarmin?.avgHr || null,
     maxHr: parsedGarmin?.maxHr || null,
     parsedBy: parsedGarmin?.parsedBy || '',
@@ -815,7 +825,7 @@ $('saveManualBtn').addEventListener('click', async () => {
   };
   await addTraining(item);
   parsedGarmin = null;
-  setGarminStatus('Gotowe. Możesz wkleić kolejny link Garmin albo dodać ręcznie następny trening.', 'ok');
+  setGarminStatus('Gotowe. Trening zapisany. Link Garmin/ID aktywności zostały zachowane w szczegółach, jeśli były podane.', 'ok');
   setImportReport(null);
 });
 $('refreshBtn').addEventListener('click', loadTrainings);
