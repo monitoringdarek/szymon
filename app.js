@@ -1,7 +1,7 @@
-const VERSION = '1.8';
+const VERSION = '1.9';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV18Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV19Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -644,15 +644,85 @@ function workoutHtml(item, withActions=false){
     ${actions}
   </div>`;
 }
+function metricValue(item, key){
+  return item?.metrics && item.metrics[key] !== undefined && item.metrics[key] !== null ? String(item.metrics[key]) : '';
+}
+function metricNumber(item, key){
+  const raw = metricValue(item, key);
+  if(!raw) return null;
+  let s = raw.replace(/\s/g,'').replace(/[^0-9,.-]/g,'');
+  if(!s) return null;
+  if(s.includes(',') && !s.includes('.')){
+    const parts = s.split(',');
+    if(parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) s = parts[0] + parts[1];
+    else s = s.replace(',', '.');
+  } else if(s.includes(',') && s.includes('.')) {
+    s = s.replace(/,/g, '');
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function hasAdvancedMetrics(item){
+  return !!(item?.metrics && Object.keys(item.metrics).length);
+}
+function advancedTrainingLoad(item){
+  const tss = metricNumber(item, 'tss');
+  const ifv = metricNumber(item, 'intensityFactor');
+  const avgHr = metricNumber(item, 'avgHr');
+  const maxHr = metricNumber(item, 'maxHr');
+  const bodyBattery = metricNumber(item, 'bodyBattery');
+  let score = 0;
+  if(tss !== null) score += Math.min(30, tss / 6);
+  if(ifv !== null) score += ifv >= 0.9 ? 14 : ifv >= 0.8 ? 9 : ifv >= 0.7 ? 5 : 0;
+  if(maxHr !== null && maxHr >= 190) score += 8;
+  if(avgHr !== null && avgHr >= 150) score += 5;
+  if(bodyBattery !== null && bodyBattery <= -20) score += 6;
+  return Math.round(score);
+}
+function advancedInsight(item){
+  if(!hasAdvancedMetrics(item)) return '';
+  const type = item.type || 'other';
+  const tss = metricNumber(item, 'tss');
+  const ifv = metricNumber(item, 'intensityFactor');
+  const avgPower = metricNumber(item, 'avgPower');
+  const np = metricNumber(item, 'npPower');
+  const avgHr = metricNumber(item, 'avgHr');
+  const maxHr = metricNumber(item, 'maxHr');
+  const avgCad = metricNumber(item, 'avgCadence');
+  const bb = metricNumber(item, 'bodyBattery');
+  const parts = [];
+  if(type === 'bike'){
+    if(tss !== null) parts.push(`TSS ${tss} ${tss >= 150 ? 'oznacza wysokie obciążenie kolarskie' : tss >= 90 ? 'oznacza solidny trening' : 'wskazuje umiarkowane obciążenie'}.`);
+    if(ifv !== null) parts.push(`IF ${ifv} ${ifv >= 0.85 ? 'pokazuje mocny, wymagający akcent' : 'pokazuje kontrolowaną intensywność'}.`);
+    if(avgPower !== null && np !== null) parts.push(`Śr. moc ${avgPower} W i NP ${np} W sugerują ${np - avgPower >= 25 ? 'zmienną, pagórkowatą jazdę' : 'równą pracę'}.`);
+    if(avgCad !== null) parts.push(`Kadencja ${avgCad} rpm jest dobrym punktem obserwacji pod długie 180 km.`);
+  }
+  if(type === 'run'){
+    if(avgHr !== null) parts.push(`Śr. tętno ${avgHr} bpm pomaga ocenić koszt biegu.`);
+    if(maxHr !== null && maxHr >= 190) parts.push(`Maks. tętno ${maxHr} bpm wskazuje bardzo intensywne fragmenty.`);
+    if(tss !== null) parts.push(`TSS ${tss} podnosi obciążenie tygodnia.`);
+  }
+  if(type === 'swim'){
+    if(avgHr !== null) parts.push(`Śr. tętno ${avgHr} bpm pozwala odróżnić technikę od mocniejszego pływania.`);
+    if(tss !== null) parts.push(`TSS ${tss} zostanie doliczony do obciążenia tygodnia.`);
+  }
+  if(maxHr !== null && maxHr >= 195) parts.push('Po takim tętnie następny dzień powinien być spokojniejszy.');
+  if(bb !== null && bb <= -20) parts.push(`Body Battery ${bb} sugeruje zauważalny koszt regeneracyjny.`);
+  return parts.join(' ');
+}
 function detailAiText(item){
   const pace = calcPace(item.distanceKm, item.minutes, item.type);
   const km = Number(item.distanceKm || 0);
   const min = Number(item.minutes || 0);
   const type = item.type || 'run';
-  if(type === 'swim') return `Pływanie ${formatKm(km)} km w czasie ${minutesToClock(min)}. Dobry element techniczny i tlenowy pod Kalmar. Kontroluj spokojny rytm i jakość ruchu.`;
-  if(type === 'bike') return `Rower ${formatKm(km)} km${item.elevation ? `, przewyższenie +${Math.round(Number(item.elevation))} m` : ''}${item.speed ? `, średnia ${item.speed}` : ''}. To ważne budowanie bazy pod 180 km w Kalmar. Jeśli trening był mocny, następnego dnia warto rozważyć lżejsze pływanie albo spokojny bieg.`;
-  if(type === 'run') return `Bieg ${formatKm(km)} km ze średnim tempem ${item.pace || pace}${item.elevation ? ` i przewyższeniem +${Math.round(Number(item.elevation))} m` : ''}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze. Zadbaj o regenerację łydek i sen.`;
-  return `Trening zapisany w historii. Każda aktywność dokłada cegiełkę do Road to Kalmar 2026.`;
+  const advanced = advancedInsight(item);
+  let base = '';
+  if(type === 'swim') base = `Pływanie ${formatKm(km)} km w czasie ${minutesToClock(min)}. Dobry element techniczny i tlenowy pod Kalmar. Kontroluj spokojny rytm i jakość ruchu.`;
+  else if(type === 'bike') base = `Rower ${formatKm(km)} km${item.elevation ? `, przewyższenie +${Math.round(Number(item.elevation))} m` : ''}${item.speed ? `, średnia ${item.speed}` : ''}. To ważne budowanie bazy pod 180 km w Kalmar.`;
+  else if(type === 'run') base = `Bieg ${formatKm(km)} km ze średnim tempem ${item.pace || pace}${item.elevation ? ` i przewyższeniem +${Math.round(Number(item.elevation))} m` : ''}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze.`;
+  else base = `Trening zapisany w historii. Każda aktywność dokłada cegiełkę do Road to Kalmar 2026.`;
+  if(advanced) return `${base} Dane zaawansowane: ${advanced}`;
+  return `${base} Jeśli trening był mocny, następnego dnia warto rozważyć lżejsze pływanie albo spokojny bieg.`;
 }
 
 const metricLabels = {
@@ -920,7 +990,10 @@ function analyze(){
   };
   const dominant = Object.entries(sportMinutes).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'run';
   const missing = Object.entries(sportMinutes).filter(([,min]) => min === 0).map(([k]) => k);
-  const loadScore = Math.min(100, Math.round((weekMinutes/8) + weekCount*5 + weekTotals.run.km*1.1 + weekTotals.bike.km*0.18 + weekTotals.swim.km*5));
+  const advancedScore = week.reduce((sum, x) => sum + advancedTrainingLoad(x), 0);
+  const advancedItems = week.filter(hasAdvancedMetrics);
+  const weekTss = week.reduce((sum, x) => sum + (metricNumber(x, 'tss') || 0), 0);
+  const loadScore = Math.min(100, Math.round((weekMinutes/8) + weekCount*5 + weekTotals.run.km*1.1 + weekTotals.bike.km*0.18 + weekTotals.swim.km*5 + advancedScore));
   let loadLabel = 'lekki';
   if(loadScore >= 70) loadLabel = 'mocny';
   else if(loadScore >= 35) loadLabel = 'średni';
@@ -929,7 +1002,8 @@ function analyze(){
   $('readinessDonut').style.setProperty('--value', readiness);
   const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
   set('aiScore', readiness);
-  set('weekLoadValue', `${loadLabel} • ${weekCount} treningów • ${(weekMinutes/60).toFixed(1).replace('.', ',')} h`);
+  const advancedLabel = advancedItems.length ? ` • dane Garmin: ${advancedItems.length}${weekTss ? ` • TSS ${weekTss.toFixed(1).replace('.', ',')}` : ''}` : '';
+  set('weekLoadValue', `${loadLabel} • ${weekCount} treningów • ${(weekMinutes/60).toFixed(1).replace('.', ',')} h${advancedLabel}`);
   set('aiReadinessText', readiness >= 75 ? 'Organizm wygląda na gotowy do normalnego treningu.' : readiness >= 58 ? 'Warto trenować rozsądnie i pilnować regeneracji.' : 'Obciążenie rośnie — lepszy będzie lżejszy dzień.');
 
   const pct = (min) => weekMinutes ? Math.round((min/weekMinutes)*100) : 0;
@@ -943,9 +1017,11 @@ function analyze(){
   let balanceText = 'Na razie budujemy bazę danych treningowych.';
   if(weekCount >= 1){
     const domName = sportMeta[dominant]?.pl || dominant;
-    balanceText = `W tym tygodniu dominuje: ${domName}. ${missing.length ? 'Brakuje: ' + missing.map(k=>sportMeta[k].label).join(', ') + '.' : 'Wszystkie trzy dyscypliny są obecne.'}`;
+    const advancedText = advancedItems.length ? ` Dane zaawansowane Garmin są już liczone w obciążeniu${weekTss ? ` (TSS tygodnia: ${weekTss.toFixed(1).replace('.', ',')})` : ''}.` : '';
+    balanceText = `W tym tygodniu dominuje: ${domName}. ${missing.length ? 'Brakuje: ' + missing.map(k=>sportMeta[k].label).join(', ') + '.' : 'Wszystkie trzy dyscypliny są obecne.'}${advancedText}`;
     decision = `🟡 Tydzień ${loadLabel}. ${balanceText}`;
   }
+  const latestAdvanced = latest ? advancedInsight(latest) : '';
   if(weekCount >= 3 && readiness > 72){
     decision = `🟢 Gotowość dobra. ${balanceText}`;
     plan = ['🚴 Rower Z2 60–90 min','🏃 Krótki bieg easy 15–25 min po rowerze','🧘 Schłodzenie i rozciąganie'];
@@ -959,8 +1035,11 @@ function analyze(){
   } else if(missing.includes('run')){
     plan = ['🏃 Bieg easy 30–45 min','💪 Core 10–15 min','📌 Trzymać spokojną intensywność'];
   }
+  if(advancedScore >= 25 && readiness < 65){
+    plan = ['😴 Regeneracja po mocnym obciążeniu Garmin', '🏊 Lekkie pływanie techniczne 20–30 min', '📌 Bez interwałów i bez ścigania jutro'];
+  }
   $('decision').textContent = decision;
-  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p>`;
+  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
   $('planList').innerHTML = plan.map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
