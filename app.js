@@ -1,7 +1,7 @@
-const VERSION = '0.7.1';
+const VERSION = '0.8';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV071Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV08Backup';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -210,6 +210,11 @@ async function apiPost(url, body){
   if(!r.ok) throw new Error(`POST ${r.status}`);
   return r.json();
 }
+async function apiDelete(url){
+  const r = await fetch(url,{method:'DELETE',headers:headers({'Prefer':'return=representation'})});
+  if(!r.ok) throw new Error(`DELETE ${r.status}`);
+  try { return await r.json(); } catch { return []; }
+}
 function fromDb(row){
   const notes = safeParse(row.notes) || {};
   return {
@@ -368,22 +373,44 @@ function activityNameFor(item){
   const meta = sportMeta[item.type] || sportMeta.other;
   return `${meta.pl} — trening Kalmar`;
 }
-function workoutHtml(item){
+function workoutHtml(item, withActions=false){
   const meta = sportMeta[item.type] || sportMeta.other;
   const pace = calcPace(item.distanceKm, item.minutes, item.type);
-  return `<div class="workout-item">
+  const id = String(item.id || '');
+  const actions = withActions ? `<button class="delete-workout" data-delete-id="${id}" title="Usuń trening">Usuń</button>` : `<div class="chev">›</div>`;
+  return `<div class="workout-item" data-workout-id="${id}">
     <div class="workout-icon ${meta.cls}">${meta.icon}</div>
     <div class="workout-main"><b>${activityNameFor(item).replace(' — trening Kalmar','')}</b><small>${formatDate(item.date)} • ${formatTime(item.date)}</small></div>
     <div class="workout-metric"><b>${formatKm(item.distanceKm)} km</b><small>${minutesToClock(item.minutes)} • ${pace}</small></div>
-    <div class="chev">›</div>
+    ${actions}
   </div>`;
+}
+async function deleteTraining(id){
+  if(!id) return;
+  const item = trainings.find(x => String(x.id) === String(id));
+  if(!item) return;
+  if(!confirm(`Usunąć trening: ${activityNameFor(item)} (${formatKm(item.distanceKm)} km)?`)) return;
+  setSync('Usuwanie treningu...', 'info');
+  try{
+    if(cloudOnline && !String(id).startsWith('local-')){
+      await apiDelete(`${WORKOUTS_ENDPOINT}?id=eq.${encodeURIComponent(id)}`);
+    }
+    trainings = trainings.filter(x => String(x.id) !== String(id));
+    saveLocalBackup(trainings);
+    setSync('Trening usunięty. Historia jest odświeżona.', 'ok');
+    renderAll();
+  }catch(err){
+    console.warn(err);
+    setSync('Nie udało się usunąć w Supabase. Spróbuj odświeżyć i ponowić.', 'bad');
+    alert('Nie udało się usunąć treningu z Supabase.');
+  }
 }
 function renderHistory(){
   const full = trainings.length ? trainings : [demo];
   const filtered = activeFilter === 'all' ? full : full.filter(x => x.type === activeFilter);
-  const html = filtered.length ? filtered.map(workoutHtml).join('') : '<div class="empty-history">Brak treningów w wybranej dyscyplinie.</div>';
+  const html = filtered.length ? filtered.map(item => workoutHtml(item, true)).join('') : '<div class="empty-history">Brak treningów w wybranej dyscyplinie.</div>';
   $('historyList').innerHTML = html;
-  $('recentList').innerHTML = full.slice(0,4).map(workoutHtml).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
+  $('recentList').innerHTML = full.slice(0,4).map(item => workoutHtml(item, false)).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
 }
 function analyze(){
   const latest = trainings[0] || demo;
@@ -447,6 +474,10 @@ $all('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => sh
 $all('[data-goto]').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.goto)));
 $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () => setSport(btn.dataset.sport)));
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));
+$('historyList').addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-delete-id]');
+  if(btn) deleteTraining(btn.dataset.deleteId);
+});
 ['distanceInput','minutesInput','sportType'].forEach(id => $(id).addEventListener('input', updatePreview));
 
 $('loadBtn').addEventListener('click', analyzeGarminLink);
@@ -493,4 +524,4 @@ renderAll();
 loadProfile();
 loadTrainings();
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=071').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=08').catch(()=>{}); }
