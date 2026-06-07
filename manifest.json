@@ -1,16 +1,14 @@
 {
   "name": "Szymon AI Coach - Road to Kalmar",
   "short_name": "Kalmar Coach",
+  "description": "Road to IRONMAN Kalmar 2026 - triathlonowy panel treningowy Szymona.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#07111f",
-  "theme_color": "#07111f",
+  "background_color": "#020814",
+  "theme_color": "#020814",
+  "orientation": "portrait",
   "icons": [
-    {
-      "src": "icon-180.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any maskable" }
   ]
 }

@@ -1,19 +1,24 @@
-const CACHE_NAME = 'szymon-ai-coach-road-to-kalmar-v05';
-const FILES = ['./','./index.html','./styles.css','./app.js','./manifest.json','./icon-180.png'];
+const CACHE_NAME = 'szymon-ai-coach-v06';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css?v=06',
+  './app.js?v=06',
+  './manifest.json',
+  './icon-180.png'
+];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(FILES)));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
-  );
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.url.includes('supabase.co')) return;
-  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+  if(event.request.method !== 'GET') return;
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then(res => res || caches.match('./index.html'))));
 });
