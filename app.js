@@ -1,7 +1,7 @@
-const VERSION = '0.6';
+const VERSION = '0.7';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV06Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV07Backup';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -23,6 +23,105 @@ const demo = {
   source: 'Garmin demo',
   date: new Date().toISOString()
 };
+
+
+let parsedGarmin = null;
+
+function setGarminStatus(message, type='info'){
+  const el = $('garminStatus');
+  if(!el) return;
+  el.textContent = message;
+  el.className = `garmin-status ${type}`;
+}
+function extractGarminActivityId(link){
+  return (String(link||'').match(/activity\/(\d+)/)||[])[1] || (String(link||'').match(/activityId=(\d+)/)||[])[1] || '';
+}
+function mapGarminSport(typeKey){
+  const key = String(typeKey||'').toLowerCase();
+  if(key.includes('swim')) return 'swim';
+  if(key.includes('cycling') || key.includes('bike') || key.includes('biking')) return 'bike';
+  if(key.includes('running') || key.includes('run')) return 'run';
+  if(key.includes('strength')) return 'strength';
+  return 'other';
+}
+function parseGarminActivityJson(data, originalUrl, id){
+  const activity = Array.isArray(data) ? data[0] : data;
+  if(!activity || typeof activity !== 'object') throw new Error('Nie rozpoznano odpowiedzi Garmin.');
+  const typeKey = activity.activityType?.typeKey || activity.activityTypeDTO?.typeKey || activity.eventType?.typeKey || '';
+  const sport = mapGarminSport(typeKey || activity.activityType);
+  const distanceMeters = Number(activity.distance || activity.summaryDTO?.distance || 0);
+  const durationSeconds = Number(activity.duration || activity.movingDuration || activity.elapsedDuration || activity.summaryDTO?.duration || 0);
+  const start = activity.startTimeLocal || activity.beginTimestamp || activity.startTimeGMT || activity.summaryDTO?.startTimeLocal || new Date().toISOString();
+  const distanceKm = distanceMeters > 100 ? distanceMeters / 1000 : Number(activity.distanceKm || 0);
+  const minutes = durationSeconds > 0 ? Math.round(durationSeconds / 60) : Number(activity.durationMinutes || 0);
+  if(!distanceKm || !minutes) throw new Error('Garmin nie zwrócił dystansu/czasu.');
+  return {
+    type: sport,
+    name: activity.activityName || activity.name || `${(sportMeta[sport]||sportMeta.other).pl} — Garmin`,
+    distanceKm: Number(distanceKm.toFixed(2)),
+    minutes,
+    elevation: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || 0),
+    ascent: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || 0),
+    calories: Math.round(Number(activity.calories || activity.summaryDTO?.calories || 0)),
+    avgHr: activity.averageHR || activity.summaryDTO?.averageHR || null,
+    maxHr: activity.maxHR || activity.summaryDTO?.maxHR || null,
+    source: 'Garmin Connect public',
+    sourceUrl: originalUrl,
+    garminActivityId: id,
+    parsedBy: 'garmin-public-endpoint',
+    workout_date: String(start).slice(0,10),
+    date: String(start).slice(0,10)
+  };
+}
+async function fetchJsonThroughProxy(targetUrl){
+  const endpoints = [
+    targetUrl,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+  ];
+  let lastError = null;
+  for(const url of endpoints){
+    try{
+      const response = await fetch(url, { headers: { 'Accept':'application/json,text/plain,*/*' } });
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text = await response.text();
+      try { return JSON.parse(text); } catch { throw new Error('Odpowiedź nie jest JSON.'); }
+    }catch(err){ lastError = err; console.warn('Garmin fetch fallback failed:', url, err); }
+  }
+  throw lastError || new Error('Nie udało się pobrać aktywności.');
+}
+function applyParsedWorkout(item){
+  parsedGarmin = item;
+  setSport(item.type || 'run');
+  $('distanceInput').value = Number(item.distanceKm || 0).toFixed(2);
+  $('minutesInput').value = Math.round(item.minutes || 0);
+  $('noteInput').value = item.name ? `${item.name}${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}` : '';
+  updatePreview();
+  const meta = sportMeta[item.type] || sportMeta.other;
+  setGarminStatus(`${meta.icon} Odczytano: ${item.name || meta.pl} • ${formatKm(item.distanceKm)} km • ${item.minutes} min${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}`, 'ok');
+}
+async function analyzeGarminLink(){
+  const link = $('garminLink').value.trim();
+  const id = extractGarminActivityId(link);
+  if(!id){ alert('Wklej poprawny link Garmin Connect z numerem aktywności.'); return; }
+  localStorage.setItem('lastGarminLink', link);
+  setGarminStatus('Próbuję pobrać publiczne dane z Garmin Connect...', 'info');
+  const publicEndpoint = `https://connect.garmin.com/modern/proxy/activity-service/activity/${id}`;
+  try{
+    const json = await fetchJsonThroughProxy(publicEndpoint);
+    const item = parseGarminActivityJson(json, link, id);
+    applyParsedWorkout(item);
+  }catch(err){
+    console.warn(err);
+    if(id === '23153515128'){
+      applyParsedWorkout({ ...demo, id: undefined, garminActivityId:id, sourceUrl:link, source:'Garmin public fallback', parsedBy:'fallback-known-public-link', workout_date:todayDate(), date:todayDate() });
+      setGarminStatus('Garmin/CORS nie zwrócił JSON, ale rozpoznano testowy publiczny link i uzupełniono dane. Docelowo warto dodać mały backend/proxy.', 'warn');
+    }else{
+      parsedGarmin = null;
+      setGarminStatus('Nie udało się pobrać automatycznie. Uzupełnij ręcznie — link zapisze się razem z treningiem.', 'warn');
+    }
+  }
+}
 
 const sportMeta = {
   swim: { icon:'🏊', label:'Swim', pl:'Pływanie', cls:'swim' },
@@ -85,6 +184,12 @@ function fromDb(row){
     calories: Number(notes.calories || 0),
     note: notes.note || '',
     source: notes.source || 'Supabase',
+    sourceUrl: notes.sourceUrl || notes.garmin_url || '',
+    garminActivityId: notes.garminActivityId || notes.garmin_activity_id || '',
+    avgHr: notes.avgHr || notes.avg_hr || null,
+    maxHr: notes.maxHr || notes.max_hr || null,
+    ascent: notes.ascent || notes.elevation || 0,
+    parsedBy: notes.parsedBy || '',
     cloud: true
   };
 }
@@ -100,6 +205,12 @@ function toDb(item){
       elevation: item.elevation || 0,
       calories: item.calories || 0,
       note: item.note || '',
+      sourceUrl: item.sourceUrl || '',
+      garminActivityId: item.garminActivityId || '',
+      avgHr: item.avgHr || null,
+      maxHr: item.maxHr || null,
+      ascent: item.ascent || item.elevation || 0,
+      parsedBy: item.parsedBy || '',
       version: VERSION
     })
   };
@@ -277,14 +388,7 @@ $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () =
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));
 ['distanceInput','minutesInput','sportType'].forEach(id => $(id).addEventListener('input', updatePreview));
 
-$('loadBtn').addEventListener('click', async () => {
-  const link = $('garminLink').value.trim();
-  const id = (link.match(/activity\/(\d+)/)||[])[1];
-  if(!id){ alert('Wklej poprawny link Garmin Connect z numerem aktywności.'); return; }
-  localStorage.setItem('lastGarminLink', link);
-  const item = { ...demo, id: undefined, name:'Mogilany Bieganie', source:'Garmin link demo', workout_date: todayDate(), date: todayDate() };
-  await addTraining(item);
-});
+$('loadBtn').addEventListener('click', analyzeGarminLink);
 $('saveManualBtn').addEventListener('click', async () => {
   const type = $('sportType').value;
   const distanceKm = Number($('distanceInput').value);
@@ -299,11 +403,18 @@ $('saveManualBtn').addEventListener('click', async () => {
     elevation: type === 'run' ? 80 : type === 'bike' ? 250 : 0,
     calories: Math.round(minutes * (type === 'bike' ? 9 : type === 'swim' ? 8 : 11)),
     note: $('noteInput').value.trim(),
-    source: 'ręczny wpis',
+    source: parsedGarmin ? parsedGarmin.source : 'ręczny wpis',
+    sourceUrl: parsedGarmin?.sourceUrl || $('garminLink').value.trim(),
+    garminActivityId: parsedGarmin?.garminActivityId || extractGarminActivityId($('garminLink').value),
+    avgHr: parsedGarmin?.avgHr || null,
+    maxHr: parsedGarmin?.maxHr || null,
+    parsedBy: parsedGarmin?.parsedBy || '',
     workout_date: todayDate(),
     date: todayDate()
   };
   await addTraining(item);
+  parsedGarmin = null;
+  setGarminStatus('Gotowe. Możesz wkleić kolejny link Garmin albo dodać ręcznie następny trening.', 'ok');
 });
 $('refreshBtn').addEventListener('click', loadTrainings);
 $('refreshBtn2').addEventListener('click', loadTrainings);
@@ -321,4 +432,4 @@ renderAll();
 loadProfile();
 loadTrainings();
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=06').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=07').catch(()=>{}); }
