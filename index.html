@@ -2,39 +2,97 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Szymon AI Coach v0.1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Szymon AI Coach • Road to Kalmar v0.5</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#07111f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kalmar Coach">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-180.png">
 </head>
 <body>
   <div class="app">
     <header class="hero">
-      <div>
-        <div class="badge">GARMIN PUBLIC LINK • DEMO v0.1</div>
+      <div class="hero-copy">
+        <div class="badge">🏁 ROAD TO IRONMAN KALMAR 2026 • PWA v0.5</div>
         <h1>Szymon AI Coach</h1>
-        <p>Polski prototyp trenera AI na podstawie aktywności Garmin. Wklej link, zobacz analizę i plan regeneracji.</p>
+        <p class="lead">Osobisty panel przygotowań do Kalmar. Historia treningów zapisuje się teraz w Supabase, więc PC i iPhone widzą te same dane.</p>
+        <div class="race-line">
+          <span>🏊 3.8 km</span>
+          <span>🚴 180 km</span>
+          <span>🏃 42.2 km</span>
+        </div>
       </div>
-      <div class="score-card">
-        <span>Gotowość</span>
-        <strong id="readiness">78</strong>
-        <small>/100</small>
+      <div class="countdown-card">
+        <span>Do startu</span>
+        <strong id="daysLeft">--</strong>
+        <small>dni</small>
       </div>
     </header>
 
-    <section class="panel importer">
-      <label for="garminLink">Link Garmin Connect</label>
-      <div class="row">
-        <input id="garminLink" value="https://connect.garmin.com/modern/activity/23153515128" />
-        <button id="loadBtn">Analizuj</button>
+    <section class="panel kalmar-panel">
+      <div class="kalmar-top">
+        <div>
+          <div class="section-title">IRONMAN Kalmar 2026</div>
+          <h2>Dzień przygotowań: <span id="prepDay">--</span></h2>
+          <p class="muted">Cel: linia startu i meta w Kalmar. Każdy zapisany trening buduje historię pod przyszłą analizę AI.</p>
+        </div>
+        <div class="mini-readiness">
+          <span>Gotowość</span>
+          <strong id="readiness">78</strong><small>/100</small>
+        </div>
       </div>
-      <p class="hint">Na razie wersja pokazuje dane demo z aktywności publicznej. W VS Code sprawdzimy automatyczny odczyt API/proxy.</p>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Postęp drogi do Kalmar</span><b id="progressText">--%</b></div>
+        <div class="progress"><i id="progressBar"></i></div>
+      </div>
+      <div class="quote" id="quoteText">Every workout counts.</div>
     </section>
 
     <main class="grid">
-      <section class="panel activity-card">
+      <section class="panel importer wide-card">
+        <div class="section-title">Dodaj trening</div>
+        <label for="garminLink">Link Garmin Connect</label>
+        <div class="row">
+          <input id="garminLink" value="https://connect.garmin.com/modern/activity/23153515128" />
+          <button id="loadBtn">Analizuj</button>
+        </div>
+        <p class="hint">v0.5 zapisuje trening do Supabase. Pobieranie z Garmina jest jeszcze demo — prawdziwy importer publicznych aktywności będzie kolejnym etapem.</p>
+
+        <div class="manual-form">
+          <div>
+            <label for="sportType">Dyscyplina</label>
+            <select id="sportType">
+              <option value="run">🏃 Run</option>
+              <option value="bike">🚴 Bike</option>
+              <option value="swim">🏊 Swim</option>
+            </select>
+          </div>
+          <div>
+            <label for="distanceInput">Dystans km</label>
+            <input id="distanceInput" type="number" min="0" step="0.01" value="15.08">
+          </div>
+          <div>
+            <label for="minutesInput">Czas min</label>
+            <input id="minutesInput" type="number" min="1" step="1" value="69">
+          </div>
+          <button id="saveManualBtn">+ Zapisz do historii</button>
+        </div>
+      </section>
+
+      <section class="panel tri-card">
+        <div class="section-title">Tydzień — Swim / Bike / Run</div>
+        <div class="discipline swim"><span>🏊 Swim</span><strong id="swimKm">0 km</strong><small id="swimTime">0 min</small></div>
+        <div class="discipline bike"><span>🚴 Bike</span><strong id="bikeKm">0 km</strong><small id="bikeTime">0 min</small></div>
+        <div class="discipline run"><span>🏃 Run</span><strong id="runKm">0 km</strong><small id="runTime">0 min</small></div>
+      </section>
+
+      <section class="panel activity-card wide-card">
         <div class="section-title">Ostatnia aktywność</div>
         <h2 id="activityName">Mogilany Bieganie</h2>
-        <p class="muted" id="activityMeta">Bieganie • wczoraj 16:37 • Garmin Fenix 7X</p>
+        <p class="muted" id="activityMeta">Bieganie • publiczny link Garmin • Fenix 7X</p>
         <div class="stats">
           <div><strong id="distance">15.08</strong><span>km</span><small>Dystans</small></div>
           <div><strong id="time">1:09:11</strong><span></span><small>Czas</small></div>
@@ -49,7 +107,7 @@
       </section>
 
       <section class="panel ai-card">
-        <div class="section-title">Analiza AI</div>
+        <div class="section-title">Analiza AI Coach</div>
         <div id="aiSummary" class="ai-text"></div>
         <div class="decision" id="decision">🟡 Jutro: lekki trening albo regeneracja aktywna</div>
       </section>
@@ -59,23 +117,34 @@
         <ul id="planList"></ul>
       </section>
 
-      <section class="panel history-card">
-        <div class="section-title">Mini historia</div>
-        <div class="bars">
-          <div style="--h:65%"><span></span><small>Pon</small></div>
-          <div style="--h:30%"><span></span><small>Wt</small></div>
-          <div style="--h:85%"><span></span><small>Śr</small></div>
-          <div style="--h:20%"><span></span><small>Czw</small></div>
-          <div style="--h:70%"><span></span><small>Pt</small></div>
-          <div style="--h:45%"><span></span><small>Sob</small></div>
-          <div style="--h:15%"><span></span><small>Nd</small></div>
+      <section class="panel history-card wide-card">
+        <div class="history-head">
+          <div>
+            <div class="section-title">Historia treningów</div>
+            <h2>Road to Kalmar — Supabase Sync</h2>
+            <p class="muted small-note">Historia jest wspólna dla PC i iPhone. Lokalny backup zostaje tylko awaryjnie.</p>
+          </div>
+          <div class="history-actions">
+            <button class="ghost" id="refreshBtn">Odśwież</button>
+            <button class="ghost" id="clearLocalBtn">Wyczyść backup</button>
+          </div>
         </div>
-        <p class="muted">Docelowo tu wpadnie tygodniowy kilometraż, obciążenie i trend formy.</p>
+        <div class="sync-row">
+          <div id="syncStatus" class="sync-status info">Łączenie z Supabase...</div>
+          <div class="cloud-pill">☁️ Treningów w bazie: <b id="cloudCount">0</b></div>
+        </div>
+        <div class="week-summary">
+          <div><strong id="weekCount">0</strong><span>treningi</span></div>
+          <div><strong id="weekHours">0.0</strong><span>godzin</span></div>
+          <div><strong id="weekKm">0.0</strong><span>km</span></div>
+        </div>
+        <div class="history-list" id="historyList"></div>
       </section>
     </main>
 
+    <div class="panel install-box"><strong>📱 iPhone:</strong> Safari → Udostępnij → Dodaj do ekranu początkowego</div>
     <footer>
-      Szymon AI Coach v0.1 • lokalny prototyp • kolejny krok: prawdziwy importer Garmin
+      Szymon AI Coach • Road to Kalmar v0.5 • historia treningów + lokalne statystyki
     </footer>
   </div>
   <script src="app.js"></script>
