@@ -1,7 +1,7 @@
-const VERSION = '0.8';
+const VERSION = '0.9';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV08Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV09Backup';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -417,21 +417,56 @@ function analyze(){
   const week = currentWeek();
   const weekMinutes = week.reduce((s,x)=>s+Number(x.minutes||0),0);
   const weekCount = week.length;
-  const load = Math.min(90, Math.round((weekMinutes/10) + weekCount*4 + (latest.type==='run' ? latest.distanceKm*1.1 : latest.type==='bike' ? latest.distanceKm*.18 : latest.distanceKm*5)));
-  const readiness = clamp(100 - Math.round(load*.45), 42, 92);
+  const weekTotals = totalsFor(week);
+  const totalKm = weekTotals.swim.km + weekTotals.bike.km + weekTotals.run.km;
+  const sportMinutes = {
+    swim: weekTotals.swim.min,
+    bike: weekTotals.bike.min,
+    run: weekTotals.run.min
+  };
+  const dominant = Object.entries(sportMinutes).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'run';
+  const missing = Object.entries(sportMinutes).filter(([,min]) => min === 0).map(([k]) => k);
+  const loadScore = Math.min(100, Math.round((weekMinutes/8) + weekCount*5 + weekTotals.run.km*1.1 + weekTotals.bike.km*0.18 + weekTotals.swim.km*5));
+  let loadLabel = 'lekki';
+  if(loadScore >= 70) loadLabel = 'mocny';
+  else if(loadScore >= 35) loadLabel = 'średni';
+  const readiness = clamp(100 - Math.round(loadScore*.42), 40, 94);
   $('readiness').textContent = readiness;
   $('readinessDonut').style.setProperty('--value', readiness);
+  const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
+  set('aiScore', readiness);
+  set('weekLoadValue', `${loadLabel} • ${weekCount} treningów • ${(weekMinutes/60).toFixed(1).replace('.', ',')} h`);
+  set('aiReadinessText', readiness >= 75 ? 'Organizm wygląda na gotowy do normalnego treningu.' : readiness >= 58 ? 'Warto trenować rozsądnie i pilnować regeneracji.' : 'Obciążenie rośnie — lepszy będzie lżejszy dzień.');
+
+  const pct = (min) => weekMinutes ? Math.round((min/weekMinutes)*100) : 0;
+  const ps = pct(weekTotals.swim.min), pb = pct(weekTotals.bike.min), pr = pct(weekTotals.run.min);
+  const bars = [['barSwim',ps],['barBike',pb],['barRun',pr]];
+  bars.forEach(([id,val]) => { const el=$(id); if(el) el.style.width = `${Math.max(val, weekMinutes ? 8 : 0)}%`; });
+  set('barSwimText', `${ps}%`); set('barBikeText', `${pb}%`); set('barRunText', `${pr}%`);
+
   let decision = '🟡 Dodaj kilka treningów, a AI będzie mądrzejsze.';
   let plan = ['🏊 Lekka technika lub mobilizacja 20–30 min','💧 Nawodnienie i sen','📌 Budujemy historię pod Kalmar 2026'];
+  let balanceText = 'Na razie budujemy bazę danych treningowych.';
+  if(weekCount >= 1){
+    const domName = sportMeta[dominant]?.pl || dominant;
+    balanceText = `W tym tygodniu dominuje: ${domName}. ${missing.length ? 'Brakuje: ' + missing.map(k=>sportMeta[k].label).join(', ') + '.' : 'Wszystkie trzy dyscypliny są obecne.'}`;
+    decision = `🟡 Tydzień ${loadLabel}. ${balanceText}`;
+  }
   if(weekCount >= 3 && readiness > 72){
-    decision = '🟢 Forma wygląda dobrze — można trenować normalnie.';
+    decision = `🟢 Gotowość dobra. ${balanceText}`;
     plan = ['🚴 Rower Z2 60–90 min','🏃 Krótki bieg easy 15–25 min po rowerze','🧘 Schłodzenie i rozciąganie'];
   } else if(readiness < 58){
-    decision = '🔴 Obciążenie rośnie — jutro lżejszy dzień.';
+    decision = `🔴 Obciążenie ${loadLabel}. Lepiej zejść z intensywności.`;
     plan = ['😴 Bez mocnych akcentów','🏊 Pływanie techniczne albo spacer','📈 Sprawdź sen, HRV i zmęczenie nóg'];
+  } else if(missing.includes('swim')){
+    plan = ['🏊 Pływanie techniczne 30–45 min','🚶 Mobilność / core 15 min','💧 Lekki dzień, bez dokładania mocnego biegu'];
+  } else if(missing.includes('bike')){
+    plan = ['🚴 Rower Z2 60 min','🧘 Rozciąganie bioder i łydek','📌 Bez mocnych interwałów'];
+  } else if(missing.includes('run')){
+    plan = ['🏃 Bieg easy 30–45 min','💪 Core 10–15 min','📌 Trzymać spokojną intensywność'];
   }
   $('decision').textContent = decision;
-  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ten tydzień:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1)} h. Najnowszy wpis: ${activityNameFor(latest)}.</p>`;
+  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p>`;
   $('planList').innerHTML = plan.map(x=>`<li>${x}</li>`).join('');
 }
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); analyze(); updatePreview(); }
@@ -524,4 +559,4 @@ renderAll();
 loadProfile();
 loadTrainings();
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=08').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=09').catch(()=>{}); }

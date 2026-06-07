@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v0.8</title>
-  <link rel="stylesheet" href="styles.css?v=08" />
+  <title>Szymon AI Coach • Road to Kalmar v0.9</title>
+  <link rel="stylesheet" href="styles.css?v=09" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <div class="phone-app">
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.8</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -78,32 +78,51 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
-          <h1>Treningi</h1>
-          <p>Swim, Bike, Run — baza pod przyszłą analizę AI.</p>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
+          <h1>Analiza AI</h1>
+          <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
+
+        <section class="card ai-hero-card">
+          <div>
+            <h2>Gotowość do treningu</h2>
+            <p id="aiReadinessText">Analizuję ostatnie 7 dni i obciążenie.</p>
+          </div>
+          <div class="ai-score" id="aiScoreBox"><strong id="aiScore">--</strong><span>/100</span></div>
+        </section>
+
         <section class="card summary-card">
-          <h2>Podsumowanie tygodnia</h2>
+          <h2>Ostatnie 7 dni</h2>
           <div class="summary-grid">
             <div><i>🏊</i><b id="trainSwimKm">0</b><span>km pływania</span></div>
             <div><i>🚴</i><b id="trainBikeKm">0</b><span>km roweru</span></div>
             <div><i>🏃</i><b id="trainRunKm">0</b><span>km biegu</span></div>
           </div>
+          <div class="week-load-line"><span id="weekLoadLabel">Obciążenie tygodnia</span><b id="weekLoadValue">--</b></div>
         </section>
+
+        <section class="card balance-card">
+          <h2>Balans triathlonowy</h2>
+          <div class="balance-row"><span>🏊 Swim</span><div class="bar"><i id="barSwim"></i></div><b id="barSwimText">0%</b></div>
+          <div class="balance-row"><span>🚴 Bike</span><div class="bar"><i id="barBike"></i></div><b id="barBikeText">0%</b></div>
+          <div class="balance-row"><span>🏃 Run</span><div class="bar"><i id="barRun"></i></div><b id="barRunText">0%</b></div>
+        </section>
+
         <section class="card ai-card">
-          <h2>AI Coach</h2>
+          <h2>Wnioski AI Coach</h2>
           <div id="aiSummary" class="ai-text"></div>
           <div class="decision" id="decision">🟡 Dodaj trening, a AI przygotuje pierwszą ocenę.</div>
         </section>
+
         <section class="card plan-card">
-          <h2>Plan na jutro</h2>
+          <h2>Propozycja na jutro</h2>
           <ul id="planList"></ul>
         </section>
       </section>
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.8</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -151,7 +170,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.8</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -196,18 +215,18 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v0.8 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v0.9 • Supabase Sync</footer>
       </section>
     </main>
 
     <nav class="bottom-nav">
       <button class="active" data-tab="dashboard">⌂<span>Pulpit</span></button>
-      <button data-tab="trainings">🚴<span>Treningi</span></button>
+      <button data-tab="trainings">📊<span>Analiza</span></button>
       <button class="plus" data-tab="add">＋<span>Dodaj</span></button>
       <button data-tab="history">↺<span>Historia</span></button>
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=08"></script>
+  <script src="app.js?v=09"></script>
 </body>
 </html>
