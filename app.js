@@ -1,7 +1,7 @@
-const VERSION = '1.6';
+const VERSION = '1.6.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV16Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV161Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -156,46 +156,61 @@ function parseGarminActivityJson(data, originalUrl, id){
   };
 }
 
+function flexibleNumber(value){
+  if(value === null || value === undefined || value === '') return 0;
+  if(typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  let v = String(value).trim().replace(/\s/g, '');
+  // 1,022 m = 1022, ale 50,73 = 50.73
+  if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(v)) v = v.replace(/,/g, '');
+  else v = v.replace(',', '.');
+  const n = Number(v.replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
 async function fetchGarminThroughEdge(link, id){
   const response = await fetch(GARMIN_EDGE_ENDPOINT, {
     method: 'POST',
-    headers: headers({ 'Content-Type':'application/json' }),
+    mode: 'cors',
+    cache: 'no-store',
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ url: link, activityId: id })
   });
+  const raw = await response.text();
   let data = null;
-  try { data = await response.json(); } catch { data = null; }
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
   if(!response.ok || !data || data.ok === false){
-    const msg = data?.error || `Edge Function HTTP ${response.status}`;
+    const msg = data?.error || raw || `Edge Function HTTP ${response.status}`;
     throw new Error(msg);
   }
   return data;
 }
 function parseGarminEdgeMeta(data, originalUrl, id){
   if(!data || !data.ok) throw new Error(data?.error || 'Brak danych z Edge Function.');
-  const sport = data.type || 'other';
-  const distanceKm = Number(data.distanceKm || 0);
-  const minutes = Number(data.minutes || 0);
-  if(!distanceKm || !minutes) throw new Error('Garmin meta nie zwrócił dystansu/czasu.');
+  const sport = mapGarminSport(data.type || data.name || data.description || 'other');
+  const distanceKm = flexibleNumber(data.distanceKm);
+  const minutes = flexibleNumber(data.minutes);
+  const elevation = flexibleNumber(data.elevation);
+  const calories = flexibleNumber(data.calories);
+  if(!distanceKm || !minutes) throw new Error(`Garmin meta nie zwrócił dystansu/czasu. Opis: ${data.description || 'brak'}`);
   return {
     type: sport,
     name: data.name || `${(sportMeta[sport]||sportMeta.other).pl} — Garmin`,
     distanceKm: Number(distanceKm.toFixed(2)),
     minutes: Math.round(minutes),
-    elevation: Number(data.elevation || 0),
-    ascent: Number(data.elevation || 0),
-    calories: data.calories ? Math.round(Number(data.calories)) : 0,
+    elevation,
+    ascent: elevation,
+    calories: calories ? Math.round(calories) : 0,
     avgHr: data.avgHr || null,
     maxHr: data.maxHr || null,
     source: 'Garmin Public Metadata',
-    sourceUrl: data.canonicalUrl || originalUrl,
-    garminActivityId: id,
+    sourceUrl: originalUrl,
+    garminActivityId: data.garminActivityId || id,
     parsedBy: data.parsedBy || 'supabase-edge-og-meta',
-    workout_date: data.workout_date || todayDate(),
-    date: data.workout_date || todayDate(),
+    workout_date: data.workout_date || data.date || todayDate(),
+    date: data.workout_date || data.date || todayDate(),
     pace: data.pace || null,
     speed: data.speed || null,
-    latitude: data.latitude || null,
-    longitude: data.longitude || null,
+    latitude: flexibleNumber(data.latitude) || null,
+    longitude: flexibleNumber(data.longitude) || null,
     rawDescription: data.description || ''
   };
 }
@@ -235,12 +250,12 @@ async function analyzeGarminLink(){
   const id = extractGarminActivityId(link);
   if(!id){ alert('Wklej poprawny link Garmin Connect z numerem aktywności.'); return; }
   localStorage.setItem('lastGarminLink', link);
-  setGarminStatus(`Rozpoznano Garmin ID ${id}. Próbuję pobrać publiczne meta dane przez Supabase Edge Function...`, 'info');
+  setGarminStatus(`Rozpoznano Garmin ID ${id}. Łączę z Supabase Edge Function i pobieram publiczne meta dane Garmin...`, 'info');
   try{
     const meta = await fetchGarminThroughEdge(link, id);
     const item = parseGarminEdgeMeta(meta, link, id);
     applyParsedWorkout(item);
-    setGarminStatus(`✅ Garmin Public Metadata: ${item.name} • ${formatKm(item.distanceKm)} km • ${minutesToClock(item.minutes)}${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}`, 'ok');
+    setGarminStatus(`✅ Pobrano z Garmin Public Metadata: ${item.name} • ${formatKm(item.distanceKm)} km • ${minutesToClock(item.minutes)}${item.speed ? ` • ${item.speed}` : ''}${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}`, 'ok');
     setImportReport(item, 'edge');
     return;
   }catch(edgeErr){
