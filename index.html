@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v1.1</title>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <title>Szymon AI Coach • Road to Kalmar v1.2</title>
+  <link rel="stylesheet" href="styles.css?v=12" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.1</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.2</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.1</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.2</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -93,7 +93,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.2</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -143,7 +143,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.2</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -191,7 +191,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.2</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -257,9 +257,57 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v1.1 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v1.2 • Supabase Sync</footer>
       </section>
     </main>
+
+
+    <section id="workoutDetails" class="details-overlay" hidden>
+      <div class="details-panel">
+        <div class="details-top">
+          <div>
+            <span id="detailsBadge" class="details-badge">🏃 Run</span>
+            <h2 id="detailsTitle">Szczegóły treningu</h2>
+            <p id="detailsSub">Road to Kalmar 2026</p>
+          </div>
+          <button id="closeDetailsBtn" class="close-btn" aria-label="Zamknij">×</button>
+        </div>
+
+        <div class="details-stats">
+          <div><span>Dystans</span><b id="detailsDistance">-- km</b></div>
+          <div><span>Czas</span><b id="detailsDuration">--</b></div>
+          <div><span>Tempo / prędkość</span><b id="detailsPace">--</b></div>
+        </div>
+
+        <div class="details-grid">
+          <div><span>Data</span><b id="detailsDate">--</b></div>
+          <div><span>Źródło</span><b id="detailsSource">--</b></div>
+          <div><span>Przewyższenie</span><b id="detailsElevation">--</b></div>
+          <div><span>Kalorie</span><b id="detailsCalories">--</b></div>
+        </div>
+
+        <div class="ai-mini-card">
+          <h3>Ocena AI</h3>
+          <p id="detailsAiText">Analiza treningu pojawi się tutaj.</p>
+        </div>
+
+        <div class="edit-block">
+          <h3>Edytuj trening</h3>
+          <label><span>Nazwa</span><input id="editTitle" type="text"></label>
+          <div class="edit-grid">
+            <label><span>Dystans km</span><input id="editDistance" type="number" min="0" step="0.01"></label>
+            <label><span>Czas min</span><input id="editMinutes" type="number" min="1" step="1"></label>
+          </div>
+          <label><span>Notatka</span><input id="editNote" type="text" placeholder="Notatka do treningu..."></label>
+        </div>
+
+        <div class="details-actions">
+          <button id="openGarminBtn" class="ghost">Otwórz w Garmin</button>
+          <button id="saveDetailsBtn" class="main-cta slim">✓ Zapisz zmiany</button>
+          <button id="deleteDetailsBtn" class="ghost danger">Usuń</button>
+        </div>
+      </div>
+    </section>
 
     <nav class="bottom-nav">
       <button class="active" data-tab="dashboard">⌂<span>Pulpit</span></button>
@@ -269,6 +317,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

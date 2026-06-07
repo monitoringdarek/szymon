@@ -172,3 +172,36 @@ h2{margin:0 0 12px;font-size:18px;line-height:1.1;letter-spacing:.06em;text-tran
 .auth-card .main-cta{margin-top:18px}
 .auth-note{font-size:12px;color:#9facbf;margin-top:12px;text-align:center}
 .account-card{border-color:rgba(255,90,22,.30)}
+
+/* v1.2 — szczegóły treningu */
+body.details-open{overflow:hidden}
+.details-overlay{
+  position:fixed;
+  inset:0;
+  z-index:80;
+  display:grid;
+  place-items:end center;
+  padding:24px 12px calc(env(safe-area-inset-bottom) + 12px);
+  background:rgba(0,4,12,.72);
+  backdrop-filter:blur(18px);
+}
+.details-panel{
+  width:min(100%,520px);
+  max-height:92dvh;
+  overflow:auto;
+  border:1px solid rgba(129,157,205,.32);
+  background:radial-gradient(circle at 82% 0,rgba(255,90,22,.18),transparent 28%),linear-gradient(180deg,rgba(10,27,53,.98),rgba(5,17,34,.99));
+  border-radius:28px;
+  box-shadow:0 28px 90px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.05);
+  padding:18px;
+}
+.details-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.details-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,90,22,.42);background:rgba(255,90,22,.10);color:#ffd7c7;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950;letter-spacing:.04em;text-transform:uppercase}
+.details-top h2{margin:10px 0 4px;color:#fff;text-transform:none;letter-spacing:-.03em;font-size:30px;line-height:1.05}
+.details-top p{font-size:13px;color:#aeb8cd}
+.close-btn{width:42px;height:42px;border:1px solid rgba(145,168,210,.28);border-radius:15px;background:rgba(255,255,255,.04);color:#fff;font-size:28px;line-height:1;font-weight:700}
+.details-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0}
+.details-stats div,.details-grid div{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:17px;padding:12px;min-width:0}
+.details-stats span,.details-grid span{display:block;color:#9facbf;font-size:12px;font-weight:850;margin-bottom:5px}.details-stats b{display:block;font-size:20px;color:#fff}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.details-grid b{display:block;font-size:15px;color:#fff;word-break:break-word}.ai-mini-card,.edit-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}.ai-mini-card h3,.edit-block h3{margin:0 0 8px;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}.ai-mini-card p{color:#d6e2f5}.edit-block label{display:block;margin-top:10px}.edit-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px}.edit-block input{width:100%;min-height:50px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:15px;padding:0 13px;font-weight:850;outline:none}.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.details-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.details-actions .main-cta{margin:0}.details-actions .danger{grid-column:1/-1}
+.workout-item{transition:transform .12s ease,border-color .12s ease,background .12s ease}.workout-item:active{transform:scale(.99);border-color:rgba(255,90,22,.42);background:rgba(255,90,22,.06)}
+@media(max-width:390px){.details-stats{grid-template-columns:1fr}.details-grid,.edit-grid,.details-actions{grid-template-columns:1fr}.details-top h2{font-size:26px}}

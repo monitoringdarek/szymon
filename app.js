@@ -1,7 +1,7 @@
-const VERSION = '1.1';
+const VERSION = '1.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV11Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV12Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -35,6 +35,7 @@ const demo = {
 
 
 let parsedGarmin = null;
+let selectedWorkoutId = null;
 
 function setGarminStatus(message, type='info'){
   const el = $('garminStatus');
@@ -237,6 +238,7 @@ function fromDb(row){
   return {
     id: row.id,
     date: row.workout_date || row.created_at,
+    workout_date: row.workout_date || String(row.created_at || '').slice(0,10),
     type: row.sport || 'other',
     name: row.title || `${(sportMeta[row.sport]||sportMeta.other).pl} — trening Kalmar`,
     distanceKm: Number(row.distance_km || 0),
@@ -508,13 +510,96 @@ function workoutHtml(item, withActions=false){
   const pace = calcPace(item.distanceKm, item.minutes, item.type);
   const id = String(item.id || '');
   const actions = withActions ? `<button class="delete-workout" data-delete-id="${id}" title="Usuń trening">Usuń</button>` : `<div class="chev">›</div>`;
-  return `<div class="workout-item" data-workout-id="${id}">
+  return `<div class="workout-item" data-workout-id="${id}" role="button" tabindex="0" title="Pokaż szczegóły treningu">
     <div class="workout-icon ${meta.cls}">${meta.icon}</div>
     <div class="workout-main"><b>${activityNameFor(item).replace(' — trening Kalmar','')}</b><small>${formatDate(item.date)} • ${formatTime(item.date)}</small></div>
     <div class="workout-metric"><b>${formatKm(item.distanceKm)} km</b><small>${minutesToClock(item.minutes)} • ${pace}</small></div>
     ${actions}
   </div>`;
 }
+function detailAiText(item){
+  const pace = calcPace(item.distanceKm, item.minutes, item.type);
+  const km = Number(item.distanceKm || 0);
+  const min = Number(item.minutes || 0);
+  const type = item.type || 'run';
+  if(type === 'swim') return `Pływanie ${formatKm(km)} km w czasie ${minutesToClock(min)}. Dobry element techniczny i tlenowy pod Kalmar. Kontroluj spokojny rytm i jakość ruchu.`;
+  if(type === 'bike') return `Rower ${formatKm(km)} km. To ważne budowanie bazy pod 180 km w Kalmar. Jeśli trening był mocny, następnego dnia warto rozważyć lżejsze pływanie albo spokojny bieg.`;
+  if(type === 'run') return `Bieg ${formatKm(km)} km ze średnim tempem ${pace}. Ten trening buduje wytrzymałość biegową pod maraton po rowerze. Zadbaj o regenerację łydek i sen.`;
+  return `Trening zapisany w historii. Każda aktywność dokłada cegiełkę do Road to Kalmar 2026.`;
+}
+function openWorkoutDetails(id){
+  const item = trainings.find(x => String(x.id) === String(id));
+  if(!item) return;
+  selectedWorkoutId = String(id);
+  const meta = sportMeta[item.type] || sportMeta.other;
+  $('detailsBadge').textContent = `${meta.icon} ${meta.label}`;
+  $('detailsTitle').textContent = activityNameFor(item).replace(' — trening Kalmar','');
+  $('detailsSub').textContent = `${formatDate(item.date)} • ${formatTime(item.date)} • Road to Kalmar 2026`;
+  $('detailsDistance').textContent = `${formatKm(item.distanceKm)} km`;
+  $('detailsDuration').textContent = minutesToClock(item.minutes);
+  $('detailsPace').textContent = calcPace(item.distanceKm, item.minutes, item.type);
+  $('detailsDate').textContent = formatDate(item.date);
+  $('detailsSource').textContent = item.source || (item.sourceUrl ? 'Garmin Connect' : 'Aplikacja');
+  $('detailsElevation').textContent = item.elevation || item.ascent ? `+${Math.round(Number(item.elevation || item.ascent || 0))} m` : '--';
+  $('detailsCalories').textContent = item.calories ? `${Math.round(Number(item.calories))} kcal` : '--';
+  $('detailsAiText').textContent = detailAiText(item);
+  $('editTitle').value = activityNameFor(item).replace(' — trening Kalmar','');
+  $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
+  $('editMinutes').value = Math.round(Number(item.minutes || 0));
+  $('editNote').value = item.note || '';
+  const garminBtn = $('openGarminBtn');
+  const hasUrl = !!item.sourceUrl;
+  garminBtn.disabled = !hasUrl;
+  garminBtn.textContent = hasUrl ? 'Otwórz w Garmin' : 'Brak linku Garmin';
+  $('workoutDetails').hidden = false;
+  document.body.classList.add('details-open');
+}
+function closeWorkoutDetails(){
+  selectedWorkoutId = null;
+  $('workoutDetails').hidden = true;
+  document.body.classList.remove('details-open');
+}
+async function saveWorkoutDetails(){
+  if(!selectedWorkoutId) return;
+  const item = trainings.find(x => String(x.id) === String(selectedWorkoutId));
+  if(!item) return;
+  const updated = {
+    ...item,
+    name: $('editTitle').value.trim() || activityNameFor(item),
+    distanceKm: Number($('editDistance').value || item.distanceKm || 0),
+    minutes: Number($('editMinutes').value || item.minutes || 0),
+    note: $('editNote').value.trim(),
+    workout_date: String(item.workout_date || item.date || todayDate()).slice(0,10)
+  };
+  setSync('Zapisywanie zmian treningu...', 'info');
+  try{
+    if(cloudOnline && !String(updated.id).startsWith('local-')){
+      const body = toDb(updated);
+      delete body.user_id;
+      await apiPatch(`${WORKOUTS_ENDPOINT}?id=eq.${encodeURIComponent(updated.id)}${currentUser?.id ? `&user_id=eq.${encodeURIComponent(currentUser.id)}` : ''}`, body);
+    }
+    trainings = trainings.map(x => String(x.id) === String(updated.id) ? updated : x);
+    saveLocalBackup(trainings);
+    setSync('Zmiany treningu zapisane.', 'ok');
+    renderAll();
+    openWorkoutDetails(updated.id);
+  }catch(err){
+    console.warn(err);
+    setSync('Nie udało się zapisać zmian treningu.', 'bad');
+    alert('Nie udało się zapisać zmian.');
+  }
+}
+function openSelectedGarmin(){
+  const item = trainings.find(x => String(x.id) === String(selectedWorkoutId));
+  if(item?.sourceUrl) window.open(item.sourceUrl, '_blank', 'noopener');
+}
+async function deleteSelectedWorkout(){
+  if(!selectedWorkoutId) return;
+  const id = selectedWorkoutId;
+  closeWorkoutDetails();
+  await deleteTraining(id);
+}
+
 async function deleteTraining(id){
   if(!id) return;
   const item = trainings.find(x => String(x.id) === String(id));
@@ -668,7 +753,13 @@ $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () =
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));
 $('historyList').addEventListener('click', (event) => {
   const btn = event.target.closest('[data-delete-id]');
-  if(btn) deleteTraining(btn.dataset.deleteId);
+  if(btn){ event.stopPropagation(); deleteTraining(btn.dataset.deleteId); return; }
+  const item = event.target.closest('[data-workout-id]');
+  if(item) openWorkoutDetails(item.dataset.workoutId);
+});
+if($('recentList')) $('recentList').addEventListener('click', (event) => {
+  const item = event.target.closest('[data-workout-id]');
+  if(item) openWorkoutDetails(item.dataset.workoutId);
 });
 ['distanceInput','minutesInput','sportType'].forEach(id => $(id).addEventListener('input', updatePreview));
 
@@ -713,6 +804,13 @@ $('clearLocalBtn').addEventListener('click', () => {
   }
 });
 
+if($('closeDetailsBtn')) $('closeDetailsBtn').addEventListener('click', closeWorkoutDetails);
+if($('workoutDetails')) $('workoutDetails').addEventListener('click', (event) => { if(event.target.id === 'workoutDetails') closeWorkoutDetails(); });
+if($('saveDetailsBtn')) $('saveDetailsBtn').addEventListener('click', saveWorkoutDetails);
+if($('openGarminBtn')) $('openGarminBtn').addEventListener('click', openSelectedGarmin);
+if($('deleteDetailsBtn')) $('deleteDetailsBtn').addEventListener('click', deleteSelectedWorkout);
+document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !$('workoutDetails')?.hidden) closeWorkoutDetails(); });
+
 const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
 
@@ -724,4 +822,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=11').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=12').catch(()=>{}); }
