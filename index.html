@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v0.9</title>
-  <link rel="stylesheet" href="styles.css?v=09" />
+  <title>Szymon AI Coach • Road to Kalmar v1.0</title>
+  <link rel="stylesheet" href="styles.css?v=10" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <div class="phone-app">
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.0</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -78,7 +78,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.0</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -118,11 +118,17 @@
           <h2>Propozycja na jutro</h2>
           <ul id="planList"></ul>
         </section>
+
+        <section class="card weekly-plan-card">
+          <h2>Plan tygodnia AI <span>beta</span></h2>
+          <p class="muted-small">Prosty plan generowany z aktualnej historii Swim / Bike / Run. To jeszcze nie zastępuje trenera — pomaga pilnować balansu do Kalmar.</p>
+          <div id="weeklyPlan" class="weekly-plan-list"></div>
+        </section>
       </section>
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.0</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -170,7 +176,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v0.9</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v1.0</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -203,6 +209,18 @@
           <h1>Ustawienia</h1>
           <p>Synchronizacja, instalacja PWA i informacje o projekcie.</p>
         </section>
+        <section class="card profile-card">
+          <h2>Profil Szymona</h2>
+          <p class="muted-small">Te dane są zapisane w Supabase w tabeli athlete_profile i ustawiają klimat aplikacji Road to Kalmar.</p>
+          <div class="profile-grid">
+            <label><span>Imię zawodnika</span><input id="athleteNameInput" type="text" value="Szymon"></label>
+            <label><span>Cel główny</span><input id="targetEventInput" type="text" value="IRONMAN Kalmar 2026"></label>
+            <label><span>Data startu</span><input id="targetDateInput" type="date" value="2026-08-15"></label>
+          </div>
+          <button class="main-cta slim" id="saveProfileBtn">✓ Zapisz profil</button>
+          <div id="profileStatus" class="sync-status info">Profil gotowy do edycji.</div>
+        </section>
+
         <section class="card settings-card">
           <h2>Supabase</h2>
           <div id="syncStatus" class="sync-status info">Łączenie z Supabase...</div>
@@ -215,7 +233,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v0.9 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v1.0 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -227,6 +245,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=09"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

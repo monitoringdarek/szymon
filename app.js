@@ -1,7 +1,7 @@
-const VERSION = '0.9';
+const VERSION = '1.0';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV09Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV10Backup';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -11,6 +11,9 @@ const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
 let cloudOnline = false;
 let trainings = [];
 let activeFilter = 'all';
+let profileRowId = null;
+let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026', target_date:'2026-08-15' };
+function raceDate(){ return new Date(`${athleteProfile.target_date || '2026-08-15'}T07:00:00+02:00`); }
 
 const demo = {
   id: 'demo-run',
@@ -210,6 +213,11 @@ async function apiPost(url, body){
   if(!r.ok) throw new Error(`POST ${r.status}`);
   return r.json();
 }
+async function apiPatch(url, body){
+  const r = await fetch(url,{method:'PATCH',headers:headers({'Content-Type':'application/json','Prefer':'return=representation'}),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(`PATCH ${r.status}`);
+  return r.json();
+}
 async function apiDelete(url){
   const r = await fetch(url,{method:'DELETE',headers:headers({'Prefer':'return=representation'})});
   if(!r.ok) throw new Error(`DELETE ${r.status}`);
@@ -271,8 +279,44 @@ function setSync(text,type='info'){
 async function loadProfile(){
   try{
     const rows = await apiGet(`${PROFILE_ENDPOINT}?select=*&limit=1`);
-    if(rows && rows[0]) setSync(`Supabase połączony • ${rows[0].athlete_name} • ${rows[0].target_event}`,'ok');
-  }catch(err){ console.warn(err); }
+    if(rows && rows[0]){
+      profileRowId = rows[0].id;
+      athleteProfile = {
+        athlete_name: rows[0].athlete_name || 'Szymon',
+        target_event: rows[0].target_event || 'IRONMAN Kalmar 2026',
+        target_date: rows[0].target_date || '2026-08-15'
+      };
+      if($('athleteNameInput')) $('athleteNameInput').value = athleteProfile.athlete_name;
+      if($('targetEventInput')) $('targetEventInput').value = athleteProfile.target_event;
+      if($('targetDateInput')) $('targetDateInput').value = athleteProfile.target_date;
+      if($('profileStatus')) { $('profileStatus').textContent = `Profil załadowany: ${athleteProfile.athlete_name} • ${athleteProfile.target_event}`; $('profileStatus').className = 'sync-status ok'; }
+      setSync(`Supabase połączony • ${athleteProfile.athlete_name} • ${athleteProfile.target_event}`,'ok');
+      updateKalmarRoad();
+    }
+  }catch(err){
+    console.warn(err);
+    if($('profileStatus')) { $('profileStatus').textContent = 'Nie udało się pobrać profilu. Zostają wartości domyślne.'; $('profileStatus').className = 'sync-status warn'; }
+  }
+}
+async function saveProfile(){
+  const body = {
+    athlete_name: $('athleteNameInput')?.value?.trim() || 'Szymon',
+    target_event: $('targetEventInput')?.value?.trim() || 'IRONMAN Kalmar 2026',
+    target_date: $('targetDateInput')?.value || '2026-08-15'
+  };
+  if($('profileStatus')) { $('profileStatus').textContent = 'Zapisuję profil w Supabase...'; $('profileStatus').className = 'sync-status info'; }
+  try{
+    let rows = [];
+    if(profileRowId) rows = await apiPatch(`${PROFILE_ENDPOINT}?id=eq.${encodeURIComponent(profileRowId)}`, body);
+    else rows = await apiPost(PROFILE_ENDPOINT, body);
+    profileRowId = rows?.[0]?.id || profileRowId;
+    athleteProfile = body;
+    if($('profileStatus')) { $('profileStatus').textContent = `Zapisano profil: ${body.athlete_name} • ${body.target_event}`; $('profileStatus').className = 'sync-status ok'; }
+    updateKalmarRoad();
+  }catch(err){
+    console.warn(err);
+    if($('profileStatus')) { $('profileStatus').textContent = 'Nie udało się zapisać profilu w Supabase.'; $('profileStatus').className = 'sync-status bad'; }
+  }
 }
 async function loadTrainings(){
   setSync('Łączenie z Supabase...','info');
@@ -331,9 +375,10 @@ async function addTraining(item){
 function updateKalmarRoad(){
   const now = new Date();
   const dayMs = 86400000;
-  const daysLeft = Math.max(0, Math.ceil((RACE_DATE - now)/dayMs));
+  const eventDate = raceDate();
+  const daysLeft = Math.max(0, Math.ceil((eventDate - now)/dayMs));
   const prepDay = Math.max(1, Math.floor((now - START_PREP_DATE)/dayMs)+1);
-  const totalPrep = Math.max(1, Math.ceil((RACE_DATE - START_PREP_DATE)/dayMs));
+  const totalPrep = Math.max(1, Math.ceil((eventDate - START_PREP_DATE)/dayMs));
   const progress = clamp(Math.round((prepDay/totalPrep)*100),0,100);
   $('daysLeft').textContent = daysLeft;
   $('prepDay').textContent = prepDay;
@@ -412,6 +457,32 @@ function renderHistory(){
   $('historyList').innerHTML = html;
   $('recentList').innerHTML = full.slice(0,4).map(item => workoutHtml(item, false)).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
 }
+function generateWeeklyPlan(readiness, loadLabel, missing){
+  const base = [
+    ['Pon', '🏊 Pływanie techniczne', '30–45 min • spokojnie, oddech i technika'],
+    ['Wt', '🚴 Rower Z2', '60–90 min • równa praca, bez szarpania'],
+    ['Śr', '🏃 Bieg easy', '30–45 min • komfortowe tempo'],
+    ['Czw', '💪 Siła + core', '20–30 min • stabilizacja pod triathlon'],
+    ['Pt', '🏊 Pływanie / mobilność', 'Lekko, technicznie, regeneracyjnie'],
+    ['Sob', '🚴 Dłuższy rower', 'Z2 • budowanie bazy pod 180 km'],
+    ['Nd', '🏃 Spokojny bieg', 'Easy albo odpoczynek, jeśli nogi ciężkie']
+  ];
+  if(loadLabel === 'mocny' || readiness < 58){
+    base[1] = ['Wt', '😴 Regeneracja', 'Sen, mobilność, zero mocnych akcentów'];
+    base[5] = ['Sob', '🚴 Rower bardzo lekki', '45–60 min Z1/Z2 albo wolne'];
+    base[6] = ['Nd', '🚶 Spacer / wolne', 'Nie dokładamy zmęczenia'];
+  } else if(missing.includes('swim')) {
+    base[0] = ['Pon', '🏊 Pływanie techniczne', '45 min • priorytet tygodnia'];
+    base[4] = ['Pt', '🏊 Drugie pływanie', '30–40 min • luźno i czysto technicznie'];
+  } else if(missing.includes('bike')) {
+    base[1] = ['Wt', '🚴 Rower Z2', '75 min • priorytet tygodnia'];
+    base[5] = ['Sob', '🚴 Dłuższy rower', '90–120 min • bez ścigania'];
+  } else if(missing.includes('run')) {
+    base[2] = ['Śr', '🏃 Bieg easy', '40 min • spokojna objętość'];
+    base[6] = ['Nd', '🏃 Bieg tlenowy', '45–60 min • kontrola tętna'];
+  }
+  return base.map(([day,title,desc]) => `<div class="plan-day"><b>${day}</b><span>${title}</span><small>${desc}</small></div>`).join('');
+}
 function analyze(){
   const latest = trainings[0] || demo;
   const week = currentWeek();
@@ -468,6 +539,7 @@ function analyze(){
   $('decision').textContent = decision;
   $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p>`;
   $('planList').innerHTML = plan.map(x=>`<li>${x}</li>`).join('');
+  if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); analyze(); updatePreview(); }
 function updatePreview(){
@@ -545,6 +617,7 @@ $('saveManualBtn').addEventListener('click', async () => {
 });
 $('refreshBtn').addEventListener('click', loadTrainings);
 $('refreshBtn2').addEventListener('click', loadTrainings);
+if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
 $('clearLocalBtn').addEventListener('click', () => {
   if(confirm('Wyczyścić tylko lokalny backup na tym urządzeniu? Dane w Supabase zostają.')){
     localStorage.removeItem(LOCAL_BACKUP_KEY);
@@ -559,4 +632,4 @@ renderAll();
 loadProfile();
 loadTrainings();
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=09').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=10').catch(()=>{}); }
