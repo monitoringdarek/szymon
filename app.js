@@ -1,15 +1,21 @@
-const VERSION = '1.0';
+const VERSION = '1.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV10Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV11Backup';
+const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
 const WORKOUTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/workouts`;
 const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
+const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
+const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
+const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
 
 let cloudOnline = false;
 let trainings = [];
+let currentSession = null;
+let currentUser = null;
 let activeFilter = 'all';
 let profileRowId = null;
 let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026', target_date:'2026-08-15' };
@@ -205,8 +211,11 @@ function calcPace(distanceKm, minutes, type){
   return `${Math.floor(secPerKm/60)}:${String(secPerKm%60).padStart(2,'0')}/km`;
 }
 function headers(extra={}){
-  return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, ...extra };
+  const token = currentSession?.access_token || SUPABASE_KEY;
+  return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, ...extra };
 }
+function anonHeaders(extra={}){ return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, ...extra }; }
+function userFilter(){ return currentUser?.id ? `user_id=eq.${encodeURIComponent(currentUser.id)}&` : ''; }
 async function apiGet(url){ const r = await fetch(url,{headers:headers()}); if(!r.ok) throw new Error(`GET ${r.status}`); return r.json(); }
 async function apiPost(url, body){
   const r = await fetch(url,{method:'POST',headers:headers({'Content-Type':'application/json','Prefer':'return=representation'}),body:JSON.stringify(body)});
@@ -247,6 +256,7 @@ function fromDb(row){
 }
 function toDb(item){
   return {
+    user_id: currentUser?.id || null,
     workout_date: item.workout_date || todayDate(),
     sport: item.type,
     title: item.name,
@@ -276,9 +286,83 @@ function setSync(text,type='info'){
     cloud.innerHTML = `<span></span> ${type === 'ok' ? 'Supabase online' : type === 'warn' ? 'Backup lokalny' : type === 'bad' ? 'Offline' : 'Supabase...'}`;
   }
 }
+function getSavedSession(){
+  try { return JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)); } catch { return null; }
+}
+function setAuthStatus(text, type='info'){
+  const el = $('authStatus'); if(el){ el.textContent = text; el.className = `sync-status ${type}`; }
+  const acc = $('accountStatus'); if(acc){ acc.textContent = text; acc.className = `sync-status ${type}`; }
+}
+function showLogin(){
+  const auth = $('authScreen'); const app = $('appShell');
+  if(auth) auth.hidden = false;
+  if(app) app.hidden = true;
+  setAuthStatus('Zaloguj konto Szymona, żeby uruchomić aplikację.', 'info');
+}
+function showApp(){
+  const auth = $('authScreen'); const app = $('appShell');
+  if(auth) auth.hidden = true;
+  if(app) app.hidden = false;
+}
+function saveSession(data){
+  currentSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || '',
+    expires_at: data.expires_at || Math.floor(Date.now()/1000) + Number(data.expires_in || 3600),
+    user: data.user || null
+  };
+  currentUser = currentSession.user;
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentSession));
+  setAuthStatus(`Zalogowano: ${currentUser?.email || 'konto Szymona'}`, 'ok');
+}
+function loadStoredAuth(){
+  const saved = getSavedSession();
+  if(!saved || !saved.access_token || !saved.user) return false;
+  currentSession = saved;
+  currentUser = saved.user;
+  setAuthStatus(`Zalogowano: ${currentUser?.email || 'konto Szymona'}`, 'ok');
+  return true;
+}
+async function signIn(){
+  const email = $('authEmail')?.value?.trim();
+  const password = $('authPassword')?.value || '';
+  if(!email || !password){ setAuthStatus('Wpisz email i hasło.', 'warn'); return; }
+  setAuthStatus('Loguję do Supabase Auth...', 'info');
+  try{
+    const response = await fetch(AUTH_TOKEN_ENDPOINT, {
+      method:'POST',
+      headers: anonHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error_description || data.msg || data.error || `Logowanie nieudane (${response.status})`);
+    saveSession(data);
+    showApp();
+    await bootAppData();
+  }catch(err){
+    console.warn(err);
+    setAuthStatus(`Nie udało się zalogować: ${err.message}`, 'bad');
+  }
+}
+async function signOut(){
+  try{
+    if(currentSession?.access_token){
+      await fetch(AUTH_LOGOUT_ENDPOINT, { method:'POST', headers:headers() });
+    }
+  }catch(err){ console.warn(err); }
+  currentSession = null; currentUser = null; trainings = [];
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  setSync('Wylogowano — dane w Supabase zostały w chmurze.','info');
+  showLogin();
+}
+async function bootAppData(){
+  renderAll();
+  await loadProfile();
+  await loadTrainings();
+}
 async function loadProfile(){
   try{
-    const rows = await apiGet(`${PROFILE_ENDPOINT}?select=*&limit=1`);
+    let rows = await apiGet(`${PROFILE_ENDPOINT}?select=*&${userFilter()}limit=1`);
     if(rows && rows[0]){
       profileRowId = rows[0].id;
       athleteProfile = {
@@ -302,7 +386,8 @@ async function saveProfile(){
   const body = {
     athlete_name: $('athleteNameInput')?.value?.trim() || 'Szymon',
     target_event: $('targetEventInput')?.value?.trim() || 'IRONMAN Kalmar 2026',
-    target_date: $('targetDateInput')?.value || '2026-08-15'
+    target_date: $('targetDateInput')?.value || '2026-08-15',
+    user_id: currentUser?.id || null
   };
   if($('profileStatus')) { $('profileStatus').textContent = 'Zapisuję profil w Supabase...'; $('profileStatus').className = 'sync-status info'; }
   try{
@@ -321,7 +406,7 @@ async function saveProfile(){
 async function loadTrainings(){
   setSync('Łączenie z Supabase...','info');
   try{
-    const rows = await apiGet(`${WORKOUTS_ENDPOINT}?select=*&order=workout_date.desc,created_at.desc&limit=200`);
+    const rows = await apiGet(`${WORKOUTS_ENDPOINT}?select=*&${userFilter()}order=workout_date.desc,created_at.desc&limit=200`);
     cloudOnline = true;
     trainings = rows.map(fromDb);
     saveLocalBackup(trainings);
@@ -438,7 +523,7 @@ async function deleteTraining(id){
   setSync('Usuwanie treningu...', 'info');
   try{
     if(cloudOnline && !String(id).startsWith('local-')){
-      await apiDelete(`${WORKOUTS_ENDPOINT}?id=eq.${encodeURIComponent(id)}`);
+      await apiDelete(`${WORKOUTS_ENDPOINT}?id=eq.${encodeURIComponent(id)}${currentUser?.id ? `&user_id=eq.${encodeURIComponent(currentUser.id)}` : ''}`);
     }
     trainings = trainings.filter(x => String(x.id) !== String(id));
     saveLocalBackup(trainings);
@@ -618,6 +703,9 @@ $('saveManualBtn').addEventListener('click', async () => {
 $('refreshBtn').addEventListener('click', loadTrainings);
 $('refreshBtn2').addEventListener('click', loadTrainings);
 if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
+if($('loginBtn')) $('loginBtn').addEventListener('click', signIn);
+if($('authPassword')) $('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') signIn(); });
+if($('logoutBtn')) $('logoutBtn').addEventListener('click', signOut);
 $('clearLocalBtn').addEventListener('click', () => {
   if(confirm('Wyczyścić tylko lokalny backup na tym urządzeniu? Dane w Supabase zostają.')){
     localStorage.removeItem(LOCAL_BACKUP_KEY);
@@ -628,8 +716,12 @@ $('clearLocalBtn').addEventListener('click', () => {
 const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
 
-renderAll();
-loadProfile();
-loadTrainings();
+if(loadStoredAuth()){
+  showApp();
+  bootAppData();
+}else{
+  showLogin();
+  renderAll();
+}
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=10').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=11').catch(()=>{}); }
