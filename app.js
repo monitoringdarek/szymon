@@ -1,7 +1,7 @@
-const VERSION = '1.2';
+const VERSION = '1.4';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV12Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV14Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -42,6 +42,28 @@ function setGarminStatus(message, type='info'){
   if(!el) return;
   el.textContent = message;
   el.className = `garmin-status ${type}`;
+}
+function setImportReport(item=null, mode='empty'){
+  const el = $('importReport');
+  if(!el) return;
+  if(!item){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const checks = [
+    ['Dyscyplina', item.type ? `✓ ${sportMeta[item.type]?.label || item.type}` : '—'],
+    ['Dystans', item.distanceKm ? `✓ ${formatKm(item.distanceKm)} km` : '—'],
+    ['Czas', item.minutes ? `✓ ${item.minutes} min` : '—'],
+    ['Data', item.workout_date ? `✓ ${item.workout_date}` : '—'],
+    ['Nazwa', item.name ? '✓' : '—'],
+    ['Przewyższenie', item.elevation ? `✓ +${Math.round(item.elevation)} m` : '—'],
+    ['Kalorie', item.calories ? `✓ ${Math.round(item.calories)} kcal` : '—'],
+    ['Tętno', item.avgHr ? `✓ ${Math.round(item.avgHr)} bpm` : '—']
+  ];
+  const title = mode === 'fallback'
+    ? 'Odczyt częściowy / fallback'
+    : mode === 'manual'
+      ? 'Odczyt nieudany — wpis ręczny'
+      : 'Raport importu Garmin';
+  el.innerHTML = `<b>${title}</b><div>${checks.map(([k,v])=>`<span><em>${k}</em><strong>${v}</strong></span>`).join('')}</div>`;
 }
 function extractGarminActivityId(link){
   return (String(link||'').match(/activity\/(\d+)/)||[])[1] || (String(link||'').match(/activityId=(\d+)/)||[])[1] || '';
@@ -95,11 +117,11 @@ function mapGarminSport(typeKey){
 function parseGarminActivityJson(data, originalUrl, id){
   const activity = Array.isArray(data) ? data[0] : data;
   if(!activity || typeof activity !== 'object') throw new Error('Nie rozpoznano odpowiedzi Garmin.');
-  const typeKey = activity.activityType?.typeKey || activity.activityTypeDTO?.typeKey || activity.eventType?.typeKey || '';
+  const typeKey = activity.activityType?.typeKey || activity.activityTypeDTO?.typeKey || activity.eventType?.typeKey || activity.activityType?.typeId || activity.sportType?.typeKey || activity.eventType || '';
   const sport = mapGarminSport(typeKey || activity.activityType);
-  const distanceMeters = Number(activity.distance || activity.summaryDTO?.distance || 0);
-  const durationSeconds = Number(activity.duration || activity.movingDuration || activity.elapsedDuration || activity.summaryDTO?.duration || 0);
-  const start = activity.startTimeLocal || activity.beginTimestamp || activity.startTimeGMT || activity.summaryDTO?.startTimeLocal || new Date().toISOString();
+  const distanceMeters = Number(activity.distance || activity.summaryDTO?.distance || activity.summary?.distance || activity.metricSummary?.distance || 0);
+  const durationSeconds = Number(activity.duration || activity.movingDuration || activity.elapsedDuration || activity.summaryDTO?.duration || activity.summary?.duration || activity.metricSummary?.duration || 0);
+  const start = activity.startTimeLocal || activity.beginTimestamp || activity.startTimeGMT || activity.summaryDTO?.startTimeLocal || activity.summary?.startTimeLocal || activity.startTime || new Date().toISOString();
   const distanceKm = distanceMeters > 100 ? distanceMeters / 1000 : Number(activity.distanceKm || 0);
   const minutes = durationSeconds > 0 ? Math.round(durationSeconds / 60) : Number(activity.durationMinutes || 0);
   if(!distanceKm || !minutes) throw new Error('Garmin nie zwrócił dystansu/czasu.');
@@ -108,11 +130,11 @@ function parseGarminActivityJson(data, originalUrl, id){
     name: activity.activityName || activity.name || `${(sportMeta[sport]||sportMeta.other).pl} — Garmin`,
     distanceKm: Number(distanceKm.toFixed(2)),
     minutes,
-    elevation: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || 0),
-    ascent: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || 0),
-    calories: Math.round(Number(activity.calories || activity.summaryDTO?.calories || 0)),
-    avgHr: activity.averageHR || activity.summaryDTO?.averageHR || null,
-    maxHr: activity.maxHR || activity.summaryDTO?.maxHR || null,
+    elevation: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || activity.summary?.elevationGain || activity.totalElevationGain || 0),
+    ascent: Number(activity.elevationGain || activity.summaryDTO?.elevationGain || activity.summary?.elevationGain || activity.totalElevationGain || 0),
+    calories: Math.round(Number(activity.calories || activity.summaryDTO?.calories || activity.summary?.calories || activity.activeKilocalories || 0)),
+    avgHr: activity.averageHR || activity.averageHr || activity.avgHr || activity.summaryDTO?.averageHR || activity.summary?.averageHR || null,
+    maxHr: activity.maxHR || activity.maxHr || activity.summaryDTO?.maxHR || activity.summary?.maxHR || null,
     source: 'Garmin Connect public',
     sourceUrl: originalUrl,
     garminActivityId: id,
@@ -148,6 +170,7 @@ function applyParsedWorkout(item){
   if(updateDuplicateHint(item)) return;
   const meta = sportMeta[item.type] || sportMeta.other;
   setGarminStatus(`${meta.icon} Odczytano: ${item.name || meta.pl} • ${formatKm(item.distanceKm)} km • ${item.minutes} min${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}`, 'ok');
+  setImportReport(item, item.parsedBy && String(item.parsedBy).includes('fallback') ? 'fallback' : 'ok');
 }
 async function analyzeGarminLink(){
   const link = $('garminLink').value.trim();
@@ -168,6 +191,7 @@ async function analyzeGarminLink(){
     }else{
       parsedGarmin = null;
       setGarminStatus('Nie udało się pobrać automatycznie. Uzupełnij ręcznie — link zapisze się razem z treningiem.', 'warn');
+      setImportReport({ sourceUrl: link }, 'manual');
     }
   }
 }
@@ -542,6 +566,8 @@ function openWorkoutDetails(id){
   $('detailsSource').textContent = item.source || (item.sourceUrl ? 'Garmin Connect' : 'Aplikacja');
   $('detailsElevation').textContent = item.elevation || item.ascent ? `+${Math.round(Number(item.elevation || item.ascent || 0))} m` : '--';
   $('detailsCalories').textContent = item.calories ? `${Math.round(Number(item.calories))} kcal` : '--';
+  $('detailsHeart').textContent = item.avgHr ? `${Math.round(Number(item.avgHr))} bpm${item.maxHr ? ` / max ${Math.round(Number(item.maxHr))}` : ''}` : '--';
+  $('detailsGarminId').textContent = item.garminActivityId || (item.sourceUrl ? extractGarminActivityId(item.sourceUrl) : '') || '--';
   $('detailsAiText').textContent = detailAiText(item);
   $('editTitle').value = activityNameFor(item).replace(' — trening Kalmar','');
   $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
@@ -790,6 +816,7 @@ $('saveManualBtn').addEventListener('click', async () => {
   await addTraining(item);
   parsedGarmin = null;
   setGarminStatus('Gotowe. Możesz wkleić kolejny link Garmin albo dodać ręcznie następny trening.', 'ok');
+  setImportReport(null);
 });
 $('refreshBtn').addEventListener('click', loadTrainings);
 $('refreshBtn2').addEventListener('click', loadTrainings);
@@ -822,4 +849,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=12').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=14').catch(()=>{}); }
