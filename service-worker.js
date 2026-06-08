@@ -1,4 +1,4 @@
-const CACHE_NAME = 'szymon-ai-coach-v313';
+const CACHE_NAME = 'szymon-ai-coach-v314';
 const ASSETS = [
   './',
   './index.html',
