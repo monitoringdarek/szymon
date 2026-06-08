@@ -815,6 +815,49 @@ function renderRecoveryHistory(){
     </div>`;
   }).join('');
 }
+
+function recoveryTone(metric){
+  const r = recoveryScore(metric);
+  if(r.score >= 78) return {icon:'🟢', title:'Organizm gotowy', text:'Dobra baza pod normalny trening. Nadal pilnuj techniki i nie dokładaj siły na siłę.'};
+  if(r.score >= 60) return {icon:'🟡', title:'Trenuj rozsądnie', text:'Można trenować, ale lepiej bez dokładania kolejnego mocnego akcentu.'};
+  return {icon:'🔴', title:'Regeneracja ważniejsza', text:'Dziś wygra spokojny ruch, pływanie techniczne albo odpoczynek. Nie cisnąłbym intensywności.'};
+}
+function renderPremiumRecovery(){
+  const list = $('premiumRecoveryList');
+  const note = $('premiumRecoveryNote');
+  if(!list && !note) return;
+  if(!dailyMetrics.length){
+    if(list) list.innerHTML = '<div class="empty-history">Brak danych regeneracji. Garmin Sync Agent uzupełni je po synchronizacji.</div>';
+    if(note) note.textContent = 'Brak historii regeneracji — czekam na kolejne dane z Garmina.';
+    return;
+  }
+  const latest = dailyMetrics[0];
+  const tone = recoveryTone(latest);
+  const latestScore = recoveryScore(latest);
+  if(note) note.innerHTML = `<b>${tone.icon} ${tone.title}.</b> ${tone.text}`;
+  if(!list) return;
+  list.innerHTML = dailyMetrics.slice(0,7).map(m => {
+    const r = recoveryScore(m);
+    const tone = recoveryTone(m);
+    const sleep = Number(m.sleep_minutes || 0);
+    const sleepClass = sleep && sleep < 330 ? 'warn' : sleep >= 420 ? 'good' : '';
+    const bb = Number(m.body_battery_end ?? m.body_battery_max ?? m.body_battery_charged ?? NaN);
+    const stress = Number(m.avg_stress || NaN);
+    return `<article class="premium-recovery-row ${r.score < 55 ? 'low' : r.score >= 78 ? 'good' : ''}">
+      <div class="premium-day-main">
+        <span>${tone.icon}</span>
+        <div><b>${formatDate(m.metric_date)}</b><small>${tone.title}</small></div>
+      </div>
+      <div class="premium-metrics-line">
+        <span class="${sleepClass}">Sen <b>${fmtSleep(m.sleep_minutes)}</b></span>
+        <span>BB <b>${Number.isFinite(bb) ? Math.round(bb) + '/100' : '—'}</b></span>
+        <span>Stres <b>${Number.isFinite(stress) ? Math.round(stress) : '—'}</b></span>
+        <span>RHR <b>${fmtInt(m.resting_hr, ' bpm')}</b></span>
+      </div>
+      <p>${escapeHtml(r.advice)}</p>
+    </article>`;
+  }).join('');
+}
 function openRecoveryDetails(){
   renderRecoveryHistory();
   const overlay = $('recoveryDetails');
@@ -877,7 +920,9 @@ function renderRecovery(){
   set('analysisRhr', Number.isFinite(Number(m?.resting_hr)) ? `${Math.round(Number(m.resting_hr))} bpm` : '—');
   set('analysisRecoveryScore', `${rec.score}/100`);
   set('analysisRecoveryAdvice', rec.advice);
+  renderPremiumRecovery();
 }
+
 
 async function loadTrainings(){
   setSync('Łączenie z Supabase...','info');
@@ -1497,7 +1542,7 @@ function analyze(){
   set('todayCoachTitle', coach.verdict || 'Plan na dziś');
   set('todayCoachBrief', coach.action || coach.human || 'Czekam na więcej danych z Garmin Sync.');
   $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
-  $('aiSummary').innerHTML = `<p><b>Co widzę:</b> ${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p><p><b>Po ludzku:</b> ${coach.human}</p>${coach.caution ? `<p><b>Uwaga trenera:</b> ${coach.caution}</p>` : ''}<p><b>Balans:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
+  $('aiSummary').innerHTML = `<div class="ai-human-block primary"><span>1</span><div><b>Co widzę</b><p>${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p></div></div><div class="ai-human-block"><span>2</span><div><b>Co to oznacza</b><p>${coach.human}</p></div></div>${coach.caution ? `<div class="ai-human-block warning"><span>!</span><div><b>Uwaga trenera</b><p>${coach.caution}</p></div></div>` : ''}<div class="ai-human-block"><span>3</span><div><b>Balans tygodnia</b><p>${balanceText}</p></div></div><div class="ai-human-block recovery"><span>🫀</span><div><b>Regeneracja Garmin</b><p>${recoveryLine}</p></div></div>${latestAdvanced ? `<div class="ai-human-block"><span>G</span><div><b>Ostatni trening — dane Garmin</b><p>${latestAdvanced}</p></div></div>` : ''}`;
   $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
@@ -1544,6 +1589,7 @@ $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { a
 if($('historySearch')) $('historySearch').addEventListener('input', e => { historySearch = e.target.value || ''; renderHistory(); });
 if($('historyRange')) $('historyRange').addEventListener('change', e => { historyRange = e.target.value || '30'; renderHistory(); });
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
+if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);
 if($('recoveryCard')) $('recoveryCard').addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openRecoveryDetails(); });
 if($('closeRecoveryBtn')) $('closeRecoveryBtn').addEventListener('click', closeRecoveryDetails);
 if($('recoveryDetails')) $('recoveryDetails').addEventListener('click', (event) => { if(event.target.id === 'recoveryDetails') closeRecoveryDetails(); });
