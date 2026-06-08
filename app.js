@@ -1,4 +1,4 @@
-const VERSION = '3.1.1';
+const VERSION = '3.1.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -16,6 +16,7 @@ const DAILY_METRICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_daily_metrics`;
 const AI_JOURNAL_ENDPOINT = `${SUPABASE_URL}/rest/v1/ai_coach_journal`;
 const GEMINI_AI_ENDPOINT = `${SUPABASE_URL}/functions/v1/gemini-ai-coach`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
+const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
 const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
 
@@ -621,6 +622,27 @@ function loadStoredAuth(){
   currentUser = saved.user;
   setAuthStatus(`Zalogowano: ${currentUser?.email || 'konto Szymona'}`, 'ok');
   return true;
+}
+async function refreshSessionIfNeeded(force=false){
+  if(!currentSession?.access_token) return false;
+  const now = Math.floor(Date.now()/1000);
+  const expiresAt = Number(currentSession.expires_at || 0);
+  if(!force && expiresAt && expiresAt - now > 180) return true;
+  if(!currentSession.refresh_token) return Boolean(currentSession.access_token);
+  try{
+    const response = await fetch(AUTH_REFRESH_ENDPOINT, {
+      method:'POST',
+      headers: anonHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({ refresh_token: currentSession.refresh_token })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error_description || data.msg || data.error || `Odświeżenie sesji nieudane (${response.status})`);
+    saveSession({ ...data, user: data.user || currentSession.user });
+    return true;
+  }catch(err){
+    console.warn('refreshSessionIfNeeded', err);
+    return false;
+  }
 }
 async function signIn(){
   const email = $('authEmail')?.value?.trim();
@@ -1951,8 +1973,9 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
   const status = $(statusId);
   const btn = $(buttonId);
   const isQuestion = Boolean(String(question || '').trim());
-  if(!currentSession?.access_token || !currentUser?.id){
-    if(status){ status.className = 'sync-status warn'; status.textContent = 'Zaloguj konto Szymona, żeby uruchomić AI Coach.'; }
+  const sessionOk = await refreshSessionIfNeeded();
+  if(!sessionOk || !currentSession?.access_token || !currentUser?.id){
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie i spróbuj uruchomić AI Coach.'; }
     return;
   }
   if(btn){ btn.disabled = true; btn.textContent = isQuestion ? 'Pytam AI...' : 'Analizuję...'; }
@@ -1963,7 +1986,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.1', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.2', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -1978,7 +2001,10 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
     if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział. Traktuj to jako wsparcie decyzji, nie diagnozę.' : 'Analiza Gemini gotowa: krótka decyzja, uzasadnienie i wskazówka regeneracyjna.'; }
   }catch(err){
     console.warn('Gemini AI Coach error', err);
-    if(status){ status.className = 'sync-status warn'; status.textContent = `Gemini chwilowo niedostępne: ${err.message || 'błąd połączenia'}. Zostaje bezpieczna analiza regułowa.`; }
+    const friendly = String(err?.message || '').toLowerCase().includes('zaloguj') || String(err?.message || '').toLowerCase().includes('sesja')
+      ? 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie.'
+      : 'AI chwilowo nie odpowiedziało. Spróbuj ponownie za chwilę. Zostaje bezpieczna analiza regułowa.';
+    if(status){ status.className = 'sync-status warn'; status.textContent = friendly; }
     if(!isQuestion){
       const last = readLastGeminiAnalysis();
       if(last) renderGeminiAnalysis(last, targetId);
