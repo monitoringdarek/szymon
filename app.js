@@ -1,8 +1,9 @@
-const VERSION = '2.5';
+const VERSION = '2.8';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
+const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV28';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -27,6 +28,7 @@ let dailyMetrics = [];
 let latestDailyMetric = null;
 let historySearch = '';
 let historyRange = '30';
+let aiJournal = readAiJournal();
 function raceDate(){ return new Date(`${athleteProfile.target_date || '2026-08-15'}T07:00:00+02:00`); }
 
 const demo = {
@@ -1546,7 +1548,118 @@ function analyze(){
   $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
-function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); updatePreview(); }
+
+function readAiJournal(){
+  try{
+    const rows = JSON.parse(localStorage.getItem(AI_JOURNAL_KEY)) || [];
+    return Array.isArray(rows) ? rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))) : [];
+  }catch{ return []; }
+}
+function saveAiJournalStore(){
+  localStorage.setItem(AI_JOURNAL_KEY, JSON.stringify(aiJournal.slice(0,365)));
+}
+function getAiJournalForDate(date){
+  return aiJournal.find(x => String(x.date||'').slice(0,10) === String(date||'').slice(0,10));
+}
+function resetAiJournalForm(){
+  const d = $('aiJournalDate'); if(d) d.value = todayDate();
+  ['aiFood','aiHydration','aiFeeling','aiPain','aiNotes'].forEach(id => { const el=$(id); if(el) el.value=''; });
+  ['aiEnergy','aiStress','aiMotivation'].forEach(id => { const el=$(id); if(el) el.value='3'; });
+}
+function loadAiJournalForm(date=todayDate()){
+  const entry = getAiJournalForDate(date);
+  if($('aiJournalDate')) $('aiJournalDate').value = date;
+  if(!entry){
+    ['aiFood','aiHydration','aiFeeling','aiPain','aiNotes'].forEach(id => { const el=$(id); if(el) el.value=''; });
+    ['aiEnergy','aiStress','aiMotivation'].forEach(id => { const el=$(id); if(el) el.value='3'; });
+    return;
+  }
+  const map = {aiFood:'food', aiHydration:'hydration', aiFeeling:'feeling', aiPain:'pain', aiNotes:'notes', aiEnergy:'energy', aiStress:'stress', aiMotivation:'motivation'};
+  Object.entries(map).forEach(([id,key]) => { const el=$(id); if(el) el.value = entry[key] ?? (['energy','stress','motivation'].includes(key) ? '3' : ''); });
+}
+function saveAiJournalEntry(){
+  const date = $('aiJournalDate')?.value || todayDate();
+  const entry = {
+    id: `journal-${date}`,
+    date,
+    energy: Number($('aiEnergy')?.value || 3),
+    stress: Number($('aiStress')?.value || 3),
+    motivation: Number($('aiMotivation')?.value || 3),
+    food: ($('aiFood')?.value || '').trim(),
+    hydration: ($('aiHydration')?.value || '').trim(),
+    feeling: ($('aiFeeling')?.value || '').trim(),
+    pain: ($('aiPain')?.value || '').trim(),
+    notes: ($('aiNotes')?.value || '').trim(),
+    updated_at: new Date().toISOString()
+  };
+  aiJournal = aiJournal.filter(x => String(x.date||'') !== String(date));
+  aiJournal.unshift(entry);
+  aiJournal.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  saveAiJournalStore();
+  if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status ok'; $('aiJournalStatus').textContent = `Zapisano wpis z dnia ${formatDate(date)} do pamięci AI.`; }
+  renderAiSupport();
+}
+function hasMeaningfulPain(text=''){
+  const t = String(text).toLowerCase().trim();
+  if(!t) return false;
+  return !/(brak|nic|ok|dobrze|bez bólu|bez bolu|nie boli)/i.test(t);
+}
+function shortText(text='', fallback='Brak wpisu.'){
+  const t = String(text||'').trim();
+  if(!t) return fallback;
+  return t.length > 135 ? t.slice(0,132).trim() + '...' : t;
+}
+function setAiTile(id, title, text, cls=''){
+  const el=$(id); if(!el) return;
+  const b=el.querySelector('b'); const p=el.querySelector('p');
+  if(b) b.textContent = title;
+  if(p) p.textContent = text;
+  el.classList.remove('good','warn','danger');
+  if(cls) el.classList.add(cls);
+}
+function aiJournalCoachSummary(){
+  const latest = aiJournal[0];
+  const recent = aiJournal.slice(0,3);
+  const painEntries = recent.filter(x => hasMeaningfulPain(x.pain));
+  const rec = recoveryScore(latestDailyMetric);
+  const latestTraining = trainings[0];
+  const todayText = $('todayCoachBrief')?.textContent || 'Czekam na analizę treningów i regeneracji.';
+  let nutrition = latest?.food ? 'Wpis o jedzeniu jest — będzie można łączyć posiłki z treningiem i regeneracją.' : 'Brakuje wpisu o jedzeniu. To ważne przy długich rowerach, biegach i regeneracji.';
+  if(latest?.food && /makaron|ryż|ryz|owsianka|banan|ziemniak|pieczywo|żel|zel|izotonik/i.test(latest.food)) nutrition = 'Wpis zawiera paliwo węglowodanowe — dobry trop przy przygotowaniach do dłuższych jednostek.';
+  if(latest?.food && !/białko|bialko|jaj|kurczak|twaróg|twarog|jogurt|ryba|mięso|mieso|ser/i.test(latest.food)) nutrition += ' Sprawdź też białko po treningu.';
+  let body = painEntries.length ? `Uwaga: w ostatnich wpisach pojawia się ból/przeciążenie. Nie dokładałbym mocnego akcentu bez obserwacji.` : 'Brak powtarzających się sygnałów bólowych w ostatnich wpisach.';
+  let decisionClass = rec.score < 55 || painEntries.length ? 'danger' : rec.score >= 78 ? 'good' : 'warn';
+  return {latest, recent, painEntries, rec, latestTraining, todayText, nutrition, body, decisionClass};
+}
+function renderAiSupport(){
+  if($('aiJournalDate') && !$('aiJournalDate').value) $('aiJournalDate').value = todayDate();
+  const s = aiJournalCoachSummary();
+  setAiTile('aiSupportDecision', s.rec.score < 55 ? 'Dziś ostrożnie' : s.rec.score >= 78 ? 'Można trenować' : 'Trenuj rozsądnie', s.todayText, s.decisionClass);
+  setAiTile('aiSupportFood', s.latest?.food ? 'Wpis jedzenia zapisany' : 'Dodaj jedzenie dnia', s.nutrition, s.latest?.food ? 'good' : 'warn');
+  setAiTile('aiSupportBody', s.painEntries.length ? 'Obserwuj przeciążenia' : 'Ciało bez alarmu', s.body, s.painEntries.length ? 'danger' : 'good');
+  setAiTile('aiSupportRecovery', `${s.rec.label}`, s.rec.advice, s.rec.score < 55 ? 'danger' : s.rec.score >= 78 ? 'good' : 'warn');
+  if($('aiJournalCount')) $('aiJournalCount').textContent = `${aiJournal.length} ${aiJournal.length === 1 ? 'wpis' : 'wpisów'}`;
+  if($('aiMemorySummary')){
+    if(!aiJournal.length) $('aiMemorySummary').textContent = 'Brak wpisów. Pierwszy wpis dnia stworzy początek pamięci AI.';
+    else {
+      const last = aiJournal[0];
+      $('aiMemorySummary').innerHTML = `<b>Ostatni wpis: ${formatDate(last.date)}.</b> Energia ${last.energy}/5, stres ${last.stress}/5, motywacja ${last.motivation}/5. ${hasMeaningfulPain(last.pain) ? 'Wpis zawiera sygnał bólu/przeciążenia — warto obserwować.' : 'Brak mocnego alarmu bólowego w ostatnim wpisie.'}`;
+    }
+  }
+  const list=$('aiJournalList');
+  if(list){
+    if(!aiJournal.length){ list.innerHTML = '<div class="empty-history">Brak wpisów dziennika. Zapisz pierwszy dzień: jedzenie, samopoczucie i uwagi.</div>'; }
+    else list.innerHTML = aiJournal.slice(0,14).map(e => `<article class="ai-journal-entry ${hasMeaningfulPain(e.pain) ? 'pain' : ''}">
+      <div class="ai-entry-head"><b>${formatDate(e.date)}</b><span>Energia ${e.energy}/5 • Stres ${e.stress}/5 • Motywacja ${e.motivation}/5</span></div>
+      <p><strong>Jedzenie:</strong> ${escapeHtml(shortText(e.food, 'brak wpisu'))}</p>
+      <p><strong>Samopoczucie:</strong> ${escapeHtml(shortText(e.feeling, 'brak wpisu'))}</p>
+      <p><strong>Bóle:</strong> ${escapeHtml(shortText(e.pain, 'brak wpisu'))}</p>
+      ${e.notes ? `<p><strong>Notatka:</strong> ${escapeHtml(shortText(e.notes, ''))}</p>` : ''}
+    </article>`).join('');
+  }
+}
+
+function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); renderAiSupport(); updatePreview(); }
 function updatePreview(){
   const type = $('sportType').value;
   const meta = sportMeta[type] || sportMeta.run;
@@ -1588,6 +1701,11 @@ $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () =
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));
 if($('historySearch')) $('historySearch').addEventListener('input', e => { historySearch = e.target.value || ''; renderHistory(); });
 if($('historyRange')) $('historyRange').addEventListener('change', e => { historyRange = e.target.value || '30'; renderHistory(); });
+
+if($('aiJournalDate')) $('aiJournalDate').addEventListener('change', e => loadAiJournalForm(e.target.value || todayDate()));
+if($('saveAiJournalBtn')) $('saveAiJournalBtn').addEventListener('click', saveAiJournalEntry);
+if($('clearAiJournalFormBtn')) $('clearAiJournalFormBtn').addEventListener('click', () => { resetAiJournalForm(); if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent='Formularz wyczyszczony. Dane zapisane wcześniej zostają w pamięci AI.'; } });
+
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);
 if($('recoveryCard')) $('recoveryCard').addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openRecoveryDetails(); });
@@ -1678,6 +1796,7 @@ document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !
 const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
 if($('workoutDateInput')) $('workoutDateInput').value = todayDate();
+if($('aiJournalDate')) loadAiJournalForm(todayDate());
 
 if(loadStoredAuth()){
   showApp();

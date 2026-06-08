@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v2.7</title>
-  <link rel="stylesheet" href="styles.css?v=27" />
+  <title>Szymon AI Coach • Road to Kalmar v2.8</title>
+  <link rel="stylesheet" href="styles.css?v=28" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.7</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.7</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -134,7 +134,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -217,9 +217,83 @@
         </section>
       </section>
 
+      <section class="screen" id="screen-ai">
+        <section class="page-title with-bg">
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
+          <h1>Wsparcie AI</h1>
+          <p>Dziennik trenera: jedzenie, samopoczucie, bóle i ważne uwagi z drogi do Kalmar.</p>
+        </section>
+
+        <section class="card ai-support-hero">
+          <div>
+            <span class="section-label">AI Coach Memory</span>
+            <h2>Pamięć drogi do Kalmar</h2>
+            <p>Zapisuj to, czego Garmin nie widzi. Aplikacja połączy notatki z treningami, snem, stresem i Body Battery.</p>
+          </div>
+          <div class="ai-memory-orb">AI</div>
+        </section>
+
+        <section class="ai-support-grid">
+          <article class="ai-support-tile primary" id="aiSupportDecision">
+            <span>🎯</span><small>Dzisiaj</small><b>Decyzja trenerska</b><p>Czekam na dane.</p>
+          </article>
+          <article class="ai-support-tile" id="aiSupportFood">
+            <span>🍝</span><small>Wyżywienie</small><b>Jedzenie i paliwo</b><p>Dodaj wpis dnia.</p>
+          </article>
+          <article class="ai-support-tile" id="aiSupportBody">
+            <span>🦵</span><small>Ciało</small><b>Bóle / przeciążenia</b><p>Brak wpisu.</p>
+          </article>
+          <article class="ai-support-tile" id="aiSupportRecovery">
+            <span>🫀</span><small>Garmin</small><b>Regeneracja</b><p>Czekam na metryki.</p>
+          </article>
+        </section>
+
+        <section class="card ai-journal-card">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Wpis dnia</span>
+              <h2>Dziś jadłem / czułem się...</h2>
+            </div>
+            <span class="timeline-badge">pamięć AI</span>
+          </div>
+
+          <label><span>📅 Data wpisu</span><input id="aiJournalDate" type="date"></label>
+
+          <div class="ai-scale-grid">
+            <label><span>Energia</span><select id="aiEnergy"><option value="3">3 / 5 — średnia</option><option value="1">1 / 5 — bardzo słaba</option><option value="2">2 / 5 — słaba</option><option value="4">4 / 5 — dobra</option><option value="5">5 / 5 — bardzo dobra</option></select></label>
+            <label><span>Stres</span><select id="aiStress"><option value="3">3 / 5 — średni</option><option value="1">1 / 5 — niski</option><option value="2">2 / 5 — lekki</option><option value="4">4 / 5 — wysoki</option><option value="5">5 / 5 — bardzo wysoki</option></select></label>
+            <label><span>Motywacja</span><select id="aiMotivation"><option value="3">3 / 5 — normalna</option><option value="1">1 / 5 — brak</option><option value="2">2 / 5 — słaba</option><option value="4">4 / 5 — dobra</option><option value="5">5 / 5 — ogień</option></select></label>
+          </div>
+
+          <label><span>🍽️ Dziś jadłem...</span><textarea id="aiFood" rows="4" placeholder="Śniadanie, obiad, kolacja, przekąski, jedzenie po treningu..."></textarea></label>
+          <label><span>💧 Nawodnienie / suplementy</span><textarea id="aiHydration" rows="2" placeholder="Ile piłem, izotonik, elektrolity, żele, kofeina..."></textarea></label>
+          <label><span>🙂 Samopoczucie</span><textarea id="aiFeeling" rows="3" placeholder="Energia, senność, głód, nastrój, stres, chęć do treningu..."></textarea></label>
+          <label><span>🦵 Bóle / urazy / przeciążenia</span><textarea id="aiPain" rows="3" placeholder="Np. łydka ciągnie, kolano OK, plecy sztywne, brak bólu..."></textarea></label>
+          <label><span>📝 Ważna notatka</span><textarea id="aiNotes" rows="3" placeholder="Co było ważne dzisiaj? Szkoła, zmęczenie, podróż, wyjątkowo dobry dzień..."></textarea></label>
+
+          <div class="ai-journal-actions">
+            <button class="main-cta" id="saveAiJournalBtn">✓ Zapisz do pamięci AI</button>
+            <button class="ghost" id="clearAiJournalFormBtn">Wyczyść formularz</button>
+          </div>
+          <div id="aiJournalStatus" class="sync-status info">Wpis zapisuje się lokalnie w aplikacji. Supabase dla dziennika możemy dodać w kolejnym etapie.</div>
+        </section>
+
+        <section class="card ai-memory-card">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Pamięć</span>
+              <h2>Ostatnie wpisy</h2>
+            </div>
+            <span class="timeline-badge" id="aiJournalCount">0 wpisów</span>
+          </div>
+          <div id="aiMemorySummary" class="ai-memory-summary">Brak wpisów. Pierwszy wpis dnia stworzy początek pamięci AI.</div>
+          <div id="aiJournalList" class="ai-journal-list"></div>
+        </section>
+      </section>
+
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -269,7 +343,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -338,7 +412,7 @@
         <section class="card data-sources-card">
           <div class="card-head">
             <h2>Źródła danych</h2>
-            <span class="source-badge auto">v2.7</span>
+            <span class="source-badge auto">v2.8</span>
           </div>
           <p class="muted-small">Aplikacja korzysta teraz z automatycznego Garmin Sync Agenta na Proxmoxie oraz z ręcznego Garmin Link dla pojedynczych szczegółów.</p>
 
@@ -392,7 +466,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v2.7 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v2.8 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -429,7 +503,7 @@
         </div>
 
         <div class="advanced-block compact">
-          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.7</span></div>
+          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.8</span></div>
           <div id="advancedStats" class="advanced-stats empty">Brak dodatkowych danych. Użyj przycisku „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.</div>
           <div id="garminDetailsEditor" class="garmin-editor" hidden>
             <label><span>Wklej szczegóły z Garmin Connect</span><textarea id="editGarminPaste" rows="7" placeholder="Wklej tutaj tekst ze strony Garmin: Tętno, Moc, Kadencja, Stamina, Kalorie, Efekt treningu..."></textarea></label>
@@ -479,11 +553,12 @@
     <nav class="bottom-nav">
       <button class="active" data-tab="dashboard">⌂<span>Pulpit</span></button>
       <button data-tab="trainings">📊<span>Analiza</span></button>
+      <button data-tab="ai">🤖<span>AI</span></button>
       <button class="plus" data-tab="add">＋<span>Dodaj</span></button>
       <button data-tab="history">↺<span>Historia</span></button>
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>
