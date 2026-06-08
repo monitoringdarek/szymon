@@ -1432,6 +1432,91 @@ function generateWeeklyPlan(readiness, loadLabel, missing){
   }
   return base.map(([day,title,desc]) => `<div class="plan-day"><b>${day}</b><span>${title}</span><small>${desc}</small></div>`).join('');
 }
+
+function textHasAny(text='', patterns=[]){
+  const t = String(text || '').toLowerCase();
+  return patterns.some(p => p.test(t));
+}
+function latestAiJournalEntry(){
+  return aiJournal && aiJournal.length ? aiJournal[0] : null;
+}
+function evaluateSafetyContext({readiness=60, loadLabel='lekki', weekCount=0, weekMinutes=0, latest=null, rec=recoveryScore(latestDailyMetric), weekTss=0}={}){
+  const latestEntry = latestAiJournalEntry();
+  const recentEntries = (aiJournal || []).slice(0,5);
+  const combinedText = recentEntries.map(e => [e.food,e.hydration,e.feeling,e.pain,e.notes].filter(Boolean).join(' ')).join(' ');
+  const latestText = latestEntry ? [latestEntry.food, latestEntry.hydration, latestEntry.feeling, latestEntry.pain, latestEntry.notes].filter(Boolean).join(' ') : '';
+  const redPatterns = [
+    /ból\s*w\s*klatce|bol\s*w\s*klatce|klatce\s*piersiowej|serce|kołatan|kolatan|duszno|duszność|dusznosc|omdlen|zemdla|zawrot|gorącz|goracz|wymiot|biegun|krew|ostry\s*ból|ostry\s*bol|silny\s*ból|silny\s*bol|skręc|skrec|nie\s*mogę\s*chodzić|nie\s*moge\s*chodzic/i
+  ];
+  const illnessPatterns = [/przezięb|przezieb|infekcj|chory|choroba|kaszel|ból\s*gardła|bol\s*gardla|temperatura/i];
+  const underFuelPatterns = [/głod|glod|mało\s*jad|malo\s*jad|nie\s*jadłem|nie\s*jadlem|bez\s*jedzenia|brak\s*apetytu|schud|waga\s*spad/i];
+  const painEntries = recentEntries.filter(x => hasMeaningfulPain(x.pain));
+  const sleep = latestDailyMetric ? Number(latestDailyMetric.sleep_minutes || 0) : 0;
+  const bb = latestDailyMetric ? Number(latestDailyMetric.body_battery_end ?? latestDailyMetric.body_battery_max ?? latestDailyMetric.body_battery_charged ?? NaN) : NaN;
+  const stress = latestDailyMetric ? Number(latestDailyMetric.avg_stress || 0) : 0;
+  const rhr = latestDailyMetric ? Number(latestDailyMetric.resting_hr || 0) : 0;
+  const energy = Number(latestEntry?.energy || 3);
+  const selfStress = Number(latestEntry?.stress || 3);
+  const latestMinutes = Number(latest?.minutes || 0);
+
+  const red = [];
+  const orange = [];
+  const nutrition = [];
+  if(textHasAny(latestText, redPatterns)) red.push('we wpisie dnia pojawia się objaw alarmowy: ból w klatce, duszność, omdlenie, gorączka, silny/ostry ból albo podobny sygnał');
+  if(textHasAny(latestText, illnessPatterns)) orange.push('we wpisie dnia pojawia się choroba lub infekcja');
+  if(painEntries.length >= 2) red.push('ból/przeciążenie powtarza się w kilku ostatnich wpisach');
+  else if(painEntries.length === 1) orange.push('we wpisie pojawia się ból lub przeciążenie');
+  if(sleep && sleep < 300) red.push(`sen był bardzo krótki (${fmtSleep(sleep)})`);
+  else if(sleep && sleep < 360) orange.push(`sen był krótki (${fmtSleep(sleep)})`);
+  if(Number.isFinite(bb) && bb < 30) red.push(`Body Battery jest bardzo niskie (${Math.round(bb)}/100)`);
+  else if(Number.isFinite(bb) && bb < 45) orange.push(`Body Battery jest niskie (${Math.round(bb)}/100)`);
+  if(stress && stress > 40) orange.push(`stres Garmin jest wysoki (${Math.round(stress)})`);
+  if(rec && rec.score < 48) red.push(`ogólna regeneracja jest niska (${rec.score}/100)`);
+  else if(rec && rec.score < 60) orange.push(`regeneracja jest średnio-słaba (${rec.score}/100)`);
+  if((loadLabel === 'mocny' || weekTss > 280 || weekMinutes > 600) && rec && rec.score < 65) orange.push('obciążenie tygodnia jest wysokie przy niepełnej regeneracji');
+  if(energy <= 2) orange.push(`Szymon wpisał niską energię (${energy}/5)`);
+  if(selfStress >= 4) orange.push(`Szymon wpisał wysoki stres (${selfStress}/5)`);
+  if(textHasAny(combinedText, underFuelPatterns)) nutrition.push('we wpisach pojawia się głód, mało jedzenia albo spadek apetytu — to sygnał do ostrożności z obciążeniem i lepszego posiłku regeneracyjnego');
+  if(latestMinutes >= 90 && latestEntry && !latestEntry.food) nutrition.push('po długiej jednostce brakuje wpisu o jedzeniu — nie oceniam paliwa na pewniaka');
+  if(latestEntry?.food && !/ryż|ryz|makaron|owsianka|ziemniak|pieczywo|kasza|banan|żel|zel|izotonik|płatki|platki|miód|miod/i.test(latestEntry.food) && latestMinutes >= 75){
+    nutrition.push('przy długim treningu nie widzę jasnego źródła węglowodanów we wpisie — warto zadbać o paliwo, nie ciąć jedzenia');
+  }
+  if(latestEntry?.food && !/jaj|kurczak|twaróg|twarog|jogurt|ryba|mięso|mieso|ser|tofu|strącz|stracz|białko|bialko|mleko/i.test(latestEntry.food) && latestMinutes >= 45){
+    nutrition.push('po treningu nie widzę jasnego źródła białka we wpisie — warto zadbać o posiłek regeneracyjny');
+  }
+
+  let level = 'green';
+  if(red.length) level = 'red';
+  else if(orange.length || nutrition.length) level = 'yellow';
+  const title = level === 'red' ? 'Czerwona flaga — bez mocnego treningu' : level === 'yellow' ? 'Tryb ostrożny — decyzja z zapasem' : 'Brak czerwonych flag';
+  const summary = level === 'red'
+    ? 'AI nie powinien proponować intensywności. Najpierw odpoczynek/lekki ruch tylko jeśli objawy na to pozwalają; przy objawach alarmowych konsultacja z dorosłym lub specjalistą.'
+    : level === 'yellow'
+      ? 'Można rozważać tylko spokojny trening techniczny/tlenowy. Bez dokładania ambicji, jeśli organizm pokazuje zmęczenie.'
+      : 'Dane nie pokazują alarmu, ale nadal obowiązuje plan, technika, sen, jedzenie i rozsądek.';
+  const restriction = level === 'red'
+    ? 'Bez interwałów, bez mocnego biegu, bez testów formy. Jeśli objawy są silne lub nietypowe — przerwij trening i skonsultuj się.'
+    : level === 'yellow'
+      ? 'Nie dokładaj mocnego akcentu. Wybierz lekki Z1/Z2, technikę, mobilność albo odpoczynek.'
+      : 'Normalny trening tylko wtedy, gdy jest zgodny z planem i samopoczuciem.';
+  return {level,title,summary,restriction,red,orange,nutrition, reasons:[...red,...orange,...nutrition]};
+}
+function safetyHtmlBlock(safety){
+  if(!safety) return '';
+  const cls = safety.level === 'red' ? 'danger' : safety.level === 'yellow' ? 'warning' : 'recovery';
+  const icon = safety.level === 'red' ? '🛑' : safety.level === 'yellow' ? '🛡️' : '✓';
+  const reasonText = safety.reasons.length ? safety.reasons.slice(0,4).join(' • ') : 'brak alarmów w dostępnych danych';
+  return `<div class="ai-human-block ${cls} safety-block"><span>${icon}</span><div><b>${escapeHtml(safety.title)}</b><p>${escapeHtml(safety.summary)} Podstawa: ${escapeHtml(reasonText)}.</p></div></div>`;
+}
+function safeWeeklyPlanHtml(){
+  const rows = [
+    ['Dziś','🛡️ Bez mocnego akcentu','Sprawdź objawy, sen, jedzenie i regenerację. Lekki ruch tylko jeśli ciało pozwala.'],
+    ['Jutro','🏊 Technika / mobilność','Pływanie techniczne, spacer albo core bez zmęczenia.'],
+    ['Kolejny dzień','📋 Decyzja po danych','Wracamy do planu dopiero po poprawie samopoczucia i regeneracji.']
+  ];
+  return rows.map(([day,title,desc]) => `<div class="plan-day safety"><b>${day}</b><span>${title}</span><small>${desc}</small></div>`).join('');
+}
+
 function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing, latest, rec, weekTss, advancedItems}){
   const latestName = latest ? activityNameFor(latest) : 'brak ostatniego treningu';
   const latestType = latest ? (sportMeta[latest.type]?.pl || latest.type) : 'trening';
@@ -1445,9 +1530,19 @@ function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing
   else if(sleep) reasons.push(`sen: ${fmtSleep(sleep)}`);
   if(Number.isFinite(bb)) reasons.push(`Body Battery: ${Math.round(bb)}/100`);
   if(stress) reasons.push(`stres: ${Math.round(stress)}`);
+  const safety = evaluateSafetyContext({readiness, loadLabel, weekCount, weekMinutes, latest, rec, weekTss});
+  if(safety.reasons.length) reasons.push(`bezpieczeństwo: ${safety.reasons.slice(0,2).join(' • ')}`);
   let verdict = '';
   let action = '';
-  if(readiness < 55 || (Number.isFinite(bb) && bb < 40) || (sleep && sleep < 320)){
+  if(safety.level === 'red'){
+    verdict = safety.title;
+    action = `${safety.summary} ${safety.restriction}`;
+    return { latestName, latestType, verdict, action, human: `${verdict} ${action}`, caution: safety.restriction, reasons: reasons.join(' • '), safety };
+  }
+  if(safety.level === 'yellow' && (readiness < 70 || loadLabel === 'mocny')){
+    verdict = safety.title;
+    action = `${safety.restriction} Rada wynika z danych: ${safety.reasons.slice(0,3).join(' • ')}.`;
+  } else if(readiness < 55 || (Number.isFinite(bb) && bb < 40) || (sleep && sleep < 320)){
     verdict = 'Organizm wygląda na niedoregenerowany.';
     action = 'Dzisiaj nie robiłbym mocnego biegu ani interwałów. Najlepsze będzie lekkie pływanie techniczne 20–40 min, bardzo spokojny rower Z1/Z2 albo pełna regeneracja, jeśli nogi są ciężkie.';
   } else if(loadLabel === 'mocny' || (weekTss && weekTss > 250)){
@@ -1473,7 +1568,7 @@ function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing
   let caution = '';
   if(latest && latest.type === 'bike' && (metricNumber(latest, 'tss') > 120 || Number(latest.elevation || 0) > 700)) caution = 'Po takim rowerze pilnuj nóg i nie rób następnego dnia mocnego biegu, jeśli sen albo Body Battery są słabe.';
   if(latest && latest.type === 'run' && Number(latest.distanceKm || 0) >= 14) caution = 'Po dłuższym biegu warto chronić łydki i ścięgna — następny trening lepiej techniczny albo tlenowy.';
-  return { latestName, latestType, verdict, action, human, caution, reasons: reasons.join(' • ') };
+  return { latestName, latestType, verdict, action, human, caution, reasons: reasons.join(' • '), safety };
 }
 function analyze(){
   const latest = trainings[0] || demo;
@@ -1544,9 +1639,10 @@ function analyze(){
   set('todayCoachTitle', coach.verdict || 'Plan na dziś');
   set('todayCoachBrief', coach.action || coach.human || 'Czekam na więcej danych z Garmin Sync.');
   $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
-  $('aiSummary').innerHTML = `<div class="ai-human-block primary"><span>1</span><div><b>Co widzę</b><p>${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p></div></div><div class="ai-human-block"><span>2</span><div><b>Co to oznacza</b><p>${coach.human}</p></div></div>${coach.caution ? `<div class="ai-human-block warning"><span>!</span><div><b>Uwaga trenera</b><p>${coach.caution}</p></div></div>` : ''}<div class="ai-human-block"><span>3</span><div><b>Balans tygodnia</b><p>${balanceText}</p></div></div><div class="ai-human-block recovery"><span>🫀</span><div><b>Regeneracja Garmin</b><p>${recoveryLine}</p></div></div>${latestAdvanced ? `<div class="ai-human-block"><span>G</span><div><b>Ostatni trening — dane Garmin</b><p>${latestAdvanced}</p></div></div>` : ''}`;
-  $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
-  if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
+  $('aiSummary').innerHTML = `${safetyHtmlBlock(coach.safety)}<div class="ai-human-block primary"><span>1</span><div><b>Co widzę</b><p>${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p></div></div><div class="ai-human-block"><span>2</span><div><b>Co to oznacza</b><p>${coach.human}</p></div></div>${coach.caution ? `<div class="ai-human-block warning"><span>!</span><div><b>Uwaga trenera</b><p>${coach.caution}</p></div></div>` : ''}<div class="ai-human-block"><span>3</span><div><b>Balans tygodnia</b><p>${balanceText}</p></div></div><div class="ai-human-block recovery"><span>🫀</span><div><b>Regeneracja Garmin</b><p>${recoveryLine}</p></div></div>${latestAdvanced ? `<div class="ai-human-block"><span>G</span><div><b>Ostatni trening — dane Garmin</b><p>${latestAdvanced}</p></div></div>` : ''}<div class="ai-human-block"><span>i</span><div><b>Granica odpowiedzialności</b><p>To wsparcie treningowe i dziennik danych, nie diagnoza medyczna ani indywidualna dieta kliniczna. Przy objawach alarmowych decyzję podejmuje dorosły, trener lub specjalista.</p></div></div>`;
+  const planItems = coach.safety?.level === 'red' ? [coach.safety.restriction, 'Zapisz objawy w dzienniku AI i nie ignoruj powtarzającego się bólu.', 'Wróć do planu dopiero po poprawie danych i samopoczucia.'] : [coach.action, ...plan.slice(0,2)];
+  $('planList').innerHTML = planItems.map(x=>`<li>${escapeHtml(x)}</li>`).join('');
+  if($('weeklyPlan')) $('weeklyPlan').innerHTML = coach.safety?.level === 'red' ? safeWeeklyPlanHtml() : generateWeeklyPlan(readiness, loadLabel, missing);
 }
 
 function readAiJournal(){
@@ -1634,7 +1730,10 @@ function aiJournalCoachSummary(){
 function renderAiSupport(){
   if($('aiJournalDate') && !$('aiJournalDate').value) $('aiJournalDate').value = todayDate();
   const s = aiJournalCoachSummary();
-  setAiTile('aiSupportDecision', s.rec.score < 55 ? 'Dziś ostrożnie' : s.rec.score >= 78 ? 'Można trenować' : 'Trenuj rozsądnie', s.todayText, s.decisionClass);
+  const safety = evaluateSafetyContext({readiness: Number($('readiness')?.textContent || 60), loadLabel: 'lekki', weekCount: currentWeek().length, weekMinutes: currentWeek().reduce((a,b)=>a+Number(b.minutes||0),0), latest: trainings[0], rec: s.rec});
+  setAiTile('aiSupportSafety', safety.title, safety.summary, safety.level === 'red' ? 'danger' : safety.level === 'yellow' ? 'warn' : 'good');
+  if($('aiSafetyStatus')){ $('aiSafetyStatus').className = `ai-safety-status ${safety.level === 'red' ? 'danger' : safety.level === 'yellow' ? 'warn' : 'good'}`; $('aiSafetyStatus').textContent = `${safety.title}. ${safety.summary}`; }
+  setAiTile('aiSupportDecision', safety.level === 'red' ? 'Bez mocnego treningu' : s.rec.score < 55 ? 'Dziś ostrożnie' : s.rec.score >= 78 ? 'Można trenować' : 'Trenuj rozsądnie', safety.level === 'red' ? safety.restriction : s.todayText, safety.level === 'red' ? 'danger' : s.decisionClass);
   setAiTile('aiSupportFood', s.latest?.food ? 'Wpis jedzenia zapisany' : 'Dodaj jedzenie dnia', s.nutrition, s.latest?.food ? 'good' : 'warn');
   setAiTile('aiSupportBody', s.painEntries.length ? 'Obserwuj przeciążenia' : 'Ciało bez alarmu', s.body, s.painEntries.length ? 'danger' : 'good');
   setAiTile('aiSupportRecovery', `${s.rec.label}`, s.rec.advice, s.rec.score < 55 ? 'danger' : s.rec.score >= 78 ? 'good' : 'warn');

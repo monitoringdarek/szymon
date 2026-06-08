@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v2.8.1</title>
-  <link rel="stylesheet" href="styles.css?v=281" />
+  <title>Szymon AI Coach • Road to Kalmar v2.8.3</title>
+  <link rel="stylesheet" href="styles.css?v=283" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
       <div class="top-actions">
         <a class="dad-help-link" href="mailto:darekwawrzynek@gmail.com?subject=Pomoc%20-%20Szymon%20AI%20Coach">Pomoc • WawrzyS</a>
         <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
@@ -137,7 +137,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -215,14 +215,14 @@
 
         <section class="card weekly-plan-card">
           <h2>Plan tygodnia AI <span>beta</span></h2>
-          <p class="muted-small">Prosty plan generowany z aktualnej historii Swim / Bike / Run. To jeszcze nie zastępuje trenera — pomaga pilnować balansu do Kalmar.</p>
+          <p class="muted-small">Prosty plan generowany z aktualnej historii Swim / Bike / Run. To nie zastępuje lekarza, dietetyka ani trenera — pomaga pilnować balansu i czerwonych flag do Kalmar.</p>
           <div id="weeklyPlan" class="weekly-plan-list"></div>
         </section>
       </section>
 
       <section class="screen" id="screen-ai">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
           <h1>Wsparcie AI</h1>
           <p>Dziennik trenera: jedzenie, samopoczucie, bóle i ważne uwagi z drogi do Kalmar.</p>
         </section>
@@ -236,7 +236,28 @@
           <div class="ai-memory-orb">AI</div>
         </section>
 
+        <section class="card ai-safety-card" id="aiSafetyCard">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Bezpieczeństwo ponad ambicję</span>
+              <h2>AI Coach ma działać ostrożnie</h2>
+            </div>
+            <span class="timeline-badge safety-badge">SAFE</span>
+          </div>
+          <div id="aiSafetyStatus" class="ai-safety-status warn">
+            AI nie jest lekarzem, dietetykiem ani trenerem z uprawnieniami. Każda rada musi wynikać z danych: treningów, snu, Body Battery, stresu i wpisów dnia.
+          </div>
+          <ul class="ai-safety-rules">
+            <li>Przy bólu, chorobie, duszności, zawrotach głowy lub bólu w klatce — bez mocnego treningu i konsultacja z dorosłym/specjalistą.</li>
+            <li>Przy słabym śnie, niskim Body Battery lub wysokim stresie — aplikacja wybiera ostrożny wariant.</li>
+            <li>Przy diecie AI nie proponuje głodzenia ani cięcia kalorii — pilnuje paliwa, nawodnienia i regeneracji.</li>
+          </ul>
+        </section>
+
         <section class="ai-support-grid">
+          <article class="ai-support-tile safety" id="aiSupportSafety">
+            <span>🛡️</span><small>Bezpieczeństwo</small><b>Tryb ostrożny</b><p>Sprawdzam czerwone flagi.</p>
+          </article>
           <article class="ai-support-tile primary" id="aiSupportDecision">
             <span>🎯</span><small>Dzisiaj</small><b>Decyzja trenerska</b><p>Czekam na dane.</p>
           </article>
@@ -296,7 +317,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -346,7 +367,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.8.1</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.8.3</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -469,7 +490,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v2.8.1 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v2.8.3 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -572,6 +593,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=281"></script>
+  <script src="app.js?v=283"></script>
 </body>
 </html>
