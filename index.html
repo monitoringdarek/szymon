@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v2.5</title>
-  <link rel="stylesheet" href="styles.css?v=25" />
+  <title>Szymon AI Coach • Road to Kalmar v2.6</title>
+  <link rel="stylesheet" href="styles.css?v=26" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.6</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,104 +30,111 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.6</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
     <main>
-      <section class="screen active" id="screen-dashboard">
-        <section class="hero-card">
+      <section class="screen active minimal-dashboard" id="screen-dashboard">
+        <section class="hero-card hero-wow">
           <div class="hero-bg"></div>
           <div class="hero-left">
-            <h1>Szymon AI Coach</h1>
-            <p>Twój plan. Twoja droga. Twój IRONMAN.</p>
-            <div class="race-title"><small>IRONMAN</small><strong>KALMAR 2026</strong></div>
+            <div class="hero-kicker">ROAD TO IRONMAN</div>
+            <h1>KALMAR 2026</h1>
+            <p>226 km celu. Jeden spokojny, mądry dzień po drugim.</p>
             <div class="race-goals">
               <span class="swim">🏊 <b>3.8</b> km</span>
               <span class="bike">🚴 <b>180</b> km</span>
               <span class="run">🏃 <b>42.2</b> km</span>
             </div>
           </div>
-          <div class="countdown-card">
+          <div class="countdown-card countdown-wow">
             <div>📅 Do startu</div>
             <strong id="daysLeft">--</strong>
             <small>dni</small>
-            <em>IRONMAN <b>Kalmar 2026</b></em>
+            <em>Szymon AI Coach</em>
           </div>
         </section>
 
-        <section class="card prep-card">
-          <div>
-            <h2>Dzień przygotowań</h2>
-            <strong class="big-day" id="prepDay">--</strong>
-            <p>Cel: linia startu i meta w Kalmar.</p>
-            <p>Każdy zapisany trening buduje historię pod przyszłą analizę AI.</p>
-            <b class="orange" id="quoteText">Every workout counts.</b>
+        <section class="card coach-focus-card">
+          <div class="coach-copy">
+            <span class="section-label">Co dziś zrobić?</span>
+            <h2 id="todayCoachTitle">Czekam na dane Garmin...</h2>
+            <p id="todayCoachBrief">Po synchronizacji pokażę krótką, ludzką odpowiedź: trenować, lekko ruszyć się czy odpocząć.</p>
+            <div class="coach-actions">
+              <button class="main-cta slim" data-goto="trainings">Pełna analiza</button>
+              <button class="ghost slim" data-goto="history">Historia</button>
+            </div>
           </div>
-          <div class="readiness-wrap">
+          <div class="readiness-wrap wow-readiness">
             <div class="donut" id="readinessDonut" style="--value:57">
               <span>Gotowość</span>
               <strong id="readiness">57</strong>
               <small>/100</small>
             </div>
             <div class="progress-mini">
-              <span>Postęp drogi do Kalmar:</span>
+              <span>Droga do Kalmar</span>
               <strong id="progressText">--%</strong>
-              <small>Każdy trening ma znaczenie.</small>
+              <small id="quoteText">Every workout counts.</small>
             </div>
           </div>
         </section>
 
-        <section class="card garmin-mini-card" id="garminMiniCard">
-          <div class="card-head">
-            <h2>Garmin Sync</h2>
-            <button class="text-btn" id="refreshGarminMiniBtn" type="button">Odśwież</button>
+        <section class="dashboard-pulse-grid">
+          <div class="pulse-card clickable" id="recoveryCard" role="button" tabindex="0" title="Pokaż historię regeneracji">
+            <span class="pulse-icon">🫀</span>
+            <div>
+              <small>Regeneracja</small>
+              <b id="recoveryScore">--/100</b>
+              <p id="recoveryLabel">czekam na dane</p>
+            </div>
+            <em id="recoveryDate">brak danych</em>
           </div>
-          <div class="garmin-mini-status" id="syncMiniStatus">Sprawdzam ostatnią synchronizację...</div>
-          <div class="garmin-mini-grid">
-            <div><span>Ostatni sync</span><b id="syncMiniTime">—</b></div>
-            <div><span>Pobrano</span><b id="syncMiniFetched">—</b></div>
-            <div><span>Dni metryk</span><b id="syncMiniDays">—</b></div>
-            <div><span>Następny</span><b id="syncMiniNext">—</b></div>
+          <div class="pulse-card" data-goto="history" role="button" tabindex="0">
+            <span class="pulse-icon">🏁</span>
+            <div>
+              <small>Ostatni trening</small>
+              <b id="dashboardLatestTitle">—</b>
+              <p id="dashboardLatestMeta">Garmin Sync uzupełni historię.</p>
+            </div>
+            <em>otwórz</em>
           </div>
-        </section>
-
-        <section class="card recovery-card clickable" id="recoveryCard" role="button" tabindex="0" title="Pokaż historię regeneracji">
-          <div class="card-head">
-            <h2>Stan organizmu Garmin</h2>
-            <span id="recoveryDate" class="source-badge auto">brak danych</span>
-          </div>
-          <div class="recovery-top">
-            <div class="recovery-score"><strong id="recoveryScore">--/100</strong><span id="recoveryLabel">czekam na dane</span></div>
-            <p id="recoveryAdvice">Po synchronizacji Garmin Sync Agent pokaże sen, Body Battery, stres i tętno spoczynkowe.</p>
-          </div>
-          <button class="text-btn recovery-history-link" type="button">Pokaż historię regeneracji ›</button>
-          <div class="recovery-grid">
-            <div><span>Sen</span><b id="recoverySleep">—</b></div>
-            <div><span>Body Battery</span><b id="recoveryBB">—</b></div>
-            <div><span>Stres</span><b id="recoveryStress">—</b></div>
-            <div><span>Tętno spocz.</span><b id="recoveryRhr">—</b></div>
-            <div><span>Kroki</span><b id="recoverySteps">—</b></div>
-            <div><span>Kalorie</span><b id="recoveryCalories">—</b></div>
+          <div class="pulse-card" data-goto="settings" role="button" tabindex="0">
+            <span class="pulse-icon">🔄</span>
+            <div>
+              <small>Garmin Sync</small>
+              <b id="syncMiniTime">—</b>
+              <p id="syncMiniStatus">Sprawdzam...</p>
+            </div>
+            <em id="syncMiniNext">—</em>
           </div>
         </section>
 
-        <section class="card weekly-card">
-          <h2>Tydzień — Swim / Bike / Run</h2>
-          <div class="sport-row swim"><i>🏊</i><b>Swim</b><strong id="swimKm">0 km</strong><span id="swimTime">0 min</span></div>
-          <div class="sport-row bike"><i>🚴</i><b>Bike</b><strong id="bikeKm">0 km</strong><span id="bikeTime">0 min</span></div>
-          <div class="sport-row run"><i>🏃</i><b>Run</b><strong id="runKm">0 km</strong><span id="runTime">0 min</span></div>
+        <section class="card weekly-mini-card">
+          <div class="card-head"><h2>Tydzień w skrócie</h2><button class="text-btn" data-goto="trainings">Analiza ›</button></div>
+          <div class="mini-sports-row">
+            <span class="swim">🏊 <b id="swimKm">0 km</b><small id="swimTime">0 min</small></span>
+            <span class="bike">🚴 <b id="bikeKm">0 km</b><small id="bikeTime">0 min</small></span>
+            <span class="run">🏃 <b id="runKm">0 km</b><small id="runTime">0 min</small></span>
+          </div>
         </section>
 
-        <section class="card recent-card">
-          <div class="card-head"><h2>Ostatnie treningi</h2><button class="text-btn" data-goto="history">Zobacz całą historię ›</button></div>
-          <div id="recentList" class="workout-list compact"></div>
+        <section class="card recent-card recent-minimal-card">
+          <div class="card-head"><h2>Ostatni zapis</h2><button class="text-btn" data-goto="history">Szukaj w historii ›</button></div>
+          <div id="recentList" class="workout-list compact one-item"></div>
         </section>
+
+        <div class="dashboard-hidden-data" aria-hidden="true">
+          <span id="syncMiniFetched">—</span><span id="syncMiniDays">—</span>
+          <span id="recoverySleep">—</span><span id="recoveryBB">—</span><span id="recoveryStress">—</span><span id="recoveryRhr">—</span><span id="recoverySteps">—</span><span id="recoveryCalories">—</span>
+          <span id="recoveryAdvice">—</span>
+          <span id="prepDay">--</span>
+        </div>
       </section>
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.6</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -188,7 +195,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.6</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -238,7 +245,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.6</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -307,7 +314,7 @@
         <section class="card data-sources-card">
           <div class="card-head">
             <h2>Źródła danych</h2>
-            <span class="source-badge auto">v2.5</span>
+            <span class="source-badge auto">v2.6</span>
           </div>
           <p class="muted-small">Aplikacja korzysta teraz z automatycznego Garmin Sync Agenta na Proxmoxie oraz z ręcznego Garmin Link dla pojedynczych szczegółów.</p>
 
@@ -361,7 +368,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v2.5 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v2.6 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -398,7 +405,7 @@
         </div>
 
         <div class="advanced-block compact">
-          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.5</span></div>
+          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.6</span></div>
           <div id="advancedStats" class="advanced-stats empty">Brak dodatkowych danych. Użyj przycisku „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.</div>
           <div id="garminDetailsEditor" class="garmin-editor" hidden>
             <label><span>Wklej szczegóły z Garmin Connect</span><textarea id="editGarminPaste" rows="7" placeholder="Wklej tutaj tekst ze strony Garmin: Tętno, Moc, Kadencja, Stamina, Kalorie, Efekt treningu..."></textarea></label>
@@ -453,6 +460,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

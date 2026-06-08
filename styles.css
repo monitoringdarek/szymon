@@ -573,5 +573,249 @@ body::-webkit-scrollbar,
 @media(max-width:430px){.history-tools{grid-template-columns:1fr}.filter-row{grid-template-columns:1fr 1fr!important}.recovery-day{grid-template-columns:1fr 1fr}.recovery-day>div:first-child{grid-column:1/-1}}
 
 
-/* v2.5 — Garmin Sync mini status i czytelność danych */
+/* v2.6 — Garmin Sync mini status i czytelność danych */
 .garmin-mini-card{border-color:rgba(56,189,248,.28);background:linear-gradient(135deg,rgba(8,27,54,.92),rgba(12,22,43,.92))}.garmin-mini-status{border-radius:15px;padding:11px 12px;margin:4px 0 12px;border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.04);font-weight:850;color:#dbe6f8}.garmin-mini-status.ok{border-color:rgba(89,227,93,.32);color:#c9ffd0}.garmin-mini-status.warn{border-color:rgba(255,193,69,.35);color:#ffe4a6}.garmin-mini-status.bad{border-color:rgba(255,79,79,.38);color:#ffc2c2}.garmin-mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.garmin-mini-grid div{border:1px solid rgba(145,168,210,.2);border-radius:16px;background:rgba(255,255,255,.035);padding:11px}.garmin-mini-grid span{display:block;color:#93a4bd;font-size:11px;font-weight:900;margin-bottom:6px}.garmin-mini-grid b{display:block;color:#fff;font-size:15px}.ai-text p{border-bottom:1px solid rgba(145,168,210,.12);padding-bottom:9px}.ai-text p:last-child{border-bottom:0;padding-bottom:0}.advanced-stats b{font-variant-numeric:tabular-nums}.recovery-day b,.recovery-grid b{font-variant-numeric:tabular-nums}@media(max-width:430px){.garmin-mini-grid{grid-template-columns:1fr 1fr}.garmin-mini-grid b{font-size:14px}}
+
+/* v2.6 — Minimalistyczny WaaaaW Pulpit */
+.minimal-dashboard{
+  padding-bottom:8px;
+}
+.hero-wow{
+  min-height:284px;
+  border-color:rgba(255,90,22,.36);
+  background:linear-gradient(145deg,rgba(3,10,22,.98),rgba(8,24,49,.92));
+  box-shadow:0 24px 80px rgba(0,0,0,.48),0 0 54px rgba(255,90,22,.13),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.hero-wow .hero-bg{
+  opacity:.88;
+  background:
+    radial-gradient(circle at 74% 24%,rgba(255,107,29,.72),transparent 22%),
+    radial-gradient(circle at 28% 0%,rgba(8,168,255,.18),transparent 28%),
+    linear-gradient(90deg,rgba(2,8,20,.97),rgba(2,12,26,.72) 50%,rgba(2,8,20,.98)),
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="%23030b18"/><stop offset=".56" stop-color="%23091830"/><stop offset="1" stop-color="%23ff651a"/></linearGradient></defs><rect width="800" height="520" fill="url(%23g)"/><path d="M0 390 C130 330 280 360 430 305 C560 260 650 270 800 230 L800 520 L0 520Z" fill="%23020914" opacity=".82"/><path d="M210 520 C330 375 510 305 765 245" stroke="%23f6d0a8" stroke-width="16" opacity=".18" fill="none"/><path d="M470 210 l15-80 l15 80 M526 210 l14-100 l14 100 M584 210 l20-130 l20 130" stroke="%23020a16" stroke-width="13"/><rect x="425" y="205" width="244" height="94" rx="10" fill="%23020a16" opacity=".82"/><circle cx="676" cy="135" r="62" fill="%23ff7b25" opacity=".28"/></svg>');
+  background-size:cover;
+  background-position:center;
+}
+.hero-kicker{
+  display:inline-flex;
+  color:#ffd1bc;
+  font-weight:1000;
+  letter-spacing:.16em;
+  font-size:12px;
+  border:1px solid rgba(255,90,22,.35);
+  background:rgba(255,90,22,.10);
+  border-radius:999px;
+  padding:7px 10px;
+  margin-bottom:18px;
+}
+.hero-wow .hero-left h1{
+  font-size:clamp(50px,14vw,74px);
+  letter-spacing:-.075em;
+  color:#fff;
+  text-shadow:0 0 36px rgba(255,255,255,.12),0 8px 26px rgba(0,0,0,.35);
+}
+.hero-wow .hero-left p{
+  max-width:260px;
+  font-weight:780;
+  color:#d7e2f6;
+}
+.countdown-wow{
+  background:rgba(3,12,25,.76);
+  backdrop-filter:blur(8px);
+}
+.countdown-wow strong{
+  font-size:54px;
+}
+.coach-focus-card{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:18px;
+  align-items:center;
+  border-color:rgba(255,90,22,.34);
+  background:
+    radial-gradient(circle at 8% 0%,rgba(255,90,22,.18),transparent 34%),
+    linear-gradient(145deg,rgba(11,31,58,.96),rgba(4,13,28,.98));
+}
+.section-label{
+  display:inline-block;
+  color:var(--orange2);
+  font-size:12px;
+  font-weight:1000;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.coach-copy h2{
+  color:#fff;
+  font-size:26px;
+  line-height:1.05;
+  letter-spacing:-.02em;
+  text-transform:none;
+  margin:0 0 10px;
+}
+.coach-copy p{
+  color:#d9e4f5;
+  font-size:15px;
+  font-weight:720;
+}
+.coach-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+.coach-actions .main-cta.slim,
+.coach-actions .ghost.slim{
+  min-height:44px;
+  height:44px;
+  margin:0;
+  padding:0 14px;
+  border-radius:14px;
+  font-size:14px;
+}
+.wow-readiness{
+  flex-direction:column;
+  align-items:center;
+  min-width:132px;
+}
+.wow-readiness .donut{
+  width:118px;
+  height:118px;
+  flex-basis:118px;
+}
+.wow-readiness .progress-mini{
+  text-align:center;
+}
+.wow-readiness .progress-mini strong{
+  font-size:22px;
+}
+.dashboard-pulse-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin-bottom:12px;
+}
+.pulse-card{
+  display:grid;
+  grid-template-columns:44px 1fr auto;
+  align-items:center;
+  gap:12px;
+  min-height:76px;
+  padding:13px;
+  border:1px solid rgba(145,168,210,.24);
+  border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+  box-shadow:0 12px 32px rgba(0,0,0,.18);
+}
+.pulse-card[role="button"]{cursor:pointer}
+.pulse-card:active{transform:scale(.992)}
+.pulse-icon{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.055);
+  font-size:22px;
+}
+.pulse-card small{
+  display:block;
+  color:#94a6c0;
+  font-size:11px;
+  font-weight:1000;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:4px;
+}
+.pulse-card b{
+  display:block;
+  color:#fff;
+  font-size:18px;
+  line-height:1.1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:260px;
+}
+.pulse-card p{
+  margin-top:3px;
+  font-size:12px;
+  line-height:1.25;
+  color:#c6d3e8;
+}
+.pulse-card em{
+  color:#ffbd9d;
+  font-style:normal;
+  font-size:12px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.weekly-mini-card{
+  border-color:rgba(145,168,210,.20);
+  background:rgba(7,20,40,.66);
+}
+.mini-sports-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.mini-sports-row span{
+  display:grid;
+  gap:4px;
+  align-content:center;
+  min-height:72px;
+  border-radius:18px;
+  border:1px solid rgba(145,168,210,.18);
+  background:rgba(255,255,255,.035);
+  padding:10px;
+  color:#fff;
+  font-weight:1000;
+}
+.mini-sports-row b{
+  display:block;
+  font-size:18px;
+}
+.mini-sports-row small{
+  color:#96a8bf;
+  font-weight:850;
+}
+.recent-minimal-card{
+  background:rgba(7,20,40,.58);
+}
+.workout-list.one-item .workout-item:nth-child(n+2){display:none!important}
+.dashboard-hidden-data{
+  display:none!important;
+}
+.minimal-dashboard .garmin-mini-status{
+  padding:0;
+  border:0;
+  background:transparent;
+  margin:0;
+  font-size:12px;
+  line-height:1.25;
+  color:#c6d3e8;
+}
+.minimal-dashboard .garmin-mini-status.ok,
+.minimal-dashboard .garmin-mini-status.warn,
+.minimal-dashboard .garmin-mini-status.bad{
+  border:0;
+  background:transparent;
+}
+@media(max-width:430px){
+  .hero-wow{min-height:268px;padding:21px 15px}
+  .countdown-wow{width:116px;flex-basis:116px;padding:14px 8px}
+  .countdown-wow strong{font-size:46px}
+  .hero-wow .hero-left h1{font-size:52px}
+  .race-goals{gap:8px}
+  .race-goals span{font-size:13px}
+  .race-goals b{font-size:18px}
+  .coach-focus-card{grid-template-columns:1fr;gap:12px}
+  .wow-readiness{flex-direction:row;justify-content:flex-start;width:100%}
+  .pulse-card{grid-template-columns:42px minmax(0,1fr) auto}
+  .pulse-card b{max-width:190px}
+  .mini-sports-row{grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .mini-sports-row span{padding:9px 7px;min-height:68px}
+  .mini-sports-row b{font-size:15px}
+}

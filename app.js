@@ -1348,6 +1348,14 @@ function renderHistory(){
   const html = filtered.length ? filtered.map(item => workoutHtml(item, true)).join('') : '<div class="empty-history">Brak treningów dla wybranego filtra lub wyszukiwanej frazy.</div>';
   $('historyList').innerHTML = html;
   $('recentList').innerHTML = full.slice(0,6).map(item => workoutHtml(item, false)).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
+  const latestDash = full[0];
+  if(latestDash){
+    const meta = sportMeta[latestDash.type] || sportMeta.other;
+    const titleEl = $('dashboardLatestTitle');
+    const metaEl = $('dashboardLatestMeta');
+    if(titleEl) titleEl.textContent = activityNameFor(latestDash).replace(' — trening Kalmar','');
+    if(metaEl) metaEl.textContent = `${meta.label} • ${formatDate(trainingDate(latestDash))} • ${formatKm(latestDash.distanceKm)} km • ${minutesToClock(latestDash.minutes)}`;
+  }
   const countLabel = $('historyCountLabel');
   if(countLabel) countLabel.textContent = `${filtered.length} / ${full.length}`;
 }
@@ -1486,6 +1494,8 @@ function analyze(){
     plan = ['😴 Regeneracja po mocnym obciążeniu Garmin', '🏊 Lekkie pływanie techniczne 20–30 min', '📌 Bez interwałów i bez ścigania jutro'];
   }
   const coach = coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing, latest, rec, weekTss, advancedItems});
+  set('todayCoachTitle', coach.verdict || 'Plan na dziś');
+  set('todayCoachBrief', coach.action || coach.human || 'Czekam na więcej danych z Garmin Sync.');
   $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
   $('aiSummary').innerHTML = `<p><b>Co widzę:</b> ${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p><p><b>Po ludzku:</b> ${coach.human}</p>${coach.caution ? `<p><b>Uwaga trenera:</b> ${coach.caution}</p>` : ''}<p><b>Balans:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
   $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
