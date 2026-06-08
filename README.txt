@@ -23,7 +23,7 @@ Agenta Proxmox, SQL i Edge Function nie ruszamy.
 Zmiany v2.8.1:
 - zmieniono ikony zakładek Analiza i AI na nowoczesne, liniowe ikony SVG,
 - dodano widoczny aktywny link Pomoc • WawrzyS,
-- kliknięcie Pomoc • WawrzyS otwiera mail do: darekwawrzynek@gmail.com,
+- kliknięcie Pomoc • WawrzyS otwiera mail do: @
 - cache podbite do PWA v2.8.3.
 
 
