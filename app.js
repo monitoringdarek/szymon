@@ -1,9 +1,9 @@
-const VERSION = '2.8';
+const VERSION = '2.9';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
-const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV28';
+const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -12,6 +12,7 @@ const GARMIN_EDGE_ENDPOINT = `${SUPABASE_URL}/functions/v1/garmin-public-import`
 const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
 const GARMIN_SYNC_STATE_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_sync_state`;
 const DAILY_METRICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_daily_metrics`;
+const AI_JOURNAL_ENDPOINT = `${SUPABASE_URL}/rest/v1/ai_coach_journal`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
 const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
@@ -418,6 +419,11 @@ async function apiPatch(url, body){
   if(!r.ok) throw new Error(`PATCH ${r.status}`);
   return r.json();
 }
+async function apiUpsert(url, body){
+  const r = await fetch(url,{method:'POST',headers:headers({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(`UPSERT ${r.status}`);
+  return r.json();
+}
 async function apiDelete(url){
   const r = await fetch(url,{method:'DELETE',headers:headers({'Prefer':'return=representation'})});
   if(!r.ok) throw new Error(`DELETE ${r.status}`);
@@ -651,6 +657,7 @@ async function bootAppData(){
   await loadProfile();
   await loadGarminSyncState();
   await loadDailyMetrics();
+  await loadAiJournalFromCloud();
   await loadTrainings();
 }
 async function loadProfile(){
@@ -1645,6 +1652,71 @@ function analyze(){
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = coach.safety?.level === 'red' ? safeWeeklyPlanHtml() : generateWeeklyPlan(readiness, loadLabel, missing);
 }
 
+
+function aiJournalFromDb(row){
+  return {
+    id: row.id || `journal-${row.journal_date}`,
+    date: String(row.journal_date || row.date || todayDate()).slice(0,10),
+    energy: Number(row.energy ?? 3),
+    stress: Number(row.stress ?? 3),
+    motivation: Number(row.motivation ?? 3),
+    food: row.food || '',
+    hydration: row.hydration || '',
+    feeling: row.feeling || '',
+    pain: row.pain || '',
+    notes: row.notes || '',
+    updated_at: row.updated_at || row.created_at || new Date().toISOString(),
+    cloud: true
+  };
+}
+function aiJournalToDb(entry){
+  return {
+    user_id: currentUser?.id || null,
+    journal_date: entry.date,
+    energy: Number(entry.energy || 3),
+    stress: Number(entry.stress || 3),
+    motivation: Number(entry.motivation || 3),
+    food: entry.food || '',
+    hydration: entry.hydration || '',
+    feeling: entry.feeling || '',
+    pain: entry.pain || '',
+    notes: entry.notes || '',
+    source: 'pwa',
+    updated_at: new Date().toISOString()
+  };
+}
+function mergeAiJournalRows(localRows=[], cloudRows=[]){
+  const byDate = new Map();
+  localRows.forEach(e => { if(e?.date) byDate.set(String(e.date).slice(0,10), e); });
+  cloudRows.forEach(e => { if(e?.date) byDate.set(String(e.date).slice(0,10), e); });
+  return [...byDate.values()].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,365);
+}
+async function loadAiJournalFromCloud(){
+  if(!currentUser?.id){
+    renderAiSupport();
+    return;
+  }
+  try{
+    const rows = await apiGet(`${AI_JOURNAL_ENDPOINT}?select=*&${userFilter()}order=journal_date.desc&limit=365`);
+    const cloudRows = (rows || []).map(aiJournalFromDb);
+    aiJournal = mergeAiJournalRows(readAiJournal(), cloudRows);
+    saveAiJournalStore();
+    if($('aiJournalStatus')){
+      $('aiJournalStatus').className = 'sync-status ok';
+      $('aiJournalStatus').textContent = `Dziennik AI połączony z Supabase • wpisów w pamięci: ${aiJournal.length}`;
+    }
+  }catch(err){
+    console.warn('Nie udało się pobrać dziennika AI z Supabase', err);
+    aiJournal = readAiJournal();
+    if($('aiJournalStatus')){
+      $('aiJournalStatus').className = 'sync-status warn';
+      $('aiJournalStatus').textContent = 'Nie udało się pobrać dziennika z Supabase — używam lokalnej kopii na tym urządzeniu.';
+    }
+  }
+  loadAiJournalForm($('aiJournalDate')?.value || todayDate());
+  renderAiSupport();
+}
+
 function readAiJournal(){
   try{
     const rows = JSON.parse(localStorage.getItem(AI_JOURNAL_KEY)) || [];
@@ -1673,7 +1745,7 @@ function loadAiJournalForm(date=todayDate()){
   const map = {aiFood:'food', aiHydration:'hydration', aiFeeling:'feeling', aiPain:'pain', aiNotes:'notes', aiEnergy:'energy', aiStress:'stress', aiMotivation:'motivation'};
   Object.entries(map).forEach(([id,key]) => { const el=$(id); if(el) el.value = entry[key] ?? (['energy','stress','motivation'].includes(key) ? '3' : ''); });
 }
-function saveAiJournalEntry(){
+async function saveAiJournalEntry(){
   const date = $('aiJournalDate')?.value || todayDate();
   const entry = {
     id: `journal-${date}`,
@@ -1686,14 +1758,33 @@ function saveAiJournalEntry(){
     feeling: ($('aiFeeling')?.value || '').trim(),
     pain: ($('aiPain')?.value || '').trim(),
     notes: ($('aiNotes')?.value || '').trim(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    cloud: false
   };
   aiJournal = aiJournal.filter(x => String(x.date||'') !== String(date));
   aiJournal.unshift(entry);
   aiJournal.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   saveAiJournalStore();
-  if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status ok'; $('aiJournalStatus').textContent = `Zapisano wpis z dnia ${formatDate(date)} do pamięci AI.`; }
+  if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status info'; $('aiJournalStatus').textContent = `Zapisuję wpis z dnia ${formatDate(date)} do Supabase...`; }
   renderAiSupport();
+
+  if(!currentUser?.id){
+    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status warn'; $('aiJournalStatus').textContent = `Zapisano lokalnie. Zaloguj konto Szymona, żeby zapisać dziennik w Supabase.`; }
+    return;
+  }
+  try{
+    const saved = await apiUpsert(`${AI_JOURNAL_ENDPOINT}?on_conflict=user_id,journal_date`, aiJournalToDb(entry));
+    const cloudEntry = saved?.[0] ? aiJournalFromDb(saved[0]) : {...entry, cloud:true};
+    aiJournal = aiJournal.filter(x => String(x.date||'') !== String(date));
+    aiJournal.unshift(cloudEntry);
+    aiJournal.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    saveAiJournalStore();
+    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status ok'; $('aiJournalStatus').textContent = `Zapisano w Supabase i lokalnej kopii • ${formatDate(date)}.`; }
+    renderAiSupport();
+  }catch(err){
+    console.warn('Nie udało się zapisać dziennika AI w Supabase', err);
+    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status warn'; $('aiJournalStatus').textContent = `Nie udało się zapisać w Supabase — wpis został bezpiecznie zapisany lokalnie na tym urządzeniu.`; }
+  }
 }
 function hasMeaningfulPain(text=''){
   const t = String(text).toLowerCase().trim();
@@ -1802,7 +1893,7 @@ if($('historySearch')) $('historySearch').addEventListener('input', e => { histo
 if($('historyRange')) $('historyRange').addEventListener('change', e => { historyRange = e.target.value || '30'; renderHistory(); });
 
 if($('aiJournalDate')) $('aiJournalDate').addEventListener('change', e => loadAiJournalForm(e.target.value || todayDate()));
-if($('saveAiJournalBtn')) $('saveAiJournalBtn').addEventListener('click', saveAiJournalEntry);
+if($('saveAiJournalBtn')) $('saveAiJournalBtn').addEventListener('click', () => saveAiJournalEntry());
 if($('clearAiJournalFormBtn')) $('clearAiJournalFormBtn').addEventListener('click', () => { resetAiJournalForm(); if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent='Formularz wyczyszczony. Dane zapisane wcześniej zostają w pamięci AI.'; } });
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
@@ -1905,4 +1996,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=23').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=29').catch(()=>{}); }
