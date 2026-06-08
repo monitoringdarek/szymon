@@ -1,4 +1,4 @@
-const VERSION = '2.1.2';
+const VERSION = '2.3';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -10,6 +10,7 @@ const WORKOUTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/workouts`;
 const GARMIN_EDGE_ENDPOINT = `${SUPABASE_URL}/functions/v1/garmin-public-import`;
 const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
 const GARMIN_SYNC_STATE_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_sync_state`;
+const DAILY_METRICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_daily_metrics`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
 const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
@@ -22,6 +23,8 @@ let activeFilter = 'all';
 let profileRowId = null;
 let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026', target_date:'2026-08-15' };
 let garminSyncState = null;
+let dailyMetrics = [];
+let latestDailyMetric = null;
 function raceDate(){ return new Date(`${athleteProfile.target_date || '2026-08-15'}T07:00:00+02:00`); }
 
 const demo = {
@@ -643,6 +646,7 @@ async function bootAppData(){
   renderAll();
   await loadProfile();
   await loadGarminSyncState();
+  await loadDailyMetrics();
   await loadTrainings();
 }
 async function loadProfile(){
@@ -715,6 +719,85 @@ function renderGarminSyncState(){
   const status = garminSyncState.status || 'unknown';
   el.className = status === 'ok' || status === 'success' ? 'sync-status ok' : status === 'error' ? 'sync-status bad' : 'sync-status info';
   el.textContent = `Garmin Sync Agent: ostatnio ${whenText} • pobrano ${fetched} • zapisano/zaaktualizowano ${updated}`;
+}
+
+async function loadDailyMetrics(){
+  try{
+    const rows = await apiGet(`${DAILY_METRICS_ENDPOINT}?select=*&${userFilter()}order=metric_date.desc&limit=30`);
+    dailyMetrics = rows || [];
+    latestDailyMetric = dailyMetrics[0] || null;
+  }catch(err){
+    console.warn('Nie udało się pobrać metryk dziennych Garmin', err);
+    dailyMetrics = [];
+    latestDailyMetric = null;
+  }
+}
+function fmtInt(v, suffix=''){
+  const n = Number(v);
+  if(!Number.isFinite(n)) return '—';
+  return `${Math.round(n).toLocaleString('pl-PL')}${suffix}`;
+}
+function fmtSleep(minutes){
+  const n = Number(minutes);
+  if(!Number.isFinite(n) || n <= 0) return 'brak danych';
+  const h = Math.floor(n/60);
+  const m = Math.round(n % 60);
+  return `${h}h ${String(m).padStart(2,'0')}min`;
+}
+function latestMetricForDate(dateStr){
+  if(!dateStr) return latestDailyMetric;
+  return dailyMetrics.find(d => String(d.metric_date || '').slice(0,10) === String(dateStr).slice(0,10)) || latestDailyMetric;
+}
+function recoveryScore(metric=latestDailyMetric){
+  if(!metric) return {score: 60, label:'brak danych', penalty:0, advice:'Brak pełnych danych regeneracji z Garmina.'};
+  const sleep = Number(metric.sleep_minutes || 0);
+  const bb = Number(metric.body_battery_end ?? metric.body_battery_max ?? metric.body_battery_charged ?? NaN);
+  const stress = Number(metric.avg_stress || 0);
+  const rhr = Number(metric.resting_hr || 0);
+  let score = 72;
+  if(sleep){
+    if(sleep < 330) score -= 16;
+    else if(sleep < 390) score -= 8;
+    else if(sleep >= 450) score += 8;
+  }
+  if(Number.isFinite(bb)){
+    if(bb < 35) score -= 18;
+    else if(bb < 55) score -= 8;
+    else if(bb > 70) score += 8;
+  }
+  if(stress){
+    if(stress > 35) score -= 12;
+    else if(stress > 25) score -= 6;
+    else if(stress < 20) score += 5;
+  }
+  if(rhr && rhr > 55) score -= 5;
+  score = clamp(Math.round(score), 25, 95);
+  let label = 'średnia regeneracja';
+  let advice = 'Trening może być normalny, ale kontroluj intensywność.';
+  if(score >= 78){ label = 'dobra regeneracja'; advice = 'Organizm wygląda dobrze — można planować normalny trening.'; }
+  else if(score < 55){ label = 'niska regeneracja'; advice = 'Lepiej wybrać lekki trening techniczny, pływanie albo regenerację.'; }
+  return {score, label, penalty: Math.max(0, 72-score), advice};
+}
+function renderRecovery(){
+  const m = latestDailyMetric;
+  const rec = recoveryScore(m);
+  const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
+  set('recoveryDate', m?.metric_date ? new Date(`${m.metric_date}T12:00:00`).toLocaleDateString('pl-PL', {weekday:'short', day:'2-digit', month:'2-digit'}) : 'brak danych');
+  set('recoverySleep', fmtSleep(m?.sleep_minutes));
+  set('recoveryBB', Number.isFinite(Number(m?.body_battery_end)) ? `${Math.round(Number(m.body_battery_end))}/100` : '—');
+  set('recoveryStress', Number.isFinite(Number(m?.avg_stress)) ? `${Math.round(Number(m.avg_stress))}` : '—');
+  set('recoveryRhr', Number.isFinite(Number(m?.resting_hr)) ? `${Math.round(Number(m.resting_hr))} bpm` : '—');
+  set('recoverySteps', fmtInt(m?.steps));
+  set('recoveryCalories', fmtInt(m?.calories, ' kcal'));
+  set('recoveryScore', `${rec.score}/100`);
+  set('recoveryLabel', rec.label);
+  set('recoveryAdvice', rec.advice);
+  set('analysisSleep', fmtSleep(m?.sleep_minutes));
+  set('analysisBB', Number.isFinite(Number(m?.body_battery_end)) ? `${Math.round(Number(m.body_battery_end))}/100` : '—');
+  set('analysisStress', Number.isFinite(Number(m?.avg_stress)) ? `${Math.round(Number(m.avg_stress))}` : '—');
+  set('analysisRhr', Number.isFinite(Number(m?.resting_hr)) ? `${Math.round(Number(m.resting_hr))} bpm` : '—');
+  set('analysisRecoveryScore', `${rec.score}/100`);
+  set('analysisRecoveryAdvice', rec.advice);
 }
 
 async function loadTrainings(){
@@ -1211,14 +1294,16 @@ function analyze(){
   let loadLabel = 'lekki';
   if(loadScore >= 70) loadLabel = 'mocny';
   else if(loadScore >= 35) loadLabel = 'średni';
-  const readiness = clamp(100 - Math.round(loadScore*.42), 40, 94);
+  const rec = recoveryScore(latestDailyMetric);
+  const recoveryAdjustment = Math.round((rec.score - 70) * 0.35);
+  const readiness = clamp(100 - Math.round(loadScore*.42) + recoveryAdjustment, 30, 96);
   $('readiness').textContent = readiness;
   $('readinessDonut').style.setProperty('--value', readiness);
   const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
   set('aiScore', readiness);
   const advancedLabel = advancedItems.length ? ` • dane Garmin: ${advancedItems.length}${weekTss ? ` • TSS ${weekTss.toFixed(1).replace('.', ',')}` : ''}` : '';
   set('weekLoadValue', `${loadLabel} • ${weekCount} treningów • ${(weekMinutes/60).toFixed(1).replace('.', ',')} h${advancedLabel}`);
-  set('aiReadinessText', readiness >= 75 ? 'Organizm wygląda na gotowy do normalnego treningu.' : readiness >= 58 ? 'Warto trenować rozsądnie i pilnować regeneracji.' : 'Obciążenie rośnie — lepszy będzie lżejszy dzień.');
+  set('aiReadinessText', readiness >= 75 ? `Organizm wygląda dobrze. Regeneracja: ${rec.label}.` : readiness >= 58 ? `Trenuj rozsądnie. Regeneracja: ${rec.label}.` : `Regeneracja/obciążenie ostrzega — ${rec.advice}`);
 
   const pct = (min) => weekMinutes ? Math.round((min/weekMinutes)*100) : 0;
   const ps = pct(weekTotals.swim.min), pb = pct(weekTotals.bike.min), pr = pct(weekTotals.run.min);
@@ -1236,6 +1321,7 @@ function analyze(){
     decision = `🟡 Tydzień ${loadLabel}. ${balanceText}`;
   }
   const latestAdvanced = latest ? advancedInsight(latest) : '';
+  const recoveryLine = latestDailyMetric ? `Najnowszy stan organizmu: sen ${fmtSleep(latestDailyMetric.sleep_minutes)}, Body Battery ${Number.isFinite(Number(latestDailyMetric.body_battery_end)) ? Math.round(Number(latestDailyMetric.body_battery_end)) + '/100' : '—'}, stres ${Number.isFinite(Number(latestDailyMetric.avg_stress)) ? Math.round(Number(latestDailyMetric.avg_stress)) : '—'}, tętno spoczynkowe ${Number.isFinite(Number(latestDailyMetric.resting_hr)) ? Math.round(Number(latestDailyMetric.resting_hr)) + ' bpm' : '—'}.` : 'Brak danych regeneracji z Garmina.';
   if(weekCount >= 3 && readiness > 72){
     decision = `🟢 Gotowość dobra. ${balanceText}`;
     plan = ['🚴 Rower Z2 60–90 min','🏃 Krótki bieg easy 15–25 min po rowerze','🧘 Schłodzenie i rozciąganie'];
@@ -1253,11 +1339,11 @@ function analyze(){
     plan = ['😴 Regeneracja po mocnym obciążeniu Garmin', '🏊 Lekkie pływanie techniczne 20–30 min', '📌 Bez interwałów i bez ścigania jutro'];
   }
   $('decision').textContent = decision;
-  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
+  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
   $('planList').innerHTML = plan.map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
-function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); analyze(); updatePreview(); }
+function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); updatePreview(); }
 function updatePreview(){
   const type = $('sportType').value;
   const meta = sportMeta[type] || sportMeta.run;
@@ -1349,8 +1435,8 @@ $('saveManualBtn').addEventListener('click', async () => {
   setImportReport(null);
   updatePreview();
 });
-$('refreshBtn').addEventListener('click', loadTrainings);
-$('refreshBtn2').addEventListener('click', loadTrainings);
+$('refreshBtn').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
+$('refreshBtn2').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
 if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
 if($('loginBtn')) $('loginBtn').addEventListener('click', signIn);
 if($('authPassword')) $('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') signIn(); });
@@ -1390,4 +1476,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=21').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=23').catch(()=>{}); }
