@@ -1,4 +1,4 @@
-const VERSION = '1.9.4';
+const VERSION = '1.9.5';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -31,7 +31,9 @@ const demo = {
   elevation: 225,
   calories: 1089,
   source: 'Garmin demo',
-  date: new Date().toISOString()
+  workout_date: todayDate(),
+  date: todayDate(),
+  addedAt: new Date().toISOString()
 };
 
 
@@ -240,6 +242,7 @@ function applyParsedWorkout(item){
   $('distanceInput').value = Number(item.distanceKm || 0).toFixed(2);
   $('minutesInput').value = Math.round(item.minutes || 0);
   $('noteInput').value = item.name ? `${item.name}${item.elevation ? ` • +${Math.round(item.elevation)} m` : ''}` : '';
+  if($('workoutDateInput')) $('workoutDateInput').value = String(item.workout_date || item.date || todayDate()).slice(0,10);
   updatePreview();
   if(updateDuplicateHint(item)) return;
   const meta = sportMeta[item.type] || sportMeta.other;
@@ -306,12 +309,30 @@ function $(id){ return document.getElementById(id); }
 function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function todayDate(){ return new Date().toISOString().slice(0,10); }
+function trainingDate(item){ return String(item?.workout_date || item?.date || todayDate()).slice(0,10); }
+function sortTrainings(items){
+  return [...items].sort((a,b) => {
+    const da = trainingDate(a);
+    const db = trainingDate(b);
+    if(db !== da) return db.localeCompare(da);
+    return String(b.addedAt || b.created_at || b.id || '').localeCompare(String(a.addedAt || a.created_at || a.id || ''));
+  });
+}
 function localBackup(){ try { return JSON.parse(localStorage.getItem(LOCAL_BACKUP_KEY)) || []; } catch { return []; } }
 function saveLocalBackup(items){ localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(items.slice(0,200))); }
 function safeParse(text){ if(!text) return null; if(typeof text === 'object') return text; try { return JSON.parse(text); } catch { return null; } }
 function formatKm(n, digits=2){ return Number(n||0).toLocaleString('pl-PL',{minimumFractionDigits:digits, maximumFractionDigits:digits}); }
-function formatDate(value){ const d = value ? new Date(value) : new Date(); return d.toLocaleDateString('pl-PL', { day:'numeric', month:'short', year:'numeric' }); }
-function formatTime(value){ const d = value ? new Date(value) : new Date(); return d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}); }
+function formatDate(value){
+  const raw = String(value || '').slice(0,10);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00`) : (value ? new Date(value) : new Date());
+  return d.toLocaleDateString('pl-PL', { day:'numeric', month:'short', year:'numeric' });
+}
+function formatTime(value){
+  if(!value || /^\d{4}-\d{2}-\d{2}$/.test(String(value))) return '';
+  const d = new Date(value);
+  if(Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+}
 function minutesToClock(min){ const h=Math.floor((min||0)/60), m=Math.round((min||0)%60); return h ? `${h}:${String(m).padStart(2,'0')}:00` : `${m}:00`; }
 function calcPace(distanceKm, minutes, type){
   distanceKm = Number(distanceKm||0); minutes = Number(minutes||0);
@@ -350,8 +371,9 @@ function fromDb(row){
   const notes = safeParse(row.notes) || {};
   return {
     id: row.id,
-    date: row.workout_date || row.created_at,
+    date: row.workout_date || String(row.created_at || '').slice(0,10),
     workout_date: row.workout_date || String(row.created_at || '').slice(0,10),
+    addedAt: row.created_at || '',
     type: row.sport || 'other',
     name: row.title || `${(sportMeta[row.sport]||sportMeta.other).pl} — trening Kalmar`,
     distanceKm: Number(row.distance_km || 0),
@@ -537,7 +559,7 @@ async function loadTrainings(){
   try{
     const rows = await apiGet(`${WORKOUTS_ENDPOINT}?select=*&${userFilter()}order=workout_date.desc,created_at.desc&limit=200`);
     cloudOnline = true;
-    trainings = rows.map(fromDb);
+    trainings = sortTrainings(rows.map(fromDb));
     saveLocalBackup(trainings);
     setSync(`Supabase działa • treningów w chmurze: ${trainings.length}`,'ok');
   }catch(err){
@@ -558,7 +580,8 @@ async function addTraining(item){
     showTab('history');
     return;
   }
-  const localItem = { id:`local-${Date.now()}`, date:todayDate(), ...item };
+  const fixedDate = String(item.workout_date || item.date || todayDate()).slice(0,10);
+  const localItem = { id:`local-${Date.now()}`, ...item, workout_date: fixedDate, date: fixedDate, addedAt: new Date().toISOString() };
   const backup = [localItem, ...localBackup()];
   saveLocalBackup(backup);
 
@@ -572,7 +595,7 @@ async function addTraining(item){
   try{
     const inserted = await apiPost(WORKOUTS_ENDPOINT, toDb(item));
     const saved = inserted && inserted[0] ? fromDb(inserted[0]) : localItem;
-    trainings = [saved, ...trainings].slice(0,200);
+    trainings = sortTrainings([saved, ...trainings]).slice(0,200);
     saveLocalBackup(trainings);
     setSync('Trening zapisany w Supabase — PC i iPhone widzą te same dane','ok');
     renderAll();
@@ -602,7 +625,7 @@ function updateKalmarRoad(){
 function currentWeek(){
   const now = Date.now();
   const weekAgo = now - 7*86400000;
-  return trainings.filter(x => new Date(x.date || x.workout_date).getTime() >= weekAgo);
+  return trainings.filter(x => new Date(`${trainingDate(x)}T12:00:00`).getTime() >= weekAgo);
 }
 function totalsFor(items){
   const totals = { swim:{km:0,min:0,count:0}, bike:{km:0,min:0,count:0}, run:{km:0,min:0,count:0} };
@@ -639,7 +662,7 @@ function workoutHtml(item, withActions=false){
   const actions = withActions ? `<button class="delete-workout" data-delete-id="${id}" title="Usuń trening">Usuń</button>` : `<div class="chev">›</div>`;
   return `<div class="workout-item" data-workout-id="${id}" role="button" tabindex="0" title="Pokaż szczegóły treningu">
     <div class="workout-icon ${meta.cls}">${meta.icon}</div>
-    <div class="workout-main"><b>${activityNameFor(item).replace(' — trening Kalmar','')}</b><small>${formatDate(item.date)} • ${formatTime(item.date)}</small></div>
+    <div class="workout-main"><b>${activityNameFor(item).replace(' — trening Kalmar','')}</b><small>${formatDate(trainingDate(item))}${formatTime(item.date) ? ` • ${formatTime(item.date)}` : ''}</small></div>
     <div class="workout-metric"><b>${formatKm(item.distanceKm)} km</b><small>${minutesToClock(item.minutes)} • ${pace}</small></div>
     ${actions}
   </div>`;
@@ -846,11 +869,11 @@ function openWorkoutDetails(id){
   const meta = sportMeta[item.type] || sportMeta.other;
   $('detailsBadge').textContent = `${meta.icon} ${meta.label}`;
   $('detailsTitle').textContent = activityNameFor(item).replace(' — trening Kalmar','');
-  $('detailsSub').textContent = `${formatDate(item.date)} • ${formatTime(item.date)} • Road to Kalmar 2026`;
+  $('detailsSub').textContent = `${formatDate(trainingDate(item))}${formatTime(item.date) ? ` • ${formatTime(item.date)}` : ''} • Road to Kalmar 2026${item.addedAt ? ` • dodano ${formatDate(item.addedAt)}` : ''}`;
   $('detailsDistance').textContent = `${formatKm(item.distanceKm)} km`;
   $('detailsDuration').textContent = minutesToClock(item.minutes);
   $('detailsPace').textContent = calcPace(item.distanceKm, item.minutes, item.type);
-  $('detailsDate').textContent = formatDate(item.date);
+  $('detailsDate').textContent = formatDate(trainingDate(item));
   $('detailsSource').textContent = item.source || (item.sourceUrl ? 'Garmin Connect' : 'Aplikacja');
   $('detailsElevation').textContent = item.elevation || item.ascent ? `+${Math.round(Number(item.elevation || item.ascent || 0))} m` : '--';
   $('detailsCalories').textContent = item.calories ? `${Math.round(Number(item.calories))} kcal` : '--';
@@ -859,7 +882,7 @@ function openWorkoutDetails(id){
   $('detailsAiText').textContent = detailAiText(item);
   $('editTitle').value = activityNameFor(item).replace(' — trening Kalmar','');
   $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
-  if($('editWorkoutDate')) $('editWorkoutDate').value = String(item.workout_date || item.date || todayDate()).slice(0,10);
+  if($('editWorkoutDate')) $('editWorkoutDate').value = trainingDate(item);
   $('editMinutes').value = Math.round(Number(item.minutes || 0));
   $('editNote').value = item.note || '';
   if($('editGarminPaste')) $('editGarminPaste').value = item.rawAdvancedText || '';
@@ -886,8 +909,8 @@ async function saveWorkoutDetails(){
     name: $('editTitle').value.trim() || activityNameFor(item),
     distanceKm: Number($('editDistance').value || item.distanceKm || 0),
     minutes: Number($('editMinutes').value || item.minutes || 0),
-    workout_date: $('editWorkoutDate')?.value || String(item.workout_date || item.date || todayDate()).slice(0,10),
-    date: $('editWorkoutDate')?.value || String(item.workout_date || item.date || todayDate()).slice(0,10),
+    workout_date: $('editWorkoutDate')?.value || trainingDate(item),
+    date: $('editWorkoutDate')?.value || trainingDate(item),
     note: $('editNote').value.trim(),
     metrics: item.metrics || {},
     rawAdvancedText: $('editGarminPaste')?.value.trim() || item.rawAdvancedText || '',
@@ -904,7 +927,7 @@ async function saveWorkoutDetails(){
       delete body.user_id;
       await apiPatch(`${WORKOUTS_ENDPOINT}?id=eq.${encodeURIComponent(updated.id)}${currentUser?.id ? `&user_id=eq.${encodeURIComponent(currentUser.id)}` : ''}`, body);
     }
-    trainings = trainings.map(x => String(x.id) === String(updated.id) ? updated : x);
+    trainings = sortTrainings(trainings.map(x => String(x.id) === String(updated.id) ? updated : x));
     saveLocalBackup(trainings);
     setSync('Zmiany treningu zapisane.', 'ok');
     renderAll();
@@ -1060,8 +1083,8 @@ function updatePreview(){
       type,
       distanceKm: dist,
       minutes: min,
-      workout_date: todayDate(),
-      date: todayDate(),
+      workout_date: $('workoutDateInput')?.value || todayDate(),
+      date: $('workoutDateInput')?.value || todayDate(),
       sourceUrl: $('garminLink')?.value || '',
       garminActivityId: extractGarminActivityId($('garminLink')?.value || '')
     };
@@ -1096,7 +1119,7 @@ if($('recentList')) $('recentList').addEventListener('click', (event) => {
   const item = event.target.closest('[data-workout-id]');
   if(item) openWorkoutDetails(item.dataset.workoutId);
 });
-['distanceInput','minutesInput','sportType'].forEach(id => $(id).addEventListener('input', updatePreview));
+['distanceInput','minutesInput','sportType','workoutDateInput'].forEach(id => $(id)?.addEventListener('input', updatePreview));
 
 $('loadBtn').addEventListener('click', analyzeGarminLink);
 $('saveManualBtn').addEventListener('click', async () => {
@@ -1129,8 +1152,8 @@ $('saveManualBtn').addEventListener('click', async () => {
     latitude: parsedGarmin?.latitude || null,
     longitude: parsedGarmin?.longitude || null,
     rawDescription: parsedGarmin?.rawDescription || '',
-    workout_date: parsedGarmin?.workout_date || todayDate(),
-    date: parsedGarmin?.workout_date || todayDate()
+    workout_date: parsedGarmin?.workout_date || $('workoutDateInput')?.value || todayDate(),
+    date: parsedGarmin?.workout_date || $('workoutDateInput')?.value || todayDate()
   };
   await addTraining(item);
   parsedGarmin = null;
@@ -1169,6 +1192,7 @@ document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !
 
 const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
+if($('workoutDateInput')) $('workoutDateInput').value = todayDate();
 
 if(loadStoredAuth()){
   showApp();
@@ -1178,4 +1202,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=15').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=195').catch(()=>{}); }
