@@ -369,7 +369,7 @@ body::-webkit-scrollbar,
 }
 
 
-/* v1.9.2 — dolne przyciski szczegółów w jednym rzędzie */
+/* v1.9.3 — dolne przyciski szczegółów w jednym rzędzie */
 .details-actions-bottom{
   display:grid !important;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
@@ -397,4 +397,43 @@ body::-webkit-scrollbar,
 @media(max-width:390px){
   .details-actions-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
   .details-actions-bottom button{font-size:14px !important;}
+}
+
+
+/* v1.9.3 — twarda poprawka dolnego rzędu: Usuń | Zapisz zmiany */
+.details-actions.details-actions-bottom{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:10px !important;
+  width:100% !important;
+  margin-top:10px !important;
+}
+.details-actions.details-actions-bottom #deleteDetailsBtn,
+.details-actions.details-actions-bottom #saveDetailsBtn{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:100% !important;
+  min-width:0 !important;
+  min-height:52px !important;
+  margin:0 !important;
+  padding:0 10px !important;
+  border-radius:16px !important;
+  font-size:15px !important;
+  font-weight:1000 !important;
+  line-height:1.1 !important;
+  text-align:center !important;
+  appearance:none !important;
+  -webkit-appearance:none !important;
+}
+.details-actions.details-actions-bottom #deleteDetailsBtn{
+  border:1px solid rgba(255,95,95,.65) !important;
+  background:rgba(255,95,95,.08) !important;
+  color:#ffd0d0 !important;
+}
+.details-actions.details-actions-bottom #saveDetailsBtn{
+  border:0 !important;
+  background:linear-gradient(135deg,#ff7b1d,#ff3e08) !important;
+  color:#fff !important;
+  box-shadow:0 12px 26px rgba(255,90,22,.26) !important;
 }
