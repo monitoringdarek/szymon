@@ -369,7 +369,7 @@ body::-webkit-scrollbar,
 }
 
 
-/* v1.9.3 — dolne przyciski szczegółów w jednym rzędzie */
+/* v1.9.4 — dolne przyciski szczegółów w jednym rzędzie */
 .details-actions-bottom{
   display:grid !important;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
@@ -400,7 +400,7 @@ body::-webkit-scrollbar,
 }
 
 
-/* v1.9.3 — twarda poprawka dolnego rzędu: Usuń | Zapisz zmiany */
+/* v1.9.4 — twarda poprawka dolnego rzędu: Usuń | Zapisz zmiany */
 .details-actions.details-actions-bottom{
   display:grid !important;
   grid-template-columns:1fr 1fr !important;
@@ -436,4 +436,25 @@ body::-webkit-scrollbar,
   background:linear-gradient(135deg,#ff7b1d,#ff3e08) !important;
   color:#fff !important;
   box-shadow:0 12px 26px rgba(255,90,22,.26) !important;
+}
+
+/* v1.9.4 — przyciski Otwórz w Garmin i Dodaj z Garmin mają identyczny wygląd */
+.details-actions.details-actions-top{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:10px !important;
+  width:100% !important;
+}
+.details-actions.details-actions-top #openGarminBtn,
+.details-actions.details-actions-top #addGarminDetailsBtn{
+  border:1px solid rgba(135,161,207,.35) !important;
+  background:rgba(255,255,255,.035) !important;
+  color:#fff !important;
+  box-shadow:none !important;
+  border-radius:16px !important;
+}
+.details-actions.details-actions-top #openGarminBtn:hover,
+.details-actions.details-actions-top #addGarminDetailsBtn:hover{
+  border-color:rgba(135,161,207,.55) !important;
+  background:rgba(255,255,255,.06) !important;
 }
