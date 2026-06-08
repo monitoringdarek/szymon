@@ -932,3 +932,8 @@ body::-webkit-scrollbar,
 .gemini-chat-box textarea:focus{border-color:rgba(255,123,29,.55);box-shadow:0 0 0 3px rgba(255,123,29,.12)}
 .gemini-send{min-height:48px}
 .gemini-output.small{margin-top:0;background:rgba(255,255,255,.025)}
+
+/* v3.1.1 — AI is the main coach action in bottom nav */
+.bottom-nav .ai-main-nav{letter-spacing:.02em}
+.bottom-nav .ai-main-nav > span{color:#fff;font-weight:1000}
+.bottom-nav .ai-main-nav::after{background:linear-gradient(135deg,#ff8a2a,#ff4d15);box-shadow:0 12px 30px rgba(255,90,22,.42),0 0 0 1px rgba(255,255,255,.14) inset}

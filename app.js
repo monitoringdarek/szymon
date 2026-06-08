@@ -1,4 +1,4 @@
-const VERSION = '3.1';
+const VERSION = '3.1.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -1483,7 +1483,7 @@ function evaluateSafetyContext({readiness=60, loadLabel='lekki', weekCount=0, we
   if((loadLabel === 'mocny' || weekTss > 280 || weekMinutes > 600) && rec && rec.score < 65) orange.push('obciążenie tygodnia jest wysokie przy niepełnej regeneracji');
   if(energy <= 2) orange.push(`Szymon wpisał niską energię (${energy}/5)`);
   if(selfStress >= 4) orange.push(`Szymon wpisał wysoki stres (${selfStress}/5)`);
-  if(textHasAny(combinedText, underFuelPatterns)) nutrition.push('we wpisach pojawia się głód, mało jedzenia albo spadek apetytu — to sygnał do ostrożności z obciążeniem i lepszego posiłku regeneracyjnego');
+  if(textHasAny(combinedText, underFuelPatterns)) nutrition.push('we wpisach pojawia się głód, mało jedzenia albo spadek apetytu — to sygnał, żeby mądrze dobrać obciążenie i lepszego posiłku regeneracyjnego');
   if(latestMinutes >= 90 && latestEntry && !latestEntry.food) nutrition.push('po długiej jednostce brakuje wpisu o jedzeniu — nie oceniam paliwa na pewniaka');
   if(latestEntry?.food && !/ryż|ryz|makaron|owsianka|ziemniak|pieczywo|kasza|banan|żel|zel|izotonik|płatki|platki|miód|miod/i.test(latestEntry.food) && latestMinutes >= 75){
     nutrition.push('przy długim treningu nie widzę jasnego źródła węglowodanów we wpisie — warto zadbać o paliwo, nie ciąć jedzenia');
@@ -1495,16 +1495,16 @@ function evaluateSafetyContext({readiness=60, loadLabel='lekki', weekCount=0, we
   let level = 'green';
   if(red.length) level = 'red';
   else if(orange.length || nutrition.length) level = 'yellow';
-  const title = level === 'red' ? 'Czerwona flaga — bez mocnego treningu' : level === 'yellow' ? 'Tryb ostrożny — decyzja z zapasem' : 'Brak czerwonych flag';
+  const title = level === 'red' ? 'Stop — najpierw zdrowie i sygnały z organizmu' : level === 'yellow' ? 'Mądra decyzja — bez dokładania mocnego akcentu' : 'Dane pozwalają trenować rozsądnie';
   const summary = level === 'red'
-    ? 'AI nie powinien proponować intensywności. Najpierw odpoczynek/lekki ruch tylko jeśli objawy na to pozwalają; przy objawach alarmowych konsultacja z dorosłym lub specjalistą.'
+    ? 'To jest moment na decyzję zawodnika: nie dokładamy intensywności. Najpierw zdrowie, spokojny ruch tylko jeśli objawy na to pozwalają; przy objawach alarmowych rozmowa z dorosłym lub specjalistą.'
     : level === 'yellow'
-      ? 'Można rozważać tylko spokojny trening techniczny/tlenowy. Bez dokładania ambicji, jeśli organizm pokazuje zmęczenie.'
-      : 'Dane nie pokazują alarmu, ale nadal obowiązuje plan, technika, sen, jedzenie i rozsądek.';
+      ? 'Dane pokazują, że dziś lepiej wygrać mądrą decyzją niż mocnym akcentem. Wybierz trening techniczny/tlenowy albo regenerację.'
+      : 'Dane nie pokazują alarmu. Można realizować plan, pilnując techniki, snu, jedzenia i jakości wykonania.';
   const restriction = level === 'red'
     ? 'Bez interwałów, bez mocnego biegu, bez testów formy. Jeśli objawy są silne lub nietypowe — przerwij trening i skonsultuj się.'
     : level === 'yellow'
-      ? 'Nie dokładaj mocnego akcentu. Wybierz lekki Z1/Z2, technikę, mobilność albo odpoczynek.'
+      ? 'Nie dokładaj mocnego akcentu. Wybierz lekki Z1/Z2, technikę, mobilność albo regenerację.'
       : 'Normalny trening tylko wtedy, gdy jest zgodny z planem i samopoczuciem.';
   return {level,title,summary,restriction,red,orange,nutrition, reasons:[...red,...orange,...nutrition]};
 }
@@ -1860,7 +1860,7 @@ function renderAiSupport(){
   const safety = evaluateSafetyContext({readiness: Number($('readiness')?.textContent || 60), loadLabel: 'lekki', weekCount: currentWeek().length, weekMinutes: currentWeek().reduce((a,b)=>a+Number(b.minutes||0),0), latest: trainings[0], rec: s.rec});
   setAiTile('aiSupportSafety', safety.title, safety.summary, safety.level === 'red' ? 'danger' : safety.level === 'yellow' ? 'warn' : 'good');
   if($('aiSafetyStatus')){ $('aiSafetyStatus').className = `ai-safety-status ${safety.level === 'red' ? 'danger' : safety.level === 'yellow' ? 'warn' : 'good'}`; $('aiSafetyStatus').textContent = `${safety.title}. ${safety.summary}`; }
-  setAiTile('aiSupportDecision', safety.level === 'red' ? 'Bez mocnego treningu' : s.rec.score < 55 ? 'Dziś ostrożnie' : s.rec.score >= 78 ? 'Można trenować' : 'Trenuj rozsądnie', safety.level === 'red' ? safety.restriction : s.todayText, safety.level === 'red' ? 'danger' : s.decisionClass);
+  setAiTile('aiSupportDecision', safety.level === 'red' ? 'Bez mocnego treningu' : s.rec.score < 55 ? 'Dziś mądrze' : s.rec.score >= 78 ? 'Można trenować' : 'Trenuj rozsądnie', safety.level === 'red' ? safety.restriction : s.todayText, safety.level === 'red' ? 'danger' : s.decisionClass);
   setAiTile('aiSupportFood', s.latest?.food ? 'Wpis jedzenia zapisany' : 'Dodaj jedzenie dnia', s.nutrition, s.latest?.food ? 'good' : 'warn');
   setAiTile('aiSupportBody', s.painEntries.length ? 'Obserwuj przeciążenia' : 'Ciało bez alarmu', s.body, s.painEntries.length ? 'danger' : 'good');
   setAiTile('aiSupportRecovery', `${s.rec.label}`, s.rec.advice, s.rec.score < 55 ? 'danger' : s.rec.score >= 78 ? 'good' : 'warn');
@@ -1963,7 +1963,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.1', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
