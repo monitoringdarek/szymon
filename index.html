@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v1.9</title>
+  <title>Szymon AI Coach • Road to Kalmar v1.9.1</title>
   <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
@@ -304,7 +304,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v1.9 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v1.9.1 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -340,13 +340,15 @@
           <p id="detailsAiText">Analiza treningu pojawi się tutaj.</p>
         </div>
 
-        <div class="advanced-block">
-          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v1.9</span></div>
-          <div id="advancedStats" class="advanced-stats empty">Brak dodatkowych danych. Wklej tekst ze szczegółów Garmin poniżej i kliknij „Odczytaj dane”.</div>
-          <label><span>Wklej szczegóły z Garmin Connect</span><textarea id="editGarminPaste" rows="7" placeholder="Wklej tutaj tekst ze strony Garmin: Tętno, Moc, Kadencja, Stamina, Kalorie, Efekt treningu..."></textarea></label>
-          <div class="details-actions inline-actions">
-            <button id="parseGarminTextBtn" class="ghost">Odczytaj dane z tekstu</button>
-            <button id="clearGarminTextBtn" class="ghost danger">Wyczyść dodatkowe</button>
+        <div class="advanced-block compact">
+          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v1.9.1</span></div>
+          <div id="advancedStats" class="advanced-stats empty">Brak dodatkowych danych. Użyj przycisku „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.</div>
+          <div id="garminDetailsEditor" class="garmin-editor" hidden>
+            <label><span>Wklej szczegóły z Garmin Connect</span><textarea id="editGarminPaste" rows="7" placeholder="Wklej tutaj tekst ze strony Garmin: Tętno, Moc, Kadencja, Stamina, Kalorie, Efekt treningu..."></textarea></label>
+            <div class="details-actions inline-actions">
+              <button id="parseGarminTextBtn" class="ghost">Odczytaj dane z tekstu</button>
+              <button id="clearGarminTextBtn" class="ghost danger">Wyczyść dodatkowe</button>
+            </div>
           </div>
         </div>
 
@@ -354,16 +356,20 @@
           <h3>Edytuj trening</h3>
           <label><span>Nazwa</span><input id="editTitle" type="text"></label>
           <div class="edit-grid">
-            <label><span>Dystans km</span><input id="editDistance" type="number" min="0" step="0.01"></label>
+            <label><span>Data treningu</span><input id="editWorkoutDate" type="date"></label>
             <label><span>Czas min</span><input id="editMinutes" type="number" min="1" step="1"></label>
+            <label><span>Dystans km</span><input id="editDistance" type="number" min="0" step="0.01"></label>
           </div>
           <label><span>Notatka</span><input id="editNote" type="text" placeholder="Notatka do treningu..."></label>
         </div>
 
-        <div class="details-actions">
+        <div class="details-actions details-actions-top">
           <button id="openGarminBtn" class="ghost">Otwórz w Garmin</button>
-          <button id="saveDetailsBtn" class="main-cta slim">✓ Zapisz zmiany</button>
+          <button id="addGarminDetailsBtn" class="ghost accent">Dodaj z Garmin</button>
+        </div>
+        <div class="details-actions details-actions-bottom">
           <button id="deleteDetailsBtn" class="ghost danger">Usuń</button>
+          <button id="saveDetailsBtn" class="main-cta slim">✓ Zapisz zmiany</button>
         </div>
       </div>
     </section>
@@ -376,6 +382,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=191"></script>
 </body>
 </html>

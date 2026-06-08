@@ -1,7 +1,7 @@
-const VERSION = '1.9';
+const VERSION = '1.9.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
-const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV19Backup';
+const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
@@ -743,7 +743,7 @@ function renderAdvancedStats(item){
   const rows = metricOrder.filter(k => m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== '').map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(String(m[k]))}</b></div>`);
   if(!rows.length){
     box.className = 'advanced-stats empty';
-    box.innerHTML = 'Brak dodatkowych danych. Wklej tekst ze szczegółów Garmin poniżej i kliknij „Odczytaj dane”.';
+    box.innerHTML = 'Brak dodatkowych danych. Użyj „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.';
     return;
   }
   box.className = 'advanced-stats';
@@ -859,9 +859,11 @@ function openWorkoutDetails(id){
   $('detailsAiText').textContent = detailAiText(item);
   $('editTitle').value = activityNameFor(item).replace(' — trening Kalmar','');
   $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
+  if($('editWorkoutDate')) $('editWorkoutDate').value = String(item.workout_date || item.date || todayDate()).slice(0,10);
   $('editMinutes').value = Math.round(Number(item.minutes || 0));
   $('editNote').value = item.note || '';
   if($('editGarminPaste')) $('editGarminPaste').value = item.rawAdvancedText || '';
+  if($('garminDetailsEditor')) $('garminDetailsEditor').hidden = true;
   renderAdvancedStats(item);
   const garminBtn = $('openGarminBtn');
   const hasUrl = !!item.sourceUrl;
@@ -884,6 +886,8 @@ async function saveWorkoutDetails(){
     name: $('editTitle').value.trim() || activityNameFor(item),
     distanceKm: Number($('editDistance').value || item.distanceKm || 0),
     minutes: Number($('editMinutes').value || item.minutes || 0),
+    workout_date: $('editWorkoutDate')?.value || String(item.workout_date || item.date || todayDate()).slice(0,10),
+    date: $('editWorkoutDate')?.value || String(item.workout_date || item.date || todayDate()).slice(0,10),
     note: $('editNote').value.trim(),
     metrics: item.metrics || {},
     rawAdvancedText: $('editGarminPaste')?.value.trim() || item.rawAdvancedText || '',
@@ -891,8 +895,7 @@ async function saveWorkoutDetails(){
     maxHr: item.maxHr || null,
     calories: item.calories || 0,
     elevation: item.elevation || 0,
-    ascent: item.ascent || item.elevation || 0,
-    workout_date: String(item.workout_date || item.date || todayDate()).slice(0,10)
+    ascent: item.ascent || item.elevation || 0
   };
   setSync('Zapisywanie zmian treningu...', 'info');
   try{
@@ -1152,6 +1155,13 @@ if($('closeDetailsBtn')) $('closeDetailsBtn').addEventListener('click', closeWor
 if($('workoutDetails')) $('workoutDetails').addEventListener('click', (event) => { if(event.target.id === 'workoutDetails') closeWorkoutDetails(); });
 if($('saveDetailsBtn')) $('saveDetailsBtn').addEventListener('click', saveWorkoutDetails);
 if($('openGarminBtn')) $('openGarminBtn').addEventListener('click', openSelectedGarmin);
+if($('addGarminDetailsBtn')) $('addGarminDetailsBtn').addEventListener('click', () => {
+  const editor = $('garminDetailsEditor');
+  if(editor){
+    editor.hidden = !editor.hidden;
+    if(!editor.hidden) setTimeout(() => $('editGarminPaste')?.focus(), 120);
+  }
+});
 if($('deleteDetailsBtn')) $('deleteDetailsBtn').addEventListener('click', deleteSelectedWorkout);
 if($('parseGarminTextBtn')) $('parseGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(false));
 if($('clearGarminTextBtn')) $('clearGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(true));
