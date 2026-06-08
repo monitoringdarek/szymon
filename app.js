@@ -1,11 +1,11 @@
-const VERSION = '3.1.3';
+const VERSION = '3.1.5';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
 const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV31';
-const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV313';
+const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV315';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -1917,25 +1917,44 @@ function saveLastGeminiAnalysis(data){
 }
 function readGeminiChatHistory(){
   try {
-    const arr = JSON.parse(localStorage.getItem(GEMINI_CHAT_KEY) || '[]');
-    return Array.isArray(arr) ? arr : [];
+    const item = JSON.parse(localStorage.getItem(GEMINI_CHAT_KEY) || 'null');
+    if(!item) return [];
+    return Array.isArray(item) ? item.slice(-1) : [item];
   } catch { return []; }
 }
 function saveGeminiChatHistory(history){
-  try { localStorage.setItem(GEMINI_CHAT_KEY, JSON.stringify((history || []).slice(-12))); } catch {}
+  try {
+    const last = Array.isArray(history) ? history[history.length - 1] : history;
+    if(last) localStorage.setItem(GEMINI_CHAT_KEY, JSON.stringify(last));
+    else localStorage.removeItem(GEMINI_CHAT_KEY);
+  } catch {}
+}
+function clearGeminiChat(){
+  localStorage.removeItem(GEMINI_CHAT_KEY);
+  const input = $('geminiQuestionInput');
+  if(input) input.value = '';
+  renderGeminiChatHistory();
+  const status = $('geminiChatStatus');
+  if(status){ status.className = 'sync-status info'; status.textContent = 'Rozmowa wyczyszczona. Wpisz nowe pytanie do AI Coach.'; }
 }
 function formatGeminiFullText(text){
-  return escapeHtml(normalizeCoachText(text))
-    .replace(/\n\s*\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  const normalized = normalizeCoachText(text).replace(/\r/g, '').trim();
+  if(!normalized) return '';
+  const paragraphs = normalized.split(/\n\s*\n+/).map(part => part.trim()).filter(Boolean);
+  const html = paragraphs.map(part => {
+    const safe = escapeHtml(part)
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    return `<p>${safe}</p>`;
+  }).join('');
+  return html || `<p>${escapeHtml(normalized).replace(/\n/g, '<br>')}</p>`;
 }
 function renderGeminiChatHistory(){
   const out = $('geminiChatOutput');
   if(!out) return;
   const history = readGeminiChatHistory();
   if(!history.length){
-    out.innerHTML = '<div class="gemini-placeholder">Tu pojawi się pełna rozmowa z AI Coach: pytanie, odpowiedź i kolejne dopytania.</div>';
+    out.innerHTML = '<div class="gemini-placeholder">Tu pojawi się odpowiedź AI Coach na ostatnie pytanie. Kolejne pytanie zastąpi poprzednią odpowiedź.</div>';
     return;
   }
   out.innerHTML = history.map(item => {
@@ -1945,7 +1964,7 @@ function renderGeminiChatHistory(){
     const model = item.model ? ` • ${escapeHtml(item.model)}` : '';
     return `<article class="gemini-chat-turn">
       <div class="gemini-chat-question"><span>Ty</span><p>${q}</p></div>
-      <div class="gemini-chat-answer"><span>AI Coach${date ? ` • ${date}` : ''}${model}</span><p>${a}</p></div>
+      <div class="gemini-chat-answer"><span>AI Coach${date ? ` • ${date}` : ''}${model}</span><div class="gemini-chat-text">${a}</div></div>
     </article>`;
   }).join('');
 }
@@ -1996,11 +2015,8 @@ function renderGeminiAnalysis(data, targetId='geminiAiOutput'){
     html += coachCard('Na co uważać', uwaga, 'warn');
     html += '</div>';
   } else {
-    const safeText = escapeHtml(text)
-      .replace(/\n\s*\n/g, '</p><p>')
-      .replace(/\n/g, '<br>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    html += `<div class="gemini-answer"><p>${safeText}</p></div>`;
+    const safeText = formatGeminiFullText(text);
+    html += `<div class="gemini-answer">${safeText}</div>`;
   }
   out.innerHTML = html;
 }
@@ -2014,14 +2030,14 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
     return;
   }
   if(btn){ btn.disabled = true; btn.textContent = isQuestion ? 'Pytam AI...' : 'Analizuję...'; }
-  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI Coach odpowiada na pytanie, korzystając z danych z Garmina i dziennika.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. Odpowiedź ma być krótka i po ludzku.'; }
+  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI analizuje dane i przygotowuje odpowiedź. To może potrwać kilkanaście sekund.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. To może potrwać kilkanaście sekund.'; }
   try{
     const response = await fetch(GEMINI_AI_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.3', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.5', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2033,8 +2049,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
     const payload = { ...data, generatedAt: data.generatedAt || new Date().toISOString(), question: String(question || '').trim() };
     if(isQuestion){
       const answerText = String(payload.analysis || payload.text || '').trim();
-      const history = readGeminiChatHistory();
-      history.push({ question: payload.question, answer: answerText, model: payload.model, generatedAt: payload.generatedAt });
+      const history = [{ question: payload.question, answer: answerText, model: payload.model, generatedAt: payload.generatedAt }];
       saveGeminiChatHistory(history);
       renderGeminiChatHistory();
       const chatInput = $('geminiQuestionInput'); if(chatInput) chatInput.value = '';
@@ -2042,7 +2057,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       saveLastGeminiAnalysis(payload);
       renderGeminiAnalysis(payload, targetId);
     }
-    if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział pełną rozmową. To wsparcie decyzji, nie diagnoza.' : 'Analiza Gemini gotowa: krótka decyzja, uzasadnienie i wskazówka regeneracyjna.'; }
+    if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział. Nowe pytanie zastąpi tę odpowiedź.' : 'Analiza Gemini gotowa: krótka decyzja, uzasadnienie i wskazówka regeneracyjna.'; }
   }catch(err){
     console.warn('Gemini AI Coach error', err);
     const friendly = String(err?.message || '').toLowerCase().includes('zaloguj') || String(err?.message || '').toLowerCase().includes('sesja')
@@ -2122,6 +2137,7 @@ if($('deleteAiJournalBtn')) $('deleteAiJournalBtn').addEventListener('click', ()
 if($('refreshAiJournalBtn')) $('refreshAiJournalBtn').addEventListener('click', () => refreshAiJournalEntries());
 if($('runGeminiAiBtn')) $('runGeminiAiBtn').addEventListener('click', () => runGeminiAiCoach());
 if($('sendGeminiQuestionBtn')) $('sendGeminiQuestionBtn').addEventListener('click', () => runGeminiQuestion());
+if($('clearGeminiChatBtn')) $('clearGeminiChatBtn').addEventListener('click', () => clearGeminiChat());
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);
@@ -2225,4 +2241,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=313').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=315').catch(()=>{}); }

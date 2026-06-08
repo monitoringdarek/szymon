@@ -945,5 +945,12 @@ body::-webkit-scrollbar,
 .gemini-chat-question{border-color:rgba(255,123,29,.30);background:rgba(255,123,29,.08)}
 .gemini-chat-answer{border-color:rgba(42,205,143,.25);background:rgba(42,205,143,.055)}
 .gemini-chat-question span,.gemini-chat-answer span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:950;color:#9eacc4;margin-bottom:7px}
-.gemini-chat-question p,.gemini-chat-answer p{margin:0;color:#ecf3ff;line-height:1.55;white-space:normal}
+.gemini-chat-question p,.gemini-chat-answer p{margin:0;color:#ecf3ff;line-height:1.55;white-space:normal}.gemini-chat-text{color:#ecf3ff;line-height:1.58;display:block}.gemini-chat-text p{margin:0 0 12px}.gemini-chat-text p:last-child{margin-bottom:0}
 .gemini-chat-answer strong{color:#fff}
+
+/* v3.1.5 — prosty AI Chat: jedno pytanie, jedna odpowiedź */
+.gemini-chat-actions{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.gemini-clear{min-width:104px;border-color:rgba(145,168,210,.28)!important;background:rgba(255,255,255,.045)!important;color:#dbe6f8!important}
+.gemini-clear:hover{border-color:rgba(255,123,29,.42)!important;background:rgba(255,123,29,.08)!important;color:#fff!important}
+.gemini-chat-turn{margin-bottom:0;padding-bottom:0;border-bottom:0}
+@media(max-width:520px){.gemini-chat-actions{grid-template-columns:1fr}.gemini-clear{min-width:0}}
