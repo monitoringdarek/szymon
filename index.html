@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v2.4</title>
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <title>Szymon AI Coach • Road to Kalmar v2.5</title>
+  <link rel="stylesheet" href="styles.css?v=25" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.4</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.4</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
       <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
     </header>
 
@@ -78,6 +78,20 @@
           </div>
         </section>
 
+        <section class="card garmin-mini-card" id="garminMiniCard">
+          <div class="card-head">
+            <h2>Garmin Sync</h2>
+            <button class="text-btn" id="refreshGarminMiniBtn" type="button">Odśwież</button>
+          </div>
+          <div class="garmin-mini-status" id="syncMiniStatus">Sprawdzam ostatnią synchronizację...</div>
+          <div class="garmin-mini-grid">
+            <div><span>Ostatni sync</span><b id="syncMiniTime">—</b></div>
+            <div><span>Pobrano</span><b id="syncMiniFetched">—</b></div>
+            <div><span>Dni metryk</span><b id="syncMiniDays">—</b></div>
+            <div><span>Następny</span><b id="syncMiniNext">—</b></div>
+          </div>
+        </section>
+
         <section class="card recovery-card clickable" id="recoveryCard" role="button" tabindex="0" title="Pokaż historię regeneracji">
           <div class="card-head">
             <h2>Stan organizmu Garmin</h2>
@@ -113,7 +127,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -174,7 +188,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -224,7 +238,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.4</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026 • PWA v2.5</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -293,7 +307,7 @@
         <section class="card data-sources-card">
           <div class="card-head">
             <h2>Źródła danych</h2>
-            <span class="source-badge auto">v2.4</span>
+            <span class="source-badge auto">v2.5</span>
           </div>
           <p class="muted-small">Aplikacja korzysta teraz z automatycznego Garmin Sync Agenta na Proxmoxie oraz z ręcznego Garmin Link dla pojedynczych szczegółów.</p>
 
@@ -347,7 +361,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v2.4 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v2.5 • Supabase Sync</footer>
       </section>
     </main>
 
@@ -384,7 +398,7 @@
         </div>
 
         <div class="advanced-block compact">
-          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.4</span></div>
+          <div class="card-head tight"><h3>Dane zaawansowane Garmin</h3><span class="source-badge auto">v2.5</span></div>
           <div id="advancedStats" class="advanced-stats empty">Brak dodatkowych danych. Użyj przycisku „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.</div>
           <div id="garminDetailsEditor" class="garmin-editor" hidden>
             <label><span>Wklej szczegóły z Garmin Connect</span><textarea id="editGarminPaste" rows="7" placeholder="Wklej tutaj tekst ze strony Garmin: Tętno, Moc, Kadencja, Stamina, Kalorie, Efekt treningu..."></textarea></label>
@@ -439,6 +453,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>

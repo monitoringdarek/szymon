@@ -1,4 +1,4 @@
-const VERSION = '2.4';
+const VERSION = '2.5';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -359,14 +359,14 @@ function formatMetricValue(key, value){
   const raw = String(value).trim();
   const n = numericOrNull(raw);
   const hasUnit = /[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ%®]/.test(raw);
-  const timeKeys = new Set(['movingTime','elapsedTime','standingTime','seatedTime','duration','elapsedDuration','movingDuration']);
+  const timeKeys = new Set(['movingTime','elapsedTime','standingTime','seatedTime','duration','elapsedDuration','movingDuration','moving_time','elapsed_time','movingDurationSeconds','elapsedDurationSeconds']);
   const wattKeys = new Set(['avgPower','maxPower','npPower','ftp','standingPowerAvg','seatedPowerAvg','averagePower','maxAvgPower']);
   const bpmKeys = new Set(['avgHr','maxHr','averageHR','maxHR']);
   const rpmKeys = new Set(['avgCadence','maxCadence','averageCadence','maxCadence']);
-  const meterKeys = new Set(['elevationGain','elevationLoss','minElevation','maxElevation','ascent','descent']);
+  const meterKeys = new Set(['elevationGain','elevationLoss','minElevation','maxElevation','ascent','descent','elevation_gain_m']);
   const kcalKeys = new Set(['restingCalories','activeCalories','totalCalories','calories']);
   const percentKeys = new Set(['staminaStart','staminaEnd','staminaMin','bodyBattery']);
-  const speedKeys = new Set(['avgSpeed','movingSpeed','maxSpeed','averageSpeed','maxSpeed']);
+  const speedKeys = new Set(['avgSpeed','movingSpeed','maxSpeed','averageSpeed','speed','average_speed','max_speed']);
   if(timeKeys.has(key) && n !== null){
     if(raw.includes(':')) return raw;
     return secondsToClock(n);
@@ -705,22 +705,62 @@ async function loadGarminSyncState(){
     renderGarminSyncState();
   }
 }
+function nextGarminSyncTimeText(){
+  const now = new Date();
+  const schedule = [{h:6,m:15},{h:10,m:15},{h:14,m:15},{h:18,m:15},{h:21,m:0}];
+  for(const t of schedule){
+    const d = new Date(now);
+    d.setHours(t.h, t.m, 0, 0);
+    if(d > now) return d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+  }
+  const d = new Date(now);
+  d.setDate(d.getDate()+1); d.setHours(6,15,0,0);
+  return `jutro ${d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})}`;
+}
+function garminSyncAgeLabel(when){
+  if(!when) return {label:'brak danych', level:'warn'};
+  const d = new Date(when);
+  if(Number.isNaN(d.getTime())) return {label:'brak daty', level:'warn'};
+  const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
+  if(diffMin < 90) return {label:'świeże', level:'ok'};
+  if(diffMin < 8*60) return {label:'dzisiaj', level:'ok'};
+  if(diffMin < 30*60) return {label:'starsze', level:'warn'};
+  return {label:'dawno temu', level:'bad'};
+}
 function renderGarminSyncState(){
   const el = $('garminSyncStatus');
-  if(!el) return;
+  const mini = $('syncMiniStatus');
+  const setMini = (id, value) => { const x=$(id); if(x) x.textContent = value; };
   if(!garminSyncState){
-    el.className = 'sync-status warn';
-    el.textContent = 'Garmin Sync Agent: brak statusu. Sprawdź, czy kontener wykonał już synchronizację.';
+    if(el){
+      el.className = 'sync-status warn';
+      el.textContent = 'Garmin Sync Agent: brak statusu. Sprawdź, czy kontener wykonał już synchronizację.';
+    }
+    if(mini){ mini.className = 'garmin-mini-status warn'; mini.textContent = 'Brak statusu agenta Garmin Sync.'; }
+    setMini('syncMiniTime','—'); setMini('syncMiniFetched','—'); setMini('syncMiniDays', dailyMetrics.length || '—'); setMini('syncMiniNext', nextGarminSyncTimeText());
     return;
   }
   const when = garminSyncState.last_success_at || garminSyncState.last_run_at || '';
   const date = when ? new Date(when) : null;
   const whenText = date && !Number.isNaN(date.getTime()) ? date.toLocaleString('pl-PL', { dateStyle:'short', timeStyle:'short' }) : 'brak daty';
+  const shortTime = date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}) : '—';
   const fetched = garminSyncState.fetched_count ?? 0;
   const updated = garminSyncState.inserted_or_updated_count ?? 0;
   const status = garminSyncState.status || 'unknown';
-  el.className = status === 'ok' || status === 'success' ? 'sync-status ok' : status === 'error' ? 'sync-status bad' : 'sync-status info';
-  el.textContent = `Garmin Sync Agent: ostatnio ${whenText} • pobrano ${fetched} • zapisano/zaaktualizowano ${updated}`;
+  const age = garminSyncAgeLabel(when);
+  const cls = status === 'ok' || status === 'success' ? 'ok' : status === 'error' ? 'bad' : age.level;
+  if(el){
+    el.className = `sync-status ${cls}`;
+    el.textContent = `Garmin Sync Agent: ostatnio ${whenText} • pobrano ${fetched} • zapisano/zaaktualizowano ${updated}`;
+  }
+  if(mini){
+    mini.className = `garmin-mini-status ${cls}`;
+    mini.textContent = status === 'error' ? 'Ostatnia synchronizacja zakończyła się błędem.' : `Status: ${age.label} • automat działa 06:15, 10:15, 14:15, 18:15 i 21:00`;
+  }
+  setMini('syncMiniTime', shortTime);
+  setMini('syncMiniFetched', String(fetched));
+  setMini('syncMiniDays', String(dailyMetrics.length || 0));
+  setMini('syncMiniNext', nextGarminSyncTimeText());
 }
 
 async function loadDailyMetrics(){
@@ -1374,7 +1414,11 @@ function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing
     verdict = 'Sytuacja jest umiarkowana — można trenować, ale rozsądnie.';
     action = 'Najbezpieczniej zrobić trening tlenowy albo techniczny. Niech dzisiejszy trening pomaga jutru, a nie tylko wygląda mocno w statystykach.';
   }
-  return { latestName, latestType, verdict, action, reasons: reasons.join(' • ') };
+  const human = `${verdict} ${action}`;
+  let caution = '';
+  if(latest && latest.type === 'bike' && (metricNumber(latest, 'tss') > 120 || Number(latest.elevation || 0) > 700)) caution = 'Po takim rowerze pilnuj nóg i nie rób następnego dnia mocnego biegu, jeśli sen albo Body Battery są słabe.';
+  if(latest && latest.type === 'run' && Number(latest.distanceKm || 0) >= 14) caution = 'Po dłuższym biegu warto chronić łydki i ścięgna — następny trening lepiej techniczny albo tlenowy.';
+  return { latestName, latestType, verdict, action, human, caution, reasons: reasons.join(' • ') };
 }
 function analyze(){
   const latest = trainings[0] || demo;
@@ -1443,7 +1487,7 @@ function analyze(){
   }
   const coach = coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing, latest, rec, weekTss, advancedItems});
   $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
-  $('aiSummary').innerHTML = `<p><b>Co widzę:</b> ${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p><p><b>Po ludzku:</b> ${coach.verdict}</p><p><b>Co dziś zrobić:</b> ${coach.action}</p><p><b>Balans:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
+  $('aiSummary').innerHTML = `<p><b>Co widzę:</b> ${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p><p><b>Po ludzku:</b> ${coach.human}</p>${coach.caution ? `<p><b>Uwaga trenera:</b> ${coach.caution}</p>` : ''}<p><b>Balans:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
   $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
@@ -1547,6 +1591,7 @@ $('saveManualBtn').addEventListener('click', async () => {
 });
 $('refreshBtn').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
 $('refreshBtn2').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
+if($('refreshGarminMiniBtn')) $('refreshGarminMiniBtn').addEventListener('click', async () => { await loadDailyMetrics(); await loadGarminSyncState(); renderRecovery(); analyze(); });
 if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
 if($('loginBtn')) $('loginBtn').addEventListener('click', signIn);
 if($('authPassword')) $('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') signIn(); });
