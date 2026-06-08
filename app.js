@@ -1,10 +1,10 @@
-const VERSION = '3.0';
+const VERSION = '3.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
-const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV30';
+const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV31';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -1097,23 +1097,21 @@ function advancedInsight(item){
   const bb = metricNumber(item, 'bodyBattery');
   const parts = [];
   if(type === 'bike'){
-    if(tss !== null) parts.push(`TSS ${tss} ${tss >= 150 ? 'oznacza wysokie obciążenie kolarskie' : tss >= 90 ? 'oznacza solidny trening' : 'wskazuje umiarkowane obciążenie'}.`);
-    if(ifv !== null) parts.push(`IF ${ifv} ${ifv >= 0.85 ? 'pokazuje mocny, wymagający akcent' : 'pokazuje kontrolowaną intensywność'}.`);
-    if(avgPower !== null && np !== null) parts.push(`Śr. moc ${avgPower} W i NP ${np} W sugerują ${np - avgPower >= 25 ? 'zmienną, pagórkowatą jazdę' : 'równą pracę'}.`);
-    if(avgCad !== null) parts.push(`Kadencja ${avgCad} rpm jest dobrym punktem obserwacji pod długie 180 km.`);
+    if(tss !== null || ifv !== null) parts.push('Ostatni rower miał odczuwalne obciążenie, więc kolejny mocny akcent warto planować dopiero po dobrej regeneracji.');
+    if(avgPower !== null && np !== null) parts.push(`${np - avgPower >= 25 ? 'Jazda była zmienna i pagórkowata' : 'Jazda była dość równa'}, więc nogi mogą potrzebować spokojniejszego bodźca.`);
+    if(avgCad !== null) parts.push('Kadencja jest dobrym punktem obserwacji pod długie 180 km, ale dziś ważniejsza jest jakość regeneracji.');
   }
   if(type === 'run'){
-    if(avgHr !== null) parts.push(`Śr. tętno ${avgHr} bpm pomaga ocenić koszt biegu.`);
-    if(maxHr !== null && maxHr >= 190) parts.push(`Maks. tętno ${maxHr} bpm wskazuje bardzo intensywne fragmenty.`);
-    if(tss !== null) parts.push(`TSS ${tss} podnosi obciążenie tygodnia.`);
+    if(avgHr !== null) parts.push('Bieg miał mierzalny koszt dla organizmu — oceniaj kolejny trening razem ze snem, łydkami i samopoczuciem.');
+    if(maxHr !== null && maxHr >= 190) parts.push('Były bardzo intensywne fragmenty, więc następny dzień powinien być spokojniejszy.');
+    if(tss !== null) parts.push('Ten bieg dokłada obciążenie do tygodnia.');
   }
   if(type === 'swim'){
-    if(avgHr !== null) parts.push(`Śr. tętno ${avgHr} bpm pozwala odróżnić technikę od mocniejszego pływania.`);
-    if(tss !== null) parts.push(`TSS ${tss} zostanie doliczony do obciążenia tygodnia.`);
+    parts.push('Pływanie jest dobrym wyborem technicznym, jeśli ciało nie jest gotowe na bieganie lub mocny rower.');
   }
-  if(maxHr !== null && maxHr >= 195) parts.push('Po takim tętnie następny dzień powinien być spokojniejszy.');
-  if(bb !== null && bb <= -20) parts.push(`Body Battery ${bb} sugeruje zauważalny koszt regeneracyjny.`);
-  return parts.join(' ');
+  if(maxHr !== null && maxHr >= 195) parts.push('Po tak wysokim tętnie następny dzień powinien być spokojniejszy.');
+  if(bb !== null && bb <= -20) parts.push('Body Battery sugeruje zauważalny koszt regeneracyjny.');
+  return [...new Set(parts)].join(' ');
 }
 function detailAiText(item){
   const pace = calcPace(item.distanceKm, item.minutes, item.type);
@@ -1534,7 +1532,7 @@ function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing
   const stress = latestDailyMetric ? Number(latestDailyMetric.avg_stress || 0) : 0;
   const reasons = [];
   if(weekCount) reasons.push(`w ostatnich 7 dniach jest ${weekCount} treningów i ${(weekMinutes/60).toFixed(1).replace('.', ',')} h pracy`);
-  if(weekTss) reasons.push(`TSS tygodnia wynosi około ${weekTss.toFixed(0)}`);
+  if(weekTss) reasons.push(`obciążenie tygodnia jest ${weekTss >= 450 ? 'wysokie' : weekTss >= 250 ? 'solidne' : 'umiarkowane'}`);
   if(sleep && sleep < 330) reasons.push(`sen był krótki (${fmtSleep(sleep)})`);
   else if(sleep) reasons.push(`sen: ${fmtSleep(sleep)}`);
   if(Number.isFinite(bb)) reasons.push(`Body Battery: ${Math.round(bb)}/100`);
@@ -1607,7 +1605,7 @@ function analyze(){
   $('readinessDonut').style.setProperty('--value', readiness);
   const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
   set('aiScore', readiness);
-  const advancedLabel = advancedItems.length ? ` • dane Garmin: ${advancedItems.length}${weekTss ? ` • TSS ${weekTss.toFixed(1).replace('.', ',')}` : ''}` : '';
+  const advancedLabel = advancedItems.length ? ` • dane Garmin: ${advancedItems.length}` : '';
   set('weekLoadValue', `${loadLabel} • ${weekCount} treningów • ${(weekMinutes/60).toFixed(1).replace('.', ',')} h${advancedLabel}`);
   set('aiReadinessText', readiness >= 75 ? `Organizm wygląda dobrze. Regeneracja: ${rec.label}.` : readiness >= 58 ? `Trenuj rozsądnie. Regeneracja: ${rec.label}.` : `Regeneracja/obciążenie ostrzega — ${rec.advice}`);
 
@@ -1622,7 +1620,7 @@ function analyze(){
   let balanceText = 'Na razie budujemy bazę danych treningowych.';
   if(weekCount >= 1){
     const domName = sportMeta[dominant]?.pl || dominant;
-    const advancedText = advancedItems.length ? ` Dane zaawansowane Garmin są już liczone w obciążeniu${weekTss ? ` (TSS tygodnia: ${weekTss.toFixed(1).replace('.', ',')})` : ''}.` : '';
+    const advancedText = advancedItems.length ? ` Dane Garmin pokazują też jakość i koszt treningów, ale szczegóły techniczne chowamy niżej.` : '';
     balanceText = `W tym tygodniu dominuje: ${domName}. ${missing.length ? 'Brakuje: ' + missing.map(k=>sportMeta[k].label).join(', ') + '.' : 'Wszystkie trzy dyscypliny są obecne.'}${advancedText}`;
     decision = `🟡 Tydzień ${loadLabel}. ${balanceText}`;
   }
@@ -1648,7 +1646,7 @@ function analyze(){
   set('todayCoachTitle', coach.verdict || 'Plan na dziś');
   set('todayCoachBrief', coach.action || coach.human || 'Czekam na więcej danych z Garmin Sync.');
   $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
-  $('aiSummary').innerHTML = `${safetyHtmlBlock(coach.safety)}<div class="ai-human-block primary"><span>1</span><div><b>Co widzę</b><p>${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p></div></div><div class="ai-human-block"><span>2</span><div><b>Co to oznacza</b><p>${coach.human}</p></div></div>${coach.caution ? `<div class="ai-human-block warning"><span>!</span><div><b>Uwaga trenera</b><p>${coach.caution}</p></div></div>` : ''}<div class="ai-human-block"><span>3</span><div><b>Balans tygodnia</b><p>${balanceText}</p></div></div><div class="ai-human-block recovery"><span>🫀</span><div><b>Regeneracja Garmin</b><p>${recoveryLine}</p></div></div>${latestAdvanced ? `<div class="ai-human-block"><span>G</span><div><b>Ostatni trening — dane Garmin</b><p>${latestAdvanced}</p></div></div>` : ''}<div class="ai-human-block"><span>i</span><div><b>Granica odpowiedzialności</b><p>To wsparcie treningowe i dziennik danych, nie diagnoza medyczna ani indywidualna dieta kliniczna. Przy objawach alarmowych decyzję podejmuje dorosły, trener lub specjalista.</p></div></div>`;
+  $('aiSummary').innerHTML = `${safetyHtmlBlock(coach.safety)}<div class="ai-human-block primary"><span>1</span><div><b>Co widzę</b><p>${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p></div></div><div class="ai-human-block"><span>2</span><div><b>Co to oznacza</b><p>${coach.human}</p></div></div>${coach.caution ? `<div class="ai-human-block warning"><span>!</span><div><b>Uwaga trenera</b><p>${coach.caution}</p></div></div>` : ''}<div class="ai-human-block"><span>3</span><div><b>Balans tygodnia</b><p>${balanceText}</p></div></div><div class="ai-human-block recovery"><span>🫀</span><div><b>Regeneracja Garmin</b><p>${recoveryLine}</p></div></div>${latestAdvanced ? `<div class="ai-human-block"><span>G</span><div><b>Ostatni trening — po ludzku</b><p>${latestAdvanced}</p></div></div>` : ''}<div class="ai-human-block"><span>i</span><div><b>Granica odpowiedzialności</b><p>To wsparcie treningowe i dziennik danych, nie diagnoza medyczna ani indywidualna dieta kliniczna. Przy objawach alarmowych decyzję podejmuje dorosły, trener lub specjalista.</p></div></div>`;
   const planItems = coach.safety?.level === 'red' ? [coach.safety.restriction, 'Zapisz objawy w dzienniku AI i nie ignoruj powtarzającego się bólu.', 'Wróć do planu dopiero po poprawie danych i samopoczucia.'] : [coach.action, ...plan.slice(0,2)];
   $('planList').innerHTML = planItems.map(x=>`<li>${escapeHtml(x)}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = coach.safety?.level === 'red' ? safeWeeklyPlanHtml() : generateWeeklyPlan(readiness, loadLabel, missing);
@@ -1894,41 +1892,78 @@ function readLastGeminiAnalysis(){
 function saveLastGeminiAnalysis(data){
   try { localStorage.setItem(GEMINI_ANALYSIS_KEY, JSON.stringify(data)); } catch {}
 }
-function renderGeminiAnalysis(data){
-  const out = $('geminiAiOutput');
+function normalizeCoachText(text){
+  return String(text || '')
+    .replace(/TSS\s*(\d+\.\d+)/gi, (m,n) => `obciążenie ${Math.round(Number(n))}`)
+    .replace(/IF\s*(\d+\.\d+)/gi, (m,n) => `intensywność ${Number(n).toFixed(2)}`)
+    .replace(/NP\s*(\d+\.\d+)/gi, (m,n) => `moc znormalizowana ${Math.round(Number(n))}`)
+    .replace(/(\d+)\.(\d{4,})/g, (m,a,b) => b.length > 4 ? String(Math.round(Number(m))) : m)
+    .trim();
+}
+function sectionFromText(text, label){
+  const pattern = new RegExp(`\\*\\*${label}:?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\*\\*|$)`, 'i');
+  const m = text.match(pattern);
+  return m ? m[1].trim() : '';
+}
+function coachCard(title, body, cls=''){
+  if(!body) return '';
+  const safe = escapeHtml(normalizeCoachText(body)).replace(/\n/g, '<br>');
+  return `<div class="gemini-coach-card ${cls}"><b>${escapeHtml(title)}</b><p>${safe}</p></div>`;
+}
+function renderGeminiAnalysis(data, targetId='geminiAiOutput'){
+  const out = $(targetId);
   if(!out) return;
   if(!data){
     out.innerHTML = '<div class="gemini-placeholder">Brak analizy Gemini. Kliknij „Analizuj z Gemini AI”, kiedy dziennik i Garmin mają aktualne dane.</div>';
     return;
   }
-  const text = String(data.analysis || data.text || '').trim();
+  const rawText = String(data.analysis || data.text || '').trim();
+  const text = normalizeCoachText(rawText);
   if(!text){
     out.innerHTML = '<div class="gemini-placeholder">Gemini nie zwrócił treści analizy.</div>';
     return;
   }
-  const safeText = escapeHtml(text)
-    .replace(/\n\s*\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  const wniosek = sectionFromText(text, 'Wniosek na dziś') || sectionFromText(text, 'Wniosek') || '';
+  const decyzja = sectionFromText(text, 'Decyzja treningowa') || sectionFromText(text, 'Co dziś zrobić') || '';
+  const dlaczego = sectionFromText(text, 'Dlaczego') || sectionFromText(text, 'Co widzę') || '';
+  const paliwo = sectionFromText(text, 'Paliwo i regeneracja') || '';
+  const uwaga = sectionFromText(text, 'Na co uważać') || sectionFromText(text, 'Granica bezpieczeństwa') || '';
   const meta = data.generatedAt ? `<div class="gemini-meta">Gemini AI • ${formatDate(String(data.generatedAt).slice(0,10))}${data.model ? ` • ${escapeHtml(data.model)}` : ''}</div>` : '<div class="gemini-meta">Gemini AI</div>';
-  out.innerHTML = `${meta}<div class="gemini-answer"><p>${safeText}</p></div>`;
+  let html = meta;
+  if(wniosek || decyzja || dlaczego || paliwo || uwaga){
+    html += '<div class="gemini-coach-answer">';
+    html += coachCard('Wniosek po ludzku', wniosek, 'main');
+    html += coachCard('Decyzja treningowa', decyzja, 'decision');
+    html += coachCard('Dlaczego', dlaczego);
+    html += coachCard('Paliwo i regeneracja', paliwo, 'fuel');
+    html += coachCard('Na co uważać', uwaga, 'warn');
+    html += '</div>';
+  } else {
+    const safeText = escapeHtml(text)
+      .replace(/\n\s*\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html += `<div class="gemini-answer"><p>${safeText}</p></div>`;
+  }
+  out.innerHTML = html;
 }
-async function runGeminiAiCoach(){
-  const status = $('geminiAiStatus');
-  const btn = $('runGeminiAiBtn');
+async function callGeminiBackend({question='', targetId='geminiAiOutput', statusId='geminiAiStatus', buttonId='runGeminiAiBtn'} = {}){
+  const status = $(statusId);
+  const btn = $(buttonId);
+  const isQuestion = Boolean(String(question || '').trim());
   if(!currentSession?.access_token || !currentUser?.id){
-    if(status){ status.className = 'sync-status warn'; status.textContent = 'Zaloguj konto Szymona, żeby uruchomić analizę Gemini.'; }
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Zaloguj konto Szymona, żeby uruchomić AI Coach.'; }
     return;
   }
-  if(btn){ btn.disabled = true; btn.textContent = 'Analizuję...'; }
-  if(status){ status.className = 'sync-status info'; status.textContent = 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. Klucz API jest ukryty w Supabase Secrets.'; }
+  if(btn){ btn.disabled = true; btn.textContent = isQuestion ? 'Pytam AI...' : 'Analizuję...'; }
+  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI Coach odpowiada na pytanie, korzystając z danych z Garmina i dziennika.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. Odpowiedź ma być krótka i po ludzku.'; }
   try{
     const response = await fetch(GEMINI_AI_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.0' })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -1938,18 +1973,34 @@ async function runGeminiAiCoach(){
       throw new Error(msg);
     }
     const payload = { ...data, generatedAt: data.generatedAt || new Date().toISOString() };
-    saveLastGeminiAnalysis(payload);
-    renderGeminiAnalysis(payload);
-    if(status){ status.className = 'sync-status ok'; status.textContent = 'Analiza Gemini gotowa. Sprawdź wskazówki i pamiętaj: to wsparcie, nie diagnoza.'; }
+    if(!isQuestion) saveLastGeminiAnalysis(payload);
+    renderGeminiAnalysis(payload, targetId);
+    if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział. Traktuj to jako wsparcie decyzji, nie diagnozę.' : 'Analiza Gemini gotowa: krótka decyzja, uzasadnienie i wskazówka regeneracyjna.'; }
   }catch(err){
     console.warn('Gemini AI Coach error', err);
     if(status){ status.className = 'sync-status warn'; status.textContent = `Gemini chwilowo niedostępne: ${err.message || 'błąd połączenia'}. Zostaje bezpieczna analiza regułowa.`; }
-    const last = readLastGeminiAnalysis();
-    if(last) renderGeminiAnalysis(last);
+    if(!isQuestion){
+      const last = readLastGeminiAnalysis();
+      if(last) renderGeminiAnalysis(last, targetId);
+    }
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Analizuj z Gemini AI'; }
+    if(btn){ btn.disabled = false; btn.textContent = isQuestion ? 'Wyślij pytanie' : 'Analizuj z Gemini AI'; }
   }
 }
+async function runGeminiAiCoach(){
+  return callGeminiBackend({ targetId:'geminiAiOutput', statusId:'geminiAiStatus', buttonId:'runGeminiAiBtn' });
+}
+async function runGeminiQuestion(){
+  const input = $('geminiQuestionInput');
+  const q = String(input?.value || '').trim();
+  const status = $('geminiChatStatus');
+  if(!q){
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Wpisz pytanie do AI Coach.'; }
+    return;
+  }
+  await callGeminiBackend({ question:q, targetId:'geminiChatOutput', statusId:'geminiChatStatus', buttonId:'sendGeminiQuestionBtn' });
+}
+
 
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); renderAiSupport(); updatePreview(); }
 function updatePreview(){
@@ -2000,6 +2051,7 @@ if($('clearAiJournalFormBtn')) $('clearAiJournalFormBtn').addEventListener('clic
 if($('deleteAiJournalBtn')) $('deleteAiJournalBtn').addEventListener('click', () => deleteAiJournalEntry());
 if($('refreshAiJournalBtn')) $('refreshAiJournalBtn').addEventListener('click', () => refreshAiJournalEntries());
 if($('runGeminiAiBtn')) $('runGeminiAiBtn').addEventListener('click', () => runGeminiAiCoach());
+if($('sendGeminiQuestionBtn')) $('sendGeminiQuestionBtn').addEventListener('click', () => runGeminiQuestion());
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);

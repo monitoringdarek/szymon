@@ -903,3 +903,32 @@ body::-webkit-scrollbar,
 .ai-journal-actions{grid-template-columns:1fr .75fr .75fr!important}
 .ai-journal-actions .danger{border-color:rgba(255,95,95,.35)}
 @media(max-width:430px){.journal-head-actions{justify-content:flex-start}.ai-journal-actions{grid-template-columns:1fr!important}}
+
+
+/* v3.0 Gemini AI Coach */
+.gemini-ai-card{border-color:rgba(119,146,255,.30);background:linear-gradient(145deg,rgba(10,18,42,.98),rgba(5,10,23,.99));position:relative;overflow:hidden}
+.gemini-ai-card:before{content:"";position:absolute;inset:-120px -120px auto auto;width:280px;height:280px;background:radial-gradient(circle,rgba(119,146,255,.20),transparent 70%);pointer-events:none}
+.gemini-badge{border-color:rgba(119,146,255,.45);color:#d9e1ff;background:rgba(119,146,255,.12)}
+.gemini-intro{position:relative;color:#cbd7ea;line-height:1.45;margin:0 0 14px}
+.gemini-actions{position:relative;display:grid;gap:10px;margin:12px 0}
+.gemini-output{position:relative;margin-top:12px;border:1px solid rgba(145,168,210,.18);border-radius:18px;background:rgba(255,255,255,.035);padding:14px;color:#dbe6f8;line-height:1.5}
+.gemini-placeholder{color:#9eacc4;font-weight:800}
+.gemini-meta{font-size:12px;color:#9aa8bf;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:900}
+.gemini-answer p{margin:0 0 12px}.gemini-answer p:last-child{margin-bottom:0}.gemini-answer strong{color:#fff}
+#runGeminiAiBtn:disabled{opacity:.62;filter:saturate(.65)}
+
+/* v3.1 — AI Coach po ludzku */
+.gemini-coach-answer{display:grid;gap:10px}
+.gemini-coach-card{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:18px;padding:13px 14px;color:#dbe6f8;line-height:1.45}
+.gemini-coach-card b{display:block;color:#fff;margin-bottom:5px;font-size:14px}
+.gemini-coach-card p{margin:0!important;color:#dbe6f8}
+.gemini-coach-card.main{border-color:rgba(255,123,29,.35);background:linear-gradient(135deg,rgba(255,123,29,.13),rgba(255,255,255,.035))}
+.gemini-coach-card.decision{border-color:rgba(42,205,143,.32);background:rgba(42,205,143,.07)}
+.gemini-coach-card.fuel{border-color:rgba(119,146,255,.30);background:rgba(119,146,255,.07)}
+.gemini-coach-card.warn{border-color:rgba(255,193,69,.36);background:rgba(255,193,69,.075)}
+.gemini-chat-box{position:relative;margin-top:14px;border-top:1px solid rgba(145,168,210,.18);padding-top:14px;display:grid;gap:10px}
+.gemini-chat-box label{font-weight:950;color:#fff;letter-spacing:.02em}
+.gemini-chat-box textarea{width:100%;border:1px solid rgba(145,168,210,.24);background:rgba(2,7,18,.58);color:#fff;border-radius:16px;padding:12px;resize:vertical;min-height:82px;font:inherit;line-height:1.35;outline:none}
+.gemini-chat-box textarea:focus{border-color:rgba(255,123,29,.55);box-shadow:0 0 0 3px rgba(255,123,29,.12)}
+.gemini-send{min-height:48px}
+.gemini-output.small{margin-top:0;background:rgba(255,255,255,.025)}
