@@ -1,9 +1,10 @@
-const VERSION = '2.9.2';
+const VERSION = '3.0';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
+const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV30';
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -13,6 +14,7 @@ const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
 const GARMIN_SYNC_STATE_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_sync_state`;
 const DAILY_METRICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_daily_metrics`;
 const AI_JOURNAL_ENDPOINT = `${SUPABASE_URL}/rest/v1/ai_coach_journal`;
+const GEMINI_AI_ENDPOINT = `${SUPABASE_URL}/functions/v1/gemini-ai-coach`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
 const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
@@ -1886,6 +1888,69 @@ function renderAiSupport(){
   }
 }
 
+function readLastGeminiAnalysis(){
+  try { return JSON.parse(localStorage.getItem(GEMINI_ANALYSIS_KEY) || 'null'); } catch { return null; }
+}
+function saveLastGeminiAnalysis(data){
+  try { localStorage.setItem(GEMINI_ANALYSIS_KEY, JSON.stringify(data)); } catch {}
+}
+function renderGeminiAnalysis(data){
+  const out = $('geminiAiOutput');
+  if(!out) return;
+  if(!data){
+    out.innerHTML = '<div class="gemini-placeholder">Brak analizy Gemini. Kliknij „Analizuj z Gemini AI”, kiedy dziennik i Garmin mają aktualne dane.</div>';
+    return;
+  }
+  const text = String(data.analysis || data.text || '').trim();
+  if(!text){
+    out.innerHTML = '<div class="gemini-placeholder">Gemini nie zwrócił treści analizy.</div>';
+    return;
+  }
+  const safeText = escapeHtml(text)
+    .replace(/\n\s*\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  const meta = data.generatedAt ? `<div class="gemini-meta">Gemini AI • ${formatDate(String(data.generatedAt).slice(0,10))}${data.model ? ` • ${escapeHtml(data.model)}` : ''}</div>` : '<div class="gemini-meta">Gemini AI</div>';
+  out.innerHTML = `${meta}<div class="gemini-answer"><p>${safeText}</p></div>`;
+}
+async function runGeminiAiCoach(){
+  const status = $('geminiAiStatus');
+  const btn = $('runGeminiAiBtn');
+  if(!currentSession?.access_token || !currentUser?.id){
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Zaloguj konto Szymona, żeby uruchomić analizę Gemini.'; }
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = 'Analizuję...'; }
+  if(status){ status.className = 'sync-status info'; status.textContent = 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. Klucz API jest ukryty w Supabase Secrets.'; }
+  try{
+    const response = await fetch(GEMINI_AI_ENDPOINT, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      headers: headers({'Content-Type':'application/json'}),
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.0' })
+    });
+    const raw = await response.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+    if(!response.ok || !data || data.ok === false){
+      const msg = data?.error || raw || `HTTP ${response.status}`;
+      throw new Error(msg);
+    }
+    const payload = { ...data, generatedAt: data.generatedAt || new Date().toISOString() };
+    saveLastGeminiAnalysis(payload);
+    renderGeminiAnalysis(payload);
+    if(status){ status.className = 'sync-status ok'; status.textContent = 'Analiza Gemini gotowa. Sprawdź wskazówki i pamiętaj: to wsparcie, nie diagnoza.'; }
+  }catch(err){
+    console.warn('Gemini AI Coach error', err);
+    if(status){ status.className = 'sync-status warn'; status.textContent = `Gemini chwilowo niedostępne: ${err.message || 'błąd połączenia'}. Zostaje bezpieczna analiza regułowa.`; }
+    const last = readLastGeminiAnalysis();
+    if(last) renderGeminiAnalysis(last);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Analizuj z Gemini AI'; }
+  }
+}
+
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); renderAiSupport(); updatePreview(); }
 function updatePreview(){
   const type = $('sportType').value;
@@ -1934,6 +1999,7 @@ if($('saveAiJournalBtn')) $('saveAiJournalBtn').addEventListener('click', () => 
 if($('clearAiJournalFormBtn')) $('clearAiJournalFormBtn').addEventListener('click', () => { resetAiJournalForm(); if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent='Formularz wyczyszczony. Dane zapisane wcześniej zostają w pamięci AI.'; } });
 if($('deleteAiJournalBtn')) $('deleteAiJournalBtn').addEventListener('click', () => deleteAiJournalEntry());
 if($('refreshAiJournalBtn')) $('refreshAiJournalBtn').addEventListener('click', () => refreshAiJournalEntries());
+if($('runGeminiAiBtn')) $('runGeminiAiBtn').addEventListener('click', () => runGeminiAiCoach());
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);
@@ -2026,6 +2092,7 @@ const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
 if($('workoutDateInput')) $('workoutDateInput').value = todayDate();
 if($('aiJournalDate')) loadAiJournalForm(todayDate());
+renderGeminiAnalysis(readLastGeminiAnalysis());
 
 if(loadStoredAuth()){
   showApp();
@@ -2035,4 +2102,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=29').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=300').catch(()=>{}); }
