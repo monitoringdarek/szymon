@@ -1,4 +1,4 @@
-const VERSION = '1.9.5';
+const VERSION = '2.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -9,6 +9,7 @@ const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
 const WORKOUTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/workouts`;
 const GARMIN_EDGE_ENDPOINT = `${SUPABASE_URL}/functions/v1/garmin-public-import`;
 const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
+const GARMIN_SYNC_STATE_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_sync_state`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
 const AUTH_USER_ENDPOINT = `${SUPABASE_URL}/auth/v1/user`;
@@ -20,6 +21,7 @@ let currentUser = null;
 let activeFilter = 'all';
 let profileRowId = null;
 let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026', target_date:'2026-08-15' };
+let garminSyncState = null;
 function raceDate(){ return new Date(`${athleteProfile.target_date || '2026-08-15'}T07:00:00+02:00`); }
 
 const demo = {
@@ -367,8 +369,72 @@ async function apiDelete(url){
   if(!r.ok) throw new Error(`DELETE ${r.status}`);
   try { return await r.json(); } catch { return []; }
 }
+
+function sourceLabel(source){
+  const s = String(source || '').toLowerCase();
+  if(s.includes('garmin_sync') || s.includes('garmin sync')) return 'Garmin Sync';
+  if(s.includes('garmin public')) return 'Garmin Public Metadata';
+  if(s.includes('garmin')) return 'Garmin';
+  if(s.includes('strava')) return 'Strava';
+  if(s.includes('manual') || s.includes('ręcz')) return 'Ręcznie';
+  if(s === 'supabase') return 'Supabase';
+  return source || 'Aplikacja';
+}
+function firstDefined(...values){
+  for(const v of values){
+    if(v !== undefined && v !== null && v !== '') return v;
+  }
+  return null;
+}
+function numericOrNull(v){
+  if(v === undefined || v === null || v === '') return null;
+  if(typeof v === 'number') return Number.isFinite(v) ? v : null;
+  let s = String(v).trim().replace(/\s/g,'').replace(/[^0-9,.-]/g,'');
+  if(!s) return null;
+  if(s.includes(',') && !s.includes('.')){
+    const parts = s.split(',');
+    if(parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) s = parts[0] + parts[1];
+    else s = s.replace(',', '.');
+  } else if(s.includes(',') && s.includes('.')) s = s.replace(/,/g,'');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function buildMetricsFromDb(row, notes){
+  const m = { ...(notes.metrics || {}) };
+  const adv = row.advanced_data && typeof row.advanced_data === 'object' ? row.advanced_data : {};
+  Object.assign(m, adv.metrics && typeof adv.metrics === 'object' ? adv.metrics : adv);
+  const set = (k, v, unit='') => { if(v !== undefined && v !== null && v !== '') m[k] = `${v}${unit ? ' ' + unit : ''}`; };
+  set('avgPower', row.avg_power);
+  set('maxPower', row.max_power);
+  set('avgCadence', row.avg_cadence, row.avg_cadence ? 'rpm' : '');
+  set('npPower', row.np_watts);
+  set('intensityFactor', row.intensity_factor);
+  set('tss', row.tss);
+  set('avgHr', row.avg_hr, row.avg_hr ? 'bpm' : '');
+  set('maxHr', row.max_hr, row.max_hr ? 'bpm' : '');
+  set('elevationGain', row.elevation_gain_m, row.elevation_gain_m ? 'm' : '');
+  set('totalCalories', row.calories, row.calories ? 'kcal' : '');
+  if(row.average_speed) set('avgSpeed', row.average_speed, 'km/h');
+  if(row.raw_data && typeof row.raw_data === 'object'){
+    const raw = row.raw_data;
+    set('benefit', raw.trainingEffectLabel || raw.trainingEffect || raw.benefit);
+    set('movingTime', raw.movingDuration || raw.moving_time || raw.movingTime);
+    set('elapsedTime', raw.elapsedDuration || raw.elapsed_time || raw.elapsedTime);
+  }
+  return m;
+}
+
 function fromDb(row){
   const notes = safeParse(row.notes) || {};
+  const metrics = buildMetricsFromDb(row, notes);
+  const sourceRaw = firstDefined(row.source, notes.source, row.garmin_activity_id ? 'garmin_sync' : 'Supabase');
+  const extUrl = firstDefined(row.external_url, notes.sourceUrl, notes.garmin_url, row.garmin_activity_id ? `https://connect.garmin.com/modern/activity/${row.garmin_activity_id}` : '');
+  const elevation = firstDefined(row.elevation_gain_m, notes.elevation, notes.ascent, 0);
+  const calories = firstDefined(row.calories, notes.calories, 0);
+  const avgHr = firstDefined(row.avg_hr, notes.avgHr, notes.avg_hr, null);
+  const maxHr = firstDefined(row.max_hr, notes.maxHr, notes.max_hr, null);
+  const averageSpeed = firstDefined(row.average_speed, notes.average_speed, null);
+  const speedText = notes.speed || (averageSpeed ? `${String(averageSpeed).replace('.', ',')} km/h` : null);
   return {
     id: row.id,
     date: row.workout_date || String(row.created_at || '').slice(0,10),
@@ -378,27 +444,31 @@ function fromDb(row){
     name: row.title || `${(sportMeta[row.sport]||sportMeta.other).pl} — trening Kalmar`,
     distanceKm: Number(row.distance_km || 0),
     minutes: Number(row.duration_minutes || 0),
-    elevation: Number(notes.elevation || 0),
-    calories: Number(notes.calories || 0),
+    elevation: Number(elevation || 0),
+    calories: Number(calories || 0),
     note: notes.note || '',
-    source: notes.source || 'Supabase',
-    sourceUrl: notes.sourceUrl || notes.garmin_url || '',
-    garminActivityId: notes.garminActivityId || notes.garmin_activity_id || '',
-    avgHr: notes.avgHr || notes.avg_hr || null,
-    maxHr: notes.maxHr || notes.max_hr || null,
-    ascent: notes.ascent || notes.elevation || 0,
-    parsedBy: notes.parsedBy || '',
-    pace: notes.pace || null,
-    speed: notes.speed || null,
+    source: sourceLabel(sourceRaw),
+    sourceRaw: sourceRaw || '',
+    sourceUrl: extUrl || '',
+    garminActivityId: firstDefined(row.garmin_activity_id, notes.garminActivityId, notes.garmin_activity_id, ''),
+    avgHr: avgHr || null,
+    maxHr: maxHr || null,
+    ascent: Number(firstDefined(elevation, notes.ascent, 0) || 0),
+    parsedBy: notes.parsedBy || (row.garmin_activity_id ? 'garmin-sync-agent' : ''),
+    pace: firstDefined(row.average_pace, notes.pace, null),
+    speed: speedText,
     latitude: notes.latitude || null,
     longitude: notes.longitude || null,
     rawDescription: notes.rawDescription || '',
-    metrics: notes.metrics || {},
+    metrics,
+    rawData: row.raw_data || null,
+    advancedData: row.advanced_data || null,
     rawAdvancedText: notes.rawAdvancedText || '',
     cloud: true
   };
 }
 function toDb(item){
+  const avgSpeedNumber = numericOrNull(item.speed || item.average_speed);
   return {
     user_id: currentUser?.id || null,
     workout_date: item.workout_date || todayDate(),
@@ -406,8 +476,24 @@ function toDb(item){
     title: item.name,
     distance_km: Number(item.distanceKm || 0),
     duration_minutes: Number(item.minutes || 0),
+    source: item.sourceRaw || item.source || 'aplikacja',
+    garmin_activity_id: item.garminActivityId || null,
+    external_url: item.sourceUrl || null,
+    average_speed: avgSpeedNumber,
+    average_pace: item.pace || null,
+    elevation_gain_m: numericOrNull(item.elevation || item.ascent) || null,
+    calories: numericOrNull(item.calories) || null,
+    avg_hr: numericOrNull(item.avgHr) || null,
+    max_hr: numericOrNull(item.maxHr) || null,
+    avg_power: numericOrNull(metricValue(item, 'avgPower')) || null,
+    max_power: numericOrNull(metricValue(item, 'maxPower')) || null,
+    avg_cadence: numericOrNull(metricValue(item, 'avgCadence')) || null,
+    np_watts: numericOrNull(metricValue(item, 'npPower')) || null,
+    intensity_factor: numericOrNull(metricValue(item, 'intensityFactor')) || null,
+    tss: numericOrNull(metricValue(item, 'tss')) || null,
+    advanced_data: item.metrics && Object.keys(item.metrics).length ? { metrics: item.metrics, rawAdvancedText: item.rawAdvancedText || '' } : null,
     notes: JSON.stringify({
-      source: item.source || 'aplikacja',
+      source: item.sourceRaw || item.source || 'aplikacja',
       elevation: item.elevation || 0,
       calories: item.calories || 0,
       note: item.note || '',
@@ -509,6 +595,7 @@ async function signOut(){
 async function bootAppData(){
   renderAll();
   await loadProfile();
+  await loadGarminSyncState();
   await loadTrainings();
 }
 async function loadProfile(){
@@ -554,6 +641,35 @@ async function saveProfile(){
     if($('profileStatus')) { $('profileStatus').textContent = 'Nie udało się zapisać profilu w Supabase.'; $('profileStatus').className = 'sync-status bad'; }
   }
 }
+async function loadGarminSyncState(){
+  try{
+    const rows = await apiGet(`${GARMIN_SYNC_STATE_ENDPOINT}?select=*&id=eq.main&limit=1`);
+    garminSyncState = rows?.[0] || null;
+    renderGarminSyncState();
+  }catch(err){
+    console.warn('Nie udało się pobrać statusu Garmin Sync', err);
+    garminSyncState = null;
+    renderGarminSyncState();
+  }
+}
+function renderGarminSyncState(){
+  const el = $('garminSyncStatus');
+  if(!el) return;
+  if(!garminSyncState){
+    el.className = 'sync-status warn';
+    el.textContent = 'Garmin Sync Agent: brak statusu. Sprawdź, czy kontener wykonał już synchronizację.';
+    return;
+  }
+  const when = garminSyncState.last_success_at || garminSyncState.last_run_at || '';
+  const date = when ? new Date(when) : null;
+  const whenText = date && !Number.isNaN(date.getTime()) ? date.toLocaleString('pl-PL', { dateStyle:'short', timeStyle:'short' }) : 'brak daty';
+  const fetched = garminSyncState.fetched_count ?? 0;
+  const updated = garminSyncState.inserted_or_updated_count ?? 0;
+  const status = garminSyncState.status || 'unknown';
+  el.className = status === 'ok' || status === 'success' ? 'sync-status ok' : status === 'error' ? 'sync-status bad' : 'sync-status info';
+  el.textContent = `Garmin Sync Agent: ostatnio ${whenText} • pobrano ${fetched} • zapisano/zaaktualizowano ${updated}`;
+}
+
 async function loadTrainings(){
   setSync('Łączenie z Supabase...','info');
   try{
@@ -568,6 +684,7 @@ async function loadTrainings(){
     setSync('Brak połączenia z Supabase — pokazuję lokalny backup','warn');
     console.warn(err);
   }
+  renderGarminSyncState();
   renderAll();
   updatePreview();
 }
@@ -1202,4 +1319,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=195').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=21').catch(()=>{}); }
