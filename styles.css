@@ -897,7 +897,7 @@ body::-webkit-scrollbar,
   .top-actions{grid-template-columns:1fr}
 }
 
-/* v2.9.1 — stabilizacja dziennika AI */
+/* v2.9.2 — formularz dziennika czyści się po zapisie */
 .journal-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .journal-head-actions .text-btn{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:999px;padding:7px 11px;color:#dbe7fb}
 .ai-journal-actions{grid-template-columns:1fr .75fr .75fr!important}

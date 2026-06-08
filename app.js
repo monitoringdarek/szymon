@@ -1,4 +1,4 @@
-const VERSION = '2.9.1';
+const VERSION = '2.9.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -1769,7 +1769,9 @@ async function saveAiJournalEntry(){
   renderAiSupport();
 
   if(!currentUser?.id){
-    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status warn'; $('aiJournalStatus').textContent = `Zapisano lokalnie. Zaloguj konto Szymona, żeby zapisać dziennik w Supabase.`; }
+    resetAiJournalForm();
+    if($('aiJournalDate')) $('aiJournalDate').value = todayDate();
+    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status warn'; $('aiJournalStatus').textContent = `Zapisano lokalnie. Formularz wyczyszczony. Zaloguj konto Szymona, żeby zapisać dziennik w Supabase.`; }
     return;
   }
   try{
@@ -1779,7 +1781,9 @@ async function saveAiJournalEntry(){
     aiJournal.unshift(cloudEntry);
     aiJournal.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     saveAiJournalStore();
-    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status ok'; $('aiJournalStatus').textContent = `Zapisano w Supabase i lokalnej kopii • ${formatDate(date)}.`; }
+    resetAiJournalForm();
+    if($('aiJournalDate')) $('aiJournalDate').value = todayDate();
+    if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status ok'; $('aiJournalStatus').textContent = `Zapisano w Supabase i lokalnej kopii • ${formatDate(date)}. Formularz wyczyszczony.`; }
     renderAiSupport();
   }catch(err){
     console.warn('Nie udało się zapisać dziennika AI w Supabase', err);
