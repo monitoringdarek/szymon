@@ -367,3 +367,34 @@ body::-webkit-scrollbar,
   .details-actions-top,.details-actions-bottom{grid-template-columns:1fr 1fr;}
   .details-actions button{min-height:50px;}
 }
+
+
+/* v1.9.2 — dolne przyciski szczegółów w jednym rzędzie */
+.details-actions-bottom{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:10px !important;
+  align-items:stretch !important;
+}
+.details-actions-bottom button{
+  width:100% !important;
+  min-width:0 !important;
+  min-height:52px !important;
+  margin:0 !important;
+  border-radius:16px !important;
+  font-size:16px !important;
+  font-weight:1000 !important;
+}
+.details-actions-bottom .danger{
+  grid-column:auto !important;
+}
+.details-save-btn{
+  border:0;
+  background:linear-gradient(135deg,#ff7b1d,#ff3e08);
+  color:#fff;
+  box-shadow:0 12px 26px rgba(255,90,22,.22);
+}
+@media(max-width:390px){
+  .details-actions-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
+  .details-actions-bottom button{font-size:14px !important;}
+}
