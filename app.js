@@ -336,6 +336,53 @@ function formatTime(value){
   return d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
 }
 function minutesToClock(min){ const h=Math.floor((min||0)/60), m=Math.round((min||0)%60); return h ? `${h}:${String(m).padStart(2,'0')}:00` : `${m}:00`; }
+function secondsToClock(seconds){
+  const total = Math.max(0, Math.round(Number(seconds || 0)));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
+}
+function formatSmartNumber(value, digits=1){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return String(value || '');
+  const d = Math.abs(n) >= 100 ? 0 : digits;
+  return n.toLocaleString('pl-PL', { maximumFractionDigits:d, minimumFractionDigits:0 });
+}
+function formatMetricValue(key, value){
+  if(value === undefined || value === null || String(value).trim() === '') return '';
+  const raw = String(value).trim();
+  const n = numericOrNull(raw);
+  const hasUnit = /[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ%®]/.test(raw);
+  const timeKeys = new Set(['movingTime','elapsedTime','standingTime','seatedTime']);
+  const wattKeys = new Set(['avgPower','maxPower','npPower','ftp','standingPowerAvg','seatedPowerAvg']);
+  const bpmKeys = new Set(['avgHr','maxHr']);
+  const rpmKeys = new Set(['avgCadence','maxCadence']);
+  const meterKeys = new Set(['elevationGain','elevationLoss','minElevation','maxElevation']);
+  const kcalKeys = new Set(['restingCalories','activeCalories','totalCalories']);
+  const percentKeys = new Set(['staminaStart','staminaEnd','staminaMin']);
+  const speedKeys = new Set(['avgSpeed','movingSpeed','maxSpeed']);
+  if(timeKeys.has(key) && n !== null){
+    if(raw.includes(':')) return raw;
+    return secondsToClock(n);
+  }
+  if(speedKeys.has(key) && n !== null){
+    // Garmin API często oddaje prędkość w m/s. Małe wartości konwertujemy na km/h.
+    const kmh = n > 0 && n < 20 ? n * 3.6 : n;
+    return `${formatSmartNumber(kmh,1)} km/h`;
+  }
+  if(wattKeys.has(key) && n !== null) return `${Math.round(n)} W`;
+  if(bpmKeys.has(key) && n !== null) return `${Math.round(n)} bpm`;
+  if(rpmKeys.has(key) && n !== null) return `${formatSmartNumber(n,0)} rpm`;
+  if(meterKeys.has(key) && n !== null) return `${formatSmartNumber(n,0)} m`;
+  if(kcalKeys.has(key) && n !== null) return `${formatSmartNumber(n,0)} kcal`;
+  if(key === 'workKj' && n !== null) return `${formatSmartNumber(n,0)} kJ`;
+  if(percentKeys.has(key) && n !== null) return `${formatSmartNumber(n,0)}%`;
+  if(key === 'intensityFactor' && n !== null) return n.toLocaleString('pl-PL', { maximumFractionDigits:3 });
+  if(key === 'tss' && n !== null) return n.toLocaleString('pl-PL', { maximumFractionDigits:1 });
+  if(n !== null && !hasUnit) return formatSmartNumber(n,1);
+  return raw;
+}
 function calcPace(distanceKm, minutes, type){
   distanceKm = Number(distanceKm||0); minutes = Number(minutes||0);
   if(!distanceKm || !minutes) return '--';
@@ -403,18 +450,18 @@ function buildMetricsFromDb(row, notes){
   const m = { ...(notes.metrics || {}) };
   const adv = row.advanced_data && typeof row.advanced_data === 'object' ? row.advanced_data : {};
   Object.assign(m, adv.metrics && typeof adv.metrics === 'object' ? adv.metrics : adv);
-  const set = (k, v, unit='') => { if(v !== undefined && v !== null && v !== '') m[k] = `${v}${unit ? ' ' + unit : ''}`; };
+  const set = (k, v) => { if(v !== undefined && v !== null && v !== '') m[k] = v; };
   set('avgPower', row.avg_power);
   set('maxPower', row.max_power);
-  set('avgCadence', row.avg_cadence, row.avg_cadence ? 'rpm' : '');
+  set('avgCadence', row.avg_cadence);
   set('npPower', row.np_watts);
   set('intensityFactor', row.intensity_factor);
   set('tss', row.tss);
-  set('avgHr', row.avg_hr, row.avg_hr ? 'bpm' : '');
-  set('maxHr', row.max_hr, row.max_hr ? 'bpm' : '');
-  set('elevationGain', row.elevation_gain_m, row.elevation_gain_m ? 'm' : '');
-  set('totalCalories', row.calories, row.calories ? 'kcal' : '');
-  if(row.average_speed) set('avgSpeed', row.average_speed, 'km/h');
+  set('avgHr', row.avg_hr);
+  set('maxHr', row.max_hr);
+  set('elevationGain', row.elevation_gain_m);
+  set('totalCalories', row.calories);
+  if(row.average_speed) set('avgSpeed', row.average_speed);
   if(row.raw_data && typeof row.raw_data === 'object'){
     const raw = row.raw_data;
     set('benefit', raw.trainingEffectLabel || raw.trainingEffect || raw.benefit);
@@ -434,7 +481,7 @@ function fromDb(row){
   const avgHr = firstDefined(row.avg_hr, notes.avgHr, notes.avg_hr, null);
   const maxHr = firstDefined(row.max_hr, notes.maxHr, notes.max_hr, null);
   const averageSpeed = firstDefined(row.average_speed, notes.average_speed, null);
-  const speedText = notes.speed || (averageSpeed ? `${String(averageSpeed).replace('.', ',')} km/h` : null);
+  const speedText = notes.speed || (averageSpeed ? formatMetricValue('avgSpeed', averageSpeed) : null);
   return {
     id: row.id,
     date: row.workout_date || String(row.created_at || '').slice(0,10),
@@ -880,7 +927,9 @@ function renderAdvancedStats(item){
   const box = $('advancedStats');
   if(!box) return;
   const m = item.metrics || {};
-  const rows = metricOrder.filter(k => m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== '').map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(String(m[k]))}</b></div>`);
+  const rows = metricOrder
+    .filter(k => m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== '')
+    .map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(formatMetricValue(k, m[k]))}</b></div>`);
   if(!rows.length){
     box.className = 'advanced-stats empty';
     box.innerHTML = 'Brak dodatkowych danych. Użyj „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.';
