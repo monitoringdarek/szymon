@@ -1,4 +1,4 @@
-const VERSION = '2.3';
+const VERSION = '2.4';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -25,6 +25,8 @@ let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026'
 let garminSyncState = null;
 let dailyMetrics = [];
 let latestDailyMetric = null;
+let historySearch = '';
+let historyRange = '30';
 function raceDate(){ return new Date(`${athleteProfile.target_date || '2026-08-15'}T07:00:00+02:00`); }
 
 const demo = {
@@ -748,6 +750,43 @@ function latestMetricForDate(dateStr){
   if(!dateStr) return latestDailyMetric;
   return dailyMetrics.find(d => String(d.metric_date || '').slice(0,10) === String(dateStr).slice(0,10)) || latestDailyMetric;
 }
+function recoveryShort(metric){
+  if(!metric) return 'brak danych';
+  const r = recoveryScore(metric);
+  return `${formatDate(metric.metric_date)} • sen ${fmtSleep(metric.sleep_minutes)} • BB ${fmtInt(metric.body_battery_end || metric.body_battery_max || metric.body_battery_charged, '/100')} • stres ${fmtInt(metric.avg_stress)} • ${r.label}`;
+}
+function renderRecoveryHistory(){
+  const box = $('recoveryHistoryList');
+  if(!box) return;
+  if(!dailyMetrics.length){
+    box.innerHTML = '<div class="empty-history">Brak historii regeneracji. Poczekaj na synchronizację Garmin Sync Agent.</div>';
+    return;
+  }
+  box.innerHTML = dailyMetrics.slice(0,14).map(m => {
+    const r = recoveryScore(m);
+    const bb = fmtInt(m.body_battery_end ?? m.body_battery_max ?? m.body_battery_charged, '/100');
+    return `<div class="recovery-day ${r.score < 55 ? 'low' : r.score >= 72 ? 'good' : ''}">
+      <div><b>${formatDate(m.metric_date)}</b><span>${r.label}</span></div>
+      <div><small>Sen</small><strong>${fmtSleep(m.sleep_minutes)}</strong></div>
+      <div><small>Body Battery</small><strong>${bb}</strong></div>
+      <div><small>Stres</small><strong>${fmtInt(m.avg_stress)}</strong></div>
+      <div><small>Tętno spocz.</small><strong>${fmtInt(m.resting_hr, ' bpm')}</strong></div>
+      <p>${escapeHtml(r.advice)}</p>
+    </div>`;
+  }).join('');
+}
+function openRecoveryDetails(){
+  renderRecoveryHistory();
+  const overlay = $('recoveryDetails');
+  if(!overlay) return;
+  overlay.hidden = false;
+  document.body.classList.add('details-open');
+}
+function closeRecoveryDetails(){
+  const overlay = $('recoveryDetails');
+  if(overlay) overlay.hidden = true;
+  if($('workoutDetails')?.hidden !== false) document.body.classList.remove('details-open');
+}
 function recoveryScore(metric=latestDailyMetric){
   if(!metric) return {score: 60, label:'brak danych', penalty:0, advice:'Brak pełnych danych regeneracji z Garmina.'};
   const sleep = Number(metric.sleep_minutes || 0);
@@ -1240,12 +1279,37 @@ async function deleteTraining(id){
     alert('Nie udało się usunąć treningu z Supabase.');
   }
 }
+function textForHistory(item){
+  const meta = sportMeta[item.type] || sportMeta.other;
+  return [activityNameFor(item), meta.label, meta.pl, item.type, formatDate(trainingDate(item)), formatKm(item.distanceKm), item.note, item.source, item.garminActivityId].join(' ').toLowerCase();
+}
+function inHistoryRange(item){
+  if(historyRange === 'all') return true;
+  const days = Number(historyRange || 30);
+  const d = new Date(`${trainingDate(item)}T12:00:00`);
+  if(Number.isNaN(d.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return d >= cutoff;
+}
+function filteredHistoryItems(){
+  const full = trainings.length ? trainings : [demo];
+  const q = historySearch.trim().toLowerCase();
+  return full.filter(x => {
+    if(activeFilter !== 'all' && x.type !== activeFilter) return false;
+    if(!inHistoryRange(x)) return false;
+    if(q && !textForHistory(x).includes(q)) return false;
+    return true;
+  });
+}
 function renderHistory(){
   const full = trainings.length ? trainings : [demo];
-  const filtered = activeFilter === 'all' ? full : full.filter(x => x.type === activeFilter);
-  const html = filtered.length ? filtered.map(item => workoutHtml(item, true)).join('') : '<div class="empty-history">Brak treningów w wybranej dyscyplinie.</div>';
+  const filtered = filteredHistoryItems();
+  const html = filtered.length ? filtered.map(item => workoutHtml(item, true)).join('') : '<div class="empty-history">Brak treningów dla wybranego filtra lub wyszukiwanej frazy.</div>';
   $('historyList').innerHTML = html;
-  $('recentList').innerHTML = full.slice(0,4).map(item => workoutHtml(item, false)).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
+  $('recentList').innerHTML = full.slice(0,6).map(item => workoutHtml(item, false)).join('') || '<div class="empty-history">Dodaj pierwszy trening.</div>';
+  const countLabel = $('historyCountLabel');
+  if(countLabel) countLabel.textContent = `${filtered.length} / ${full.length}`;
 }
 function generateWeeklyPlan(readiness, loadLabel, missing){
   const base = [
@@ -1272,6 +1336,45 @@ function generateWeeklyPlan(readiness, loadLabel, missing){
     base[6] = ['Nd', '🏃 Bieg tlenowy', '45–60 min • kontrola tętna'];
   }
   return base.map(([day,title,desc]) => `<div class="plan-day"><b>${day}</b><span>${title}</span><small>${desc}</small></div>`).join('');
+}
+function coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing, latest, rec, weekTss, advancedItems}){
+  const latestName = latest ? activityNameFor(latest) : 'brak ostatniego treningu';
+  const latestType = latest ? (sportMeta[latest.type]?.pl || latest.type) : 'trening';
+  const sleep = latestDailyMetric ? Number(latestDailyMetric.sleep_minutes || 0) : 0;
+  const bb = latestDailyMetric ? Number(latestDailyMetric.body_battery_end ?? latestDailyMetric.body_battery_max ?? latestDailyMetric.body_battery_charged ?? NaN) : NaN;
+  const stress = latestDailyMetric ? Number(latestDailyMetric.avg_stress || 0) : 0;
+  const reasons = [];
+  if(weekCount) reasons.push(`w ostatnich 7 dniach jest ${weekCount} treningów i ${(weekMinutes/60).toFixed(1).replace('.', ',')} h pracy`);
+  if(weekTss) reasons.push(`TSS tygodnia wynosi około ${weekTss.toFixed(0)}`);
+  if(sleep && sleep < 330) reasons.push(`sen był krótki (${fmtSleep(sleep)})`);
+  else if(sleep) reasons.push(`sen: ${fmtSleep(sleep)}`);
+  if(Number.isFinite(bb)) reasons.push(`Body Battery: ${Math.round(bb)}/100`);
+  if(stress) reasons.push(`stres: ${Math.round(stress)}`);
+  let verdict = '';
+  let action = '';
+  if(readiness < 55 || (Number.isFinite(bb) && bb < 40) || (sleep && sleep < 320)){
+    verdict = 'Organizm wygląda na niedoregenerowany.';
+    action = 'Dzisiaj nie robiłbym mocnego biegu ani interwałów. Najlepsze będzie lekkie pływanie techniczne 20–40 min, bardzo spokojny rower Z1/Z2 albo pełna regeneracja, jeśli nogi są ciężkie.';
+  } else if(loadLabel === 'mocny' || (weekTss && weekTss > 250)){
+    verdict = 'Tydzień jest już mocny, więc trzeba pilnować jakości regeneracji.';
+    action = 'Dzisiaj wybierz spokojny trening tlenowy. Jeżeli ma być rower, to równo i bez ścigania; jeśli bieg, to krótki easy. Priorytet: nie dokładać zmęczenia na siłę.';
+  } else if(missing.includes('swim')){
+    verdict = 'Balans triathlonowy prosi się o pływanie.';
+    action = 'Dobry wybór na dziś: pływanie techniczne 30–45 min. Skup się na oddechu, pozycji i spokojnej pracy, bez walki o tempo.';
+  } else if(missing.includes('bike')){
+    verdict = 'Brakuje roweru pod bazę 180 km.';
+    action = 'Dobry wybór na dziś: rower Z2 60–90 min. Równo, spokojnie, bez mocnych akcentów — budujemy bazę pod Kalmar.';
+  } else if(missing.includes('run')){
+    verdict = 'Brakuje spokojnego biegania.';
+    action = 'Dobry wybór na dziś: bieg easy 30–45 min, na luzie. Ma zostać zapas, bo docelowo bieg przyjdzie po 180 km roweru.';
+  } else if(readiness >= 75){
+    verdict = 'Gotowość wygląda dobrze.';
+    action = 'Można zrobić normalny trening planowy, ale nadal bez przesady: jeden konkretny akcent wystarczy. Po treningu dopilnuj jedzenia, płynów i snu.';
+  } else {
+    verdict = 'Sytuacja jest umiarkowana — można trenować, ale rozsądnie.';
+    action = 'Najbezpieczniej zrobić trening tlenowy albo techniczny. Niech dzisiejszy trening pomaga jutru, a nie tylko wygląda mocno w statystykach.';
+  }
+  return { latestName, latestType, verdict, action, reasons: reasons.join(' • ') };
 }
 function analyze(){
   const latest = trainings[0] || demo;
@@ -1338,9 +1441,10 @@ function analyze(){
   if(advancedScore >= 25 && readiness < 65){
     plan = ['😴 Regeneracja po mocnym obciążeniu Garmin', '🏊 Lekkie pływanie techniczne 20–30 min', '📌 Bez interwałów i bez ścigania jutro'];
   }
-  $('decision').textContent = decision;
-  $('aiSummary').innerHTML = `<p><b>Dzień przygotowań:</b> ${$('prepDay').textContent}. Każdy zapisany trening buduje drogę do Kalmar.</p><p><b>Ostatnie 7 dni:</b> ${weekCount} treningów, ${(weekMinutes/60).toFixed(1).replace('.', ',')} h, ${formatKm(totalKm,1)} km łącznie.</p><p><b>AI:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
-  $('planList').innerHTML = plan.map(x=>`<li>${x}</li>`).join('');
+  const coach = coachTodayAdvice({readiness, loadLabel, weekCount, weekMinutes, missing, latest, rec, weekTss, advancedItems});
+  $('decision').textContent = `${readiness < 55 ? '🔴' : readiness >= 75 ? '🟢' : '🟡'} ${coach.verdict}`;
+  $('aiSummary').innerHTML = `<p><b>Co widzę:</b> ${coach.reasons || 'czekam na więcej danych z Garmin Sync'}.</p><p><b>Po ludzku:</b> ${coach.verdict}</p><p><b>Co dziś zrobić:</b> ${coach.action}</p><p><b>Balans:</b> ${balanceText}</p><p><b>Regeneracja Garmin:</b> ${recoveryLine}</p>${latestAdvanced ? `<p><b>Ostatni trening — dane Garmin:</b> ${latestAdvanced}</p>` : ''}`;
+  $('planList').innerHTML = [coach.action, ...plan.slice(0,2)].map(x=>`<li>${x}</li>`).join('');
   if($('weeklyPlan')) $('weeklyPlan').innerHTML = generateWeeklyPlan(readiness, loadLabel, missing);
 }
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); updatePreview(); }
@@ -1383,6 +1487,12 @@ $all('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => sh
 $all('[data-goto]').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.goto)));
 $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () => setSport(btn.dataset.sport)));
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));
+if($('historySearch')) $('historySearch').addEventListener('input', e => { historySearch = e.target.value || ''; renderHistory(); });
+if($('historyRange')) $('historyRange').addEventListener('change', e => { historyRange = e.target.value || '30'; renderHistory(); });
+if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
+if($('recoveryCard')) $('recoveryCard').addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openRecoveryDetails(); });
+if($('closeRecoveryBtn')) $('closeRecoveryBtn').addEventListener('click', closeRecoveryDetails);
+if($('recoveryDetails')) $('recoveryDetails').addEventListener('click', (event) => { if(event.target.id === 'recoveryDetails') closeRecoveryDetails(); });
 $('historyList').addEventListener('click', (event) => {
   const btn = event.target.closest('[data-delete-id]');
   if(btn){ event.stopPropagation(); deleteTraining(btn.dataset.deleteId); return; }
@@ -1462,7 +1572,7 @@ if($('addGarminDetailsBtn')) $('addGarminDetailsBtn').addEventListener('click', 
 if($('deleteDetailsBtn')) $('deleteDetailsBtn').addEventListener('click', deleteSelectedWorkout);
 if($('parseGarminTextBtn')) $('parseGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(false));
 if($('clearGarminTextBtn')) $('clearGarminTextBtn').addEventListener('click', () => mergeAdvancedIntoSelected(true));
-document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !$('workoutDetails')?.hidden) closeWorkoutDetails(); });
+document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !$('workoutDetails')?.hidden) closeWorkoutDetails(); if(event.key === 'Escape' && !$('recoveryDetails')?.hidden) closeRecoveryDetails(); });
 
 const savedLink = localStorage.getItem('lastGarminLink');
 if(savedLink) $('garminLink').value = savedLink;
