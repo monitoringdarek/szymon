@@ -1,4 +1,4 @@
-const VERSION = '2.9';
+const VERSION = '2.9.1';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -1703,14 +1703,14 @@ async function loadAiJournalFromCloud(){
     saveAiJournalStore();
     if($('aiJournalStatus')){
       $('aiJournalStatus').className = 'sync-status ok';
-      $('aiJournalStatus').textContent = `Dziennik AI połączony z Supabase • wpisów w pamięci: ${aiJournal.length}`;
+      $('aiJournalStatus').textContent = `Dziennik AI połączony z Supabase i lokalną kopią • wpisów: ${aiJournal.length}`;
     }
   }catch(err){
     console.warn('Nie udało się pobrać dziennika AI z Supabase', err);
     aiJournal = readAiJournal();
     if($('aiJournalStatus')){
       $('aiJournalStatus').className = 'sync-status warn';
-      $('aiJournalStatus').textContent = 'Nie udało się pobrać dziennika z Supabase — używam lokalnej kopii na tym urządzeniu.';
+      $('aiJournalStatus').textContent = 'Nie udało się pobrać dziennika z Supabase — używam lokalnej kopii bezpieczeństwa na tym urządzeniu.';
     }
   }
   loadAiJournalForm($('aiJournalDate')?.value || todayDate());
@@ -1786,6 +1786,38 @@ async function saveAiJournalEntry(){
     if($('aiJournalStatus')){ $('aiJournalStatus').className = 'sync-status warn'; $('aiJournalStatus').textContent = `Nie udało się zapisać w Supabase — wpis został bezpiecznie zapisany lokalnie na tym urządzeniu.`; }
   }
 }
+async function deleteAiJournalEntry(){
+  const date = $('aiJournalDate')?.value || todayDate();
+  const existing = findAiJournalByDate(date);
+  if(!existing){
+    if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent=`Nie ma zapisanego wpisu z dnia ${formatDate(date)}.`; }
+    return;
+  }
+  if(!confirm(`Usunąć wpis dziennika AI z dnia ${formatDate(date)}?`)) return;
+  aiJournal = aiJournal.filter(x => String(x.date||'').slice(0,10) !== String(date).slice(0,10));
+  saveAiJournalStore();
+  resetAiJournalForm();
+  if($('aiJournalDate')) $('aiJournalDate').value = date;
+  if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent=`Usuwam wpis z dnia ${formatDate(date)} z Supabase...`; }
+  try{
+    if(currentUser?.id){
+      await apiDelete(`${AI_JOURNAL_ENDPOINT}?user_id=eq.${encodeURIComponent(currentUser.id)}&journal_date=eq.${encodeURIComponent(date)}`);
+      if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status ok'; $('aiJournalStatus').textContent=`Wpis z dnia ${formatDate(date)} usunięty z Supabase i lokalnej kopii.`; }
+    } else {
+      if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status ok'; $('aiJournalStatus').textContent=`Wpis z dnia ${formatDate(date)} usunięty z lokalnej kopii.`; }
+    }
+  }catch(err){
+    console.warn('Nie udało się usunąć wpisu AI w Supabase', err);
+    if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status warn'; $('aiJournalStatus').textContent=`Usunięto lokalnie, ale Supabase nie potwierdził usunięcia. Odśwież wpisy i sprawdź.`; }
+  }
+  renderAiSupport();
+}
+
+async function refreshAiJournalEntries(){
+  if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent='Odświeżam wpisy dziennika z Supabase...'; }
+  await loadAiJournalFromCloud();
+}
+
 function hasMeaningfulPain(text=''){
   const t = String(text).toLowerCase().trim();
   if(!t) return false;
@@ -1842,6 +1874,7 @@ function renderAiSupport(){
     else list.innerHTML = aiJournal.slice(0,14).map(e => `<article class="ai-journal-entry ${hasMeaningfulPain(e.pain) ? 'pain' : ''}">
       <div class="ai-entry-head"><b>${formatDate(e.date)}</b><span>Energia ${e.energy}/5 • Stres ${e.stress}/5 • Motywacja ${e.motivation}/5</span></div>
       <p><strong>Jedzenie:</strong> ${escapeHtml(shortText(e.food, 'brak wpisu'))}</p>
+      ${e.hydration ? `<p><strong>Nawodnienie:</strong> ${escapeHtml(shortText(e.hydration, ''))}</p>` : ''}
       <p><strong>Samopoczucie:</strong> ${escapeHtml(shortText(e.feeling, 'brak wpisu'))}</p>
       <p><strong>Bóle:</strong> ${escapeHtml(shortText(e.pain, 'brak wpisu'))}</p>
       ${e.notes ? `<p><strong>Notatka:</strong> ${escapeHtml(shortText(e.notes, ''))}</p>` : ''}
@@ -1895,6 +1928,8 @@ if($('historyRange')) $('historyRange').addEventListener('change', e => { histor
 if($('aiJournalDate')) $('aiJournalDate').addEventListener('change', e => loadAiJournalForm(e.target.value || todayDate()));
 if($('saveAiJournalBtn')) $('saveAiJournalBtn').addEventListener('click', () => saveAiJournalEntry());
 if($('clearAiJournalFormBtn')) $('clearAiJournalFormBtn').addEventListener('click', () => { resetAiJournalForm(); if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent='Formularz wyczyszczony. Dane zapisane wcześniej zostają w pamięci AI.'; } });
+if($('deleteAiJournalBtn')) $('deleteAiJournalBtn').addEventListener('click', () => deleteAiJournalEntry());
+if($('refreshAiJournalBtn')) $('refreshAiJournalBtn').addEventListener('click', () => refreshAiJournalEntries());
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);

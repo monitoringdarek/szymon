@@ -896,3 +896,10 @@ body::-webkit-scrollbar,
 @media(max-width:355px){
   .top-actions{grid-template-columns:1fr}
 }
+
+/* v2.9.1 — stabilizacja dziennika AI */
+.journal-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.journal-head-actions .text-btn{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:999px;padding:7px 11px;color:#dbe7fb}
+.ai-journal-actions{grid-template-columns:1fr .75fr .75fr!important}
+.ai-journal-actions .danger{border-color:rgba(255,95,95,.35)}
+@media(max-width:430px){.journal-head-actions{justify-content:flex-start}.ai-journal-actions{grid-template-columns:1fr!important}}
