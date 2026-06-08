@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v2.9.2</title>
+  <title>Szymon AI Coach • Road to Kalmar v3.0</title>
   <link rel="stylesheet" href="styles.css?v=292" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
       <div class="top-actions">
         <a class="dad-help-link" href="mailto:darekwawrzynek@gmail.com?subject=Pomoc%20-%20Szymon%20AI%20Coach">Pomoc • WawrzyS</a>
         <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
@@ -137,7 +137,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -222,7 +222,7 @@
 
       <section class="screen" id="screen-ai">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
           <h1>Wsparcie AI</h1>
           <p>Dziennik trenera: jedzenie, samopoczucie, bóle i ważne uwagi z drogi do Kalmar.</p>
         </section>
@@ -252,6 +252,22 @@
             <li>Przy słabym śnie, niskim Body Battery lub wysokim stresie — aplikacja wybiera ostrożny wariant.</li>
             <li>Przy diecie AI nie proponuje głodzenia ani cięcia kalorii — pilnuje paliwa, nawodnienia i regeneracji.</li>
           </ul>
+        </section>
+
+        <section class="card gemini-ai-card" id="geminiAiCard">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Prawdziwe AI przez backend</span>
+              <h2>Gemini AI Coach</h2>
+            </div>
+            <span class="timeline-badge gemini-badge">v3.0</span>
+          </div>
+          <p class="gemini-intro">Gemini analizuje dane z Supabase: treningi, regenerację Garmin i dziennik dnia. Klucz API jest ukryty w Supabase Secrets — nie ma go w aplikacji ani na GitHubie.</p>
+          <div class="gemini-actions">
+            <button class="main-cta" id="runGeminiAiBtn">Analizuj z Gemini AI</button>
+          </div>
+          <div id="geminiAiStatus" class="sync-status info">Gotowe do analizy. Używaj po aktualnym wpisie dnia albo po synchronizacji Garmina.</div>
+          <div id="geminiAiOutput" class="gemini-output"><div class="gemini-placeholder">Brak analizy Gemini. Kliknij przycisk, żeby pobrać pierwszą bezpieczną analizę.</div></div>
         </section>
 
         <section class="ai-support-grid">
@@ -321,7 +337,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -371,7 +387,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v2.9.2</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.0</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -494,7 +510,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v2.9.2 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.0 • Supabase Sync</footer>
       </section>
     </main>
 
