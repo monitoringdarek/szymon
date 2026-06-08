@@ -1,4 +1,4 @@
-const VERSION = '2.1';
+const VERSION = '2.1.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -354,20 +354,20 @@ function formatMetricValue(key, value){
   const raw = String(value).trim();
   const n = numericOrNull(raw);
   const hasUnit = /[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ%®]/.test(raw);
-  const timeKeys = new Set(['movingTime','elapsedTime','standingTime','seatedTime']);
-  const wattKeys = new Set(['avgPower','maxPower','npPower','ftp','standingPowerAvg','seatedPowerAvg']);
-  const bpmKeys = new Set(['avgHr','maxHr']);
-  const rpmKeys = new Set(['avgCadence','maxCadence']);
-  const meterKeys = new Set(['elevationGain','elevationLoss','minElevation','maxElevation']);
-  const kcalKeys = new Set(['restingCalories','activeCalories','totalCalories']);
-  const percentKeys = new Set(['staminaStart','staminaEnd','staminaMin']);
-  const speedKeys = new Set(['avgSpeed','movingSpeed','maxSpeed']);
+  const timeKeys = new Set(['movingTime','elapsedTime','standingTime','seatedTime','duration','elapsedDuration','movingDuration']);
+  const wattKeys = new Set(['avgPower','maxPower','npPower','ftp','standingPowerAvg','seatedPowerAvg','averagePower','maxAvgPower']);
+  const bpmKeys = new Set(['avgHr','maxHr','averageHR','maxHR']);
+  const rpmKeys = new Set(['avgCadence','maxCadence','averageCadence','maxCadence']);
+  const meterKeys = new Set(['elevationGain','elevationLoss','minElevation','maxElevation','ascent','descent']);
+  const kcalKeys = new Set(['restingCalories','activeCalories','totalCalories','calories']);
+  const percentKeys = new Set(['staminaStart','staminaEnd','staminaMin','bodyBattery']);
+  const speedKeys = new Set(['avgSpeed','movingSpeed','maxSpeed','averageSpeed','maxSpeed']);
   if(timeKeys.has(key) && n !== null){
     if(raw.includes(':')) return raw;
     return secondsToClock(n);
   }
   if(speedKeys.has(key) && n !== null){
-    // Garmin API często oddaje prędkość w m/s. Małe wartości konwertujemy na km/h.
+    // Garmin API często oddaje prędkość w m/s. Wartości < 20 traktujemy jako m/s i konwertujemy na km/h.
     const kmh = n > 0 && n < 20 ? n * 3.6 : n;
     return `${formatSmartNumber(kmh,1)} km/h`;
   }
@@ -923,13 +923,35 @@ const metricLabels = {
   standingTime: 'Czas stojąc', standingPowerAvg: 'Śr. moc stojąc', seatedTime: 'Czas siedząc', seatedPowerAvg: 'Śr. moc siedząc', revolutions: 'Obroty'
 };
 const metricOrder = ['avgPower','maxPower','npPower','intensityFactor','tss','ftp','workKj','avgHr','maxHr','avgCadence','maxCadence','movingTime','elapsedTime','avgSpeed','movingSpeed','maxSpeed','elevationGain','elevationLoss','minElevation','maxElevation','restingCalories','activeCalories','totalCalories','fluidLoss','staminaStart','staminaEnd','staminaMin','bodyBattery','aerobicTE','anaerobicTE','trainingLoad','benefit','standingTime','standingPowerAvg','seatedTime','seatedPowerAvg','revolutions'];
+
+function normalizeMetricKeyAndValue(key, value){
+  // v2.1.2 — dodatkowa ochrona formatowania danych z Garmin Sync.
+  const map = {
+    averagePower: 'avgPower', maxAvgPower: 'maxPower', maxPower: 'maxPower', normalizedPower: 'npPower', normalized_power: 'npPower',
+    averageHR: 'avgHr', averageHeartRate: 'avgHr', maxHR: 'maxHr', maxHeartRate: 'maxHr',
+    averageCadence: 'avgCadence', maxCyclingCadence: 'maxCadence',
+    movingDuration: 'movingTime', elapsedDuration: 'elapsedTime', duration: 'movingTime',
+    averageSpeed: 'avgSpeed', speed: 'avgSpeed', maxSpeed: 'maxSpeed',
+    ascent: 'elevationGain', elevationGain: 'elevationGain', descent: 'elevationLoss',
+    calories: 'totalCalories', activeKilocalories: 'activeCalories', bmrKilocalories: 'restingCalories',
+    trainingStressScore: 'tss', intensityFactor: 'intensityFactor', trainingEffectLabel: 'benefit'
+  };
+  const k = map[key] || key;
+  return [k, value];
+}
+
 function renderAdvancedStats(item){
   const box = $('advancedStats');
   if(!box) return;
-  const m = item.metrics || {};
+  const sourceMetrics = item.metrics || {};
+  const normalized = {};
+  Object.entries(sourceMetrics).forEach(([k,v]) => {
+    const [nk,nv] = normalizeMetricKeyAndValue(k,v);
+    if(nv !== undefined && nv !== null && String(nv).trim() !== '') normalized[nk] = nv;
+  });
   const rows = metricOrder
-    .filter(k => m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== '')
-    .map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(formatMetricValue(k, m[k]))}</b></div>`);
+    .filter(k => normalized[k] !== undefined && normalized[k] !== null && String(normalized[k]).trim() !== '')
+    .map(k => `<div><span>${metricLabels[k] || k}</span><b>${escapeHtml(formatMetricValue(k, normalized[k]))}</b></div>`);
   if(!rows.length){
     box.className = 'advanced-stats empty';
     box.innerHTML = 'Brak dodatkowych danych. Użyj „Dodaj z Garmin”, aby wkleić szczegóły z Garmin Connect.';
