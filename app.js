@@ -1,11 +1,14 @@
-const VERSION = '3.1.5';
+const VERSION = '3.1.6';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
 const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV31';
-const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV315';
+const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV316';
+const GEMINI_USAGE_KEY = 'szymonKalmarGeminiUsageV316';
+const GEMINI_COOLDOWN_MS = 90 * 1000;
+const GEMINI_DAILY_SOFT_LIMIT = 6;
 
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
@@ -1815,7 +1818,7 @@ async function saveAiJournalEntry(){
 }
 async function deleteAiJournalEntry(){
   const date = $('aiJournalDate')?.value || todayDate();
-  const existing = findAiJournalByDate(date);
+  const existing = getAiJournalForDate(date);
   if(!existing){
     if($('aiJournalStatus')){ $('aiJournalStatus').className='sync-status info'; $('aiJournalStatus').textContent=`Nie ma zapisanego wpisu z dnia ${formatDate(date)}.`; }
     return;
@@ -1909,6 +1912,54 @@ function renderAiSupport(){
   }
 }
 
+
+function geminiUsageToday(){
+  const today = todayDate();
+  try{
+    const data = JSON.parse(localStorage.getItem(GEMINI_USAGE_KEY) || '{}');
+    if(data.date !== today) return { date: today, count: 0, lastAt: 0 };
+    return { date: today, count: Number(data.count || 0), lastAt: Number(data.lastAt || 0) };
+  }catch{
+    return { date: todayDate(), count: 0, lastAt: 0 };
+  }
+}
+function saveGeminiUsage(data){
+  localStorage.setItem(GEMINI_USAGE_KEY, JSON.stringify({ date: todayDate(), count: Number(data.count || 0), lastAt: Number(data.lastAt || 0) }));
+}
+function markGeminiAttempt(){
+  const u = geminiUsageToday();
+  u.count += 1;
+  u.lastAt = Date.now();
+  saveGeminiUsage(u);
+  updateGeminiUsageUi();
+  return u;
+}
+function geminiCooldownInfo(){
+  const u = geminiUsageToday();
+  const leftMs = Math.max(0, GEMINI_COOLDOWN_MS - (Date.now() - Number(u.lastAt || 0)));
+  return { ...u, leftMs, leftSec: Math.ceil(leftMs / 1000), limitLeft: Math.max(0, GEMINI_DAILY_SOFT_LIMIT - Number(u.count || 0)) };
+}
+function canCallGeminiNow(){
+  const info = geminiCooldownInfo();
+  if(info.count >= GEMINI_DAILY_SOFT_LIMIT) return { ok:false, reason:'daily', info };
+  if(info.leftMs > 0) return { ok:false, reason:'cooldown', info };
+  return { ok:true, info };
+}
+function updateGeminiUsageUi(){
+  const u = geminiUsageToday();
+  const text = `Gemini dziś: ${u.count}/${GEMINI_DAILY_SOFT_LIMIT}. Ostatnia dobra odpowiedź jest zapamiętana, żeby nie pytać AI bez potrzeby.`;
+  const a = $('geminiUsageInfo'); if(a) a.textContent = text;
+  const b = $('geminiChatUsageInfo'); if(b) b.textContent = text;
+}
+function quotaFriendlyMessage(message=''){
+  const m = String(message || '').toLowerCase();
+  if(m.includes('quota') || m.includes('rate') || m.includes('limit') || m.includes('429') || m.includes('too many')){
+    return 'Limit Gemini chwilowo wykorzystany. Nie klikaj kilka razy pod rząd — pokażę ostatnią dobrą odpowiedź, a nowe pytanie spróbuj później.';
+  }
+  if(m.includes('sesja') || m.includes('zaloguj') || m.includes('jwt') || m.includes('auth')) return 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie.';
+  return 'AI chwilowo nie odpowiedziało. Spróbuj później. Stabilna analiza regułowa i ostatnia dobra odpowiedź zostają dostępne.';
+}
+
 function readLastGeminiAnalysis(){
   try { return JSON.parse(localStorage.getItem(GEMINI_ANALYSIS_KEY) || 'null'); } catch { return null; }
 }
@@ -1934,6 +1985,7 @@ function clearGeminiChat(){
   const input = $('geminiQuestionInput');
   if(input) input.value = '';
   renderGeminiChatHistory();
+  updateGeminiUsageUi();
   const status = $('geminiChatStatus');
   if(status){ status.className = 'sync-status info'; status.textContent = 'Rozmowa wyczyszczona. Wpisz nowe pytanie do AI Coach.'; }
 }
@@ -2024,26 +2076,40 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
   const status = $(statusId);
   const btn = $(buttonId);
   const isQuestion = Boolean(String(question || '').trim());
-  const sessionOk = await refreshSessionIfNeeded();
+  const gate = canCallGeminiNow();
+  if(!gate.ok){
+    const msg = gate.reason === 'daily'
+      ? `Osiągnięto dzisiejszy bezpieczny limit Gemini w aplikacji (${GEMINI_DAILY_SOFT_LIMIT}/${GEMINI_DAILY_SOFT_LIMIT}). Ostatnia dobra odpowiedź zostaje dostępna. Wróć później albo jutro.`
+      : `Daj Gemini chwilę. Następne pytanie najwcześniej za około ${gate.info.leftSec} s. To chroni darmowy limit API.`;
+    if(status){ status.className = 'sync-status warn'; status.textContent = msg; }
+    if(!isQuestion){
+      const last = readLastGeminiAnalysis();
+      if(last) renderGeminiAnalysis(last, targetId);
+    }
+    updateGeminiUsageUi();
+    return;
+  }
+  const sessionOk = await refreshSessionIfNeeded(true);
   if(!sessionOk || !currentSession?.access_token || !currentUser?.id){
     if(status){ status.className = 'sync-status warn'; status.textContent = 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie i spróbuj uruchomić AI Coach.'; }
     return;
   }
+  markGeminiAttempt();
   if(btn){ btn.disabled = true; btn.textContent = isQuestion ? 'Pytam AI...' : 'Analizuję...'; }
-  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI analizuje dane i przygotowuje odpowiedź. To może potrwać kilkanaście sekund.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. To może potrwać kilkanaście sekund.'; }
+  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI analizuje dane. To może potrwać kilkanaście sekund — nie klikaj ponownie.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. To może potrwać kilkanaście sekund — nie klikaj ponownie.'; }
   try{
     const response = await fetch(GEMINI_AI_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.5', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.6', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
     try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
     if(!response.ok || !data || data.ok === false){
-      const msg = data?.error || raw || `HTTP ${response.status}`;
+      const msg = data?.error || data?.message || raw || `HTTP ${response.status}`;
       throw new Error(msg);
     }
     const payload = { ...data, generatedAt: data.generatedAt || new Date().toISOString(), question: String(question || '').trim() };
@@ -2057,19 +2123,32 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       saveLastGeminiAnalysis(payload);
       renderGeminiAnalysis(payload, targetId);
     }
-    if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział. Nowe pytanie zastąpi tę odpowiedź.' : 'Analiza Gemini gotowa: krótka decyzja, uzasadnienie i wskazówka regeneracyjna.'; }
+    if(status){ status.className = 'sync-status ok'; status.textContent = isQuestion ? 'AI Coach odpowiedział. Odpowiedź została zapamiętana lokalnie.' : 'Analiza Gemini gotowa i zapamiętana jako ostatnia dobra odpowiedź.'; }
   }catch(err){
     console.warn('Gemini AI Coach error', err);
-    const friendly = String(err?.message || '').toLowerCase().includes('zaloguj') || String(err?.message || '').toLowerCase().includes('sesja')
-      ? 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie.'
-      : 'AI chwilowo nie odpowiedziało. Spróbuj ponownie za chwilę. Zostaje bezpieczna analiza regułowa.';
+    const friendly = quotaFriendlyMessage(err?.message || '');
     if(status){ status.className = 'sync-status warn'; status.textContent = friendly; }
     if(!isQuestion){
       const last = readLastGeminiAnalysis();
-      if(last) renderGeminiAnalysis(last, targetId);
+      if(last){
+        renderGeminiAnalysis(last, targetId);
+        if(status) status.textContent += ' Poniżej pokazuję ostatnią dobrą analizę.';
+      }
+    } else {
+      const out = $(targetId);
+      if(out) out.innerHTML = '<div class="gemini-placeholder">AI nie odpowiedziało na to pytanie. Nie wysyłam automatycznych powtórek, żeby nie zjadać limitu Gemini.</div>';
     }
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = isQuestion ? 'Wyślij pytanie' : 'Analizuj z Gemini AI'; }
+    const info = geminiCooldownInfo();
+    const restore = () => {
+      if(!btn) return;
+      const g = canCallGeminiNow();
+      if(g.ok){ btn.disabled = false; btn.textContent = isQuestion ? 'Wyślij pytanie' : 'Analizuj z Gemini AI'; updateGeminiUsageUi(); return; }
+      btn.disabled = true;
+      btn.textContent = g.reason === 'daily' ? 'Limit AI dziś' : `Poczekaj ${g.info.leftSec}s`;
+      setTimeout(restore, 1000);
+    };
+    restore();
   }
 }
 async function runGeminiAiCoach(){
@@ -2232,6 +2311,7 @@ if($('workoutDateInput')) $('workoutDateInput').value = todayDate();
 if($('aiJournalDate')) loadAiJournalForm(todayDate());
 renderGeminiAnalysis(readLastGeminiAnalysis());
 renderGeminiChatHistory();
+updateGeminiUsageUi();
 
 if(loadStoredAuth()){
   showApp();
@@ -2241,4 +2321,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=315').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=316').catch(()=>{}); }

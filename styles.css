@@ -954,3 +954,7 @@ body::-webkit-scrollbar,
 .gemini-clear:hover{border-color:rgba(255,123,29,.42)!important;background:rgba(255,123,29,.08)!important;color:#fff!important}
 .gemini-chat-turn{margin-bottom:0;padding-bottom:0;border-bottom:0}
 @media(max-width:520px){.gemini-chat-actions{grid-template-columns:1fr}.gemini-clear{min-width:0}}
+
+/* v3.1.6 — Gemini limit/cache/antyspam */
+.gemini-usage-info{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:14px;padding:10px 12px;color:#b9c7da;font-size:12px;font-weight:800;line-height:1.35;margin:10px 0 12px}
+.gemini-usage-info.small{margin:10px 0;color:#aebdd2}

@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v315';
+const CACHE_NAME = 'szymon-ai-coach-v316';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=315',
-  './app.js?v=315',
+  './styles.css?v=316',
+  './app.js?v=316',
   './manifest.json',
   './icon-180.png'
 ];
@@ -20,5 +20,14 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if(event.request.method !== 'GET') return;
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then(res => res || caches.match('./index.html'))));
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      const fresh = fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => cached);
+      return cached || fresh;
+    })
+  );
 });
