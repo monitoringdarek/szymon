@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v316';
+const CACHE_NAME = 'szymon-ai-coach-v317';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=316',
-  './app.js?v=316',
+  './styles.css?v=317',
+  './app.js?v=317',
   './manifest.json',
   './icon-180.png'
 ];

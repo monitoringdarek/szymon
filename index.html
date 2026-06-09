@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.1.6</title>
-  <link rel="stylesheet" href="styles.css?v=316" />
+  <title>Szymon AI Coach • Road to Kalmar v3.1.7</title>
+  <link rel="stylesheet" href="styles.css?v=317" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
       <div class="top-actions">
         <a class="dad-help-link" href="mailto:darekwawrzynek@gmail.com?subject=Pomoc%20-%20Szymon%20AI%20Coach">Pomoc • WawrzyS</a>
         <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
@@ -137,7 +137,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -222,21 +222,21 @@
 
       <section class="screen" id="screen-ai">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
           <h1>Wsparcie AI</h1>
-          <p>Dziennik trenera: jedzenie, samopoczucie, bóle i ważne uwagi z drogi do Kalmar.</p>
+          <p>Krótko: wpis dnia, analiza i rozmowa z AI Coach.</p>
         </section>
 
         <section class="card ai-support-hero">
           <div>
             <span class="section-label">AI Coach Memory</span>
             <h2>Pamięć drogi do Kalmar</h2>
-            <p>Zapisuj to, czego Garmin nie widzi. Aplikacja połączy notatki z treningami, snem, stresem i Body Battery.</p>
+            <p>Zapisuj krótko, jak minął dzień. AI wykorzysta to przy kolejnych wskazówkach.</p>
           </div>
           <div class="ai-memory-orb">AI</div>
         </section>
 
-        <section class="card ai-safety-card" id="aiSafetyCard">
+        <section class="card ai-safety-card" id="aiSafetyCard" hidden>
           <div class="premium-head">
             <div>
               <span class="section-label">Mądre decyzje zawodnika</span>
@@ -260,10 +260,10 @@
               <span class="section-label">Prawdziwe AI przez backend</span>
               <h2>Gemini AI Coach</h2>
             </div>
-            <span class="timeline-badge gemini-badge">v3.1.6</span>
+            <span class="timeline-badge gemini-badge">v3.1.7</span>
           </div>
-          <p class="gemini-intro">Gemini analizuje dane z Supabase i odpowiada jak AI Coach: konkretnie, po ludzku, zawodniczo i z szacunkiem do ambicji. Dane techniczne są tłem — na ekranie ma być decyzja, nie tabelka.</p>
-          <div id="geminiUsageInfo" class="gemini-usage-info">Gemini dziś: 0/6. Ostatnia dobra odpowiedź jest zapamiętana, żeby nie pytać AI bez potrzeby.</div>
+          <p class="gemini-intro">AI Coach ma dawać krótką, konkretną wskazówkę zawodniczą — bez technicznego chaosu.</p>
+          <div id="geminiUsageInfo" class="gemini-usage-info">AI dziś: 0/6.</div>
           <div class="gemini-actions">
             <button class="main-cta" id="runGeminiAiBtn">Analizuj z Gemini AI</button>
           </div>
@@ -273,8 +273,8 @@
             <label for="geminiQuestionInput">Zapytaj AI Coach</label>
             <textarea id="geminiQuestionInput" rows="3" placeholder="Np. Co mogę poprawić? Jakim jestem rowerzystą? Co zrobić jutro? Co zjeść po rowerze?"></textarea>
             <div class="gemini-chat-actions"><button class="ghost gemini-send" id="sendGeminiQuestionBtn">Wyślij pytanie</button><button class="ghost gemini-clear" id="clearGeminiChatBtn" type="button">Wyczyść</button></div>
-            <div id="geminiChatUsageInfo" class="gemini-usage-info small">Gemini dziś: 0/6. Pytania wysyłaj świadomie — darmowy limit API jest niski.</div>
-            <div id="geminiChatStatus" class="sync-status info">Zadaj jedno pytanie. Odpowiedź AI zastąpi poprzednią, żeby panel nie rósł w nieskończoność.</div>
+            <div id="geminiChatUsageInfo" class="gemini-usage-info small">AI dziś: 0/6.</div>
+            <div id="geminiChatStatus" class="sync-status info">Zadaj jedno pytanie. Nowe pytanie zastąpi poprzednią odpowiedź.</div>
             <div id="geminiChatOutput" class="gemini-output small"><div class="gemini-placeholder">Tu pojawi się odpowiedź AI Coach na ostatnie pytanie. Kolejne pytanie zastąpi poprzednią odpowiedź.</div></div>
           </div>
         </section>
@@ -325,7 +325,7 @@
             <button class="ghost" id="clearAiJournalFormBtn">Wyczyść formularz</button>
             <button class="ghost danger" id="deleteAiJournalBtn">Usuń wpis dnia</button>
           </div>
-          <div id="aiJournalStatus" class="sync-status info">Dziennik AI zapisuje się w Supabase i lokalnej kopii bezpieczeństwa.</div>
+          <div id="aiJournalStatus" class="sync-status info">Wpis dnia zostanie zapamiętany.</div>
         </section>
 
         <section class="card ai-memory-card">
@@ -346,7 +346,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -396,7 +396,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.6</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -437,11 +437,11 @@
         <section class="page-title">
           <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Ustawienia</h1>
-          <p>Synchronizacja, instalacja PWA i informacje o projekcie.</p>
+          <p>Konto, profil i podstawowe ustawienia.</p>
         </section>
         <section class="card account-card">
           <h2>Konto</h2>
-          <p class="muted-small">Sesja jest zapamiętywana na tym urządzeniu. Po włączeniu RLS Supabase pokaże tylko dane zalogowanego użytkownika.</p>
+          <p class="muted-small">Konto Szymona jest zalogowane na tym urządzeniu.</p>
           <div id="accountStatus" class="sync-status info">Sprawdzam sesję...</div>
           <div class="settings-actions">
             <button class="ghost" id="logoutBtn">Wyloguj</button>
@@ -450,7 +450,7 @@
 
         <section class="card profile-card">
           <h2>Profil Szymona</h2>
-          <p class="muted-small">Te dane są zapisane w Supabase w tabeli athlete_profile i ustawiają klimat aplikacji Road to Kalmar.</p>
+          <p class="muted-small">Cel i data startu dla Road to Kalmar.</p>
           <div class="profile-grid">
             <label><span>Imię zawodnika</span><input id="athleteNameInput" type="text" value="Szymon"></label>
             <label><span>Cel główny</span><input id="targetEventInput" type="text" value="IRONMAN Kalmar 2026"></label>
@@ -462,7 +462,7 @@
 
 
 
-        <section class="card data-sources-card">
+        <section class="card data-sources-card" hidden>
           <div class="card-head">
             <h2>Źródła danych</h2>
             <span class="source-badge auto">v2.9</span>
@@ -508,7 +508,7 @@
           <div id="garminSyncStatus" class="sync-status info">Garmin Sync Agent: sprawdzam status...</div>
         </section>
         <section class="card settings-card">
-          <h2>Supabase</h2>
+          <h2>Dane</h2>
           <div id="syncStatus" class="sync-status info">Łączenie z Supabase...</div>
           <div class="settings-actions">
             <button class="ghost" id="refreshBtn2">Odśwież dane</button>
@@ -519,7 +519,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.1.6 • Supabase Sync</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.1.7</footer>
       </section>
     </main>
 
@@ -595,7 +595,7 @@
           <div>
             <span class="details-badge">🫀 Garmin Recovery</span>
             <h2>Historia regeneracji</h2>
-            <p>Sen, Body Battery, stres i tętno spoczynkowe z Garmin Sync Agent.</p>
+            <p>Sen, regeneracja, stres i tętno spoczynkowe.</p>
           </div>
           <button id="closeRecoveryBtn" class="close-btn" aria-label="Zamknij">×</button>
         </div>
@@ -617,6 +617,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=316"></script>
+  <script src="app.js?v=317"></script>
 </body>
 </html>

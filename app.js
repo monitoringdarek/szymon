@@ -1,12 +1,12 @@
-const VERSION = '3.1.6';
+const VERSION = '3.1.7';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
 const AUTH_SESSION_KEY = 'szymonKalmarAuthSessionV11';
 const AI_JOURNAL_KEY = 'szymonKalmarAiCoachJournalV29';
 const GEMINI_ANALYSIS_KEY = 'szymonKalmarGeminiAiCoachV31';
-const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV316';
-const GEMINI_USAGE_KEY = 'szymonKalmarGeminiUsageV316';
+const GEMINI_CHAT_KEY = 'szymonKalmarGeminiAiCoachChatV317';
+const GEMINI_USAGE_KEY = 'szymonKalmarGeminiUsageV317';
 const GEMINI_COOLDOWN_MS = 90 * 1000;
 const GEMINI_DAILY_SOFT_LIMIT = 6;
 
@@ -1947,17 +1947,17 @@ function canCallGeminiNow(){
 }
 function updateGeminiUsageUi(){
   const u = geminiUsageToday();
-  const text = `Gemini dziś: ${u.count}/${GEMINI_DAILY_SOFT_LIMIT}. Ostatnia dobra odpowiedź jest zapamiętana, żeby nie pytać AI bez potrzeby.`;
+  const text = `AI dziś: ${u.count}/${GEMINI_DAILY_SOFT_LIMIT}.`;
   const a = $('geminiUsageInfo'); if(a) a.textContent = text;
   const b = $('geminiChatUsageInfo'); if(b) b.textContent = text;
 }
 function quotaFriendlyMessage(message=''){
   const m = String(message || '').toLowerCase();
   if(m.includes('quota') || m.includes('rate') || m.includes('limit') || m.includes('429') || m.includes('too many')){
-    return 'Limit Gemini chwilowo wykorzystany. Nie klikaj kilka razy pod rząd — pokażę ostatnią dobrą odpowiedź, a nowe pytanie spróbuj później.';
+    return 'Limit AI na dziś jest chwilowo wykorzystany. Spróbuj później — ostatnia dobra odpowiedź zostaje dostępna.';
   }
   if(m.includes('sesja') || m.includes('zaloguj') || m.includes('jwt') || m.includes('auth')) return 'Sesja logowania wygasła. Zaloguj konto Szymona ponownie.';
-  return 'AI chwilowo nie odpowiedziało. Spróbuj później. Stabilna analiza regułowa i ostatnia dobra odpowiedź zostają dostępne.';
+  return 'AI chwilowo nie odpowiedziało. Spróbuj później.';
 }
 
 function readLastGeminiAnalysis(){
@@ -2079,8 +2079,8 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
   const gate = canCallGeminiNow();
   if(!gate.ok){
     const msg = gate.reason === 'daily'
-      ? `Osiągnięto dzisiejszy bezpieczny limit Gemini w aplikacji (${GEMINI_DAILY_SOFT_LIMIT}/${GEMINI_DAILY_SOFT_LIMIT}). Ostatnia dobra odpowiedź zostaje dostępna. Wróć później albo jutro.`
-      : `Daj Gemini chwilę. Następne pytanie najwcześniej za około ${gate.info.leftSec} s. To chroni darmowy limit API.`;
+      ? `Dzisiejszy limit AI w aplikacji został wykorzystany (${GEMINI_DAILY_SOFT_LIMIT}/${GEMINI_DAILY_SOFT_LIMIT}). Wróć później albo jutro.`
+      : `Daj AI chwilę. Następne pytanie najwcześniej za około ${gate.info.leftSec} s.`;
     if(status){ status.className = 'sync-status warn'; status.textContent = msg; }
     if(!isQuestion){
       const last = readLastGeminiAnalysis();
@@ -2096,14 +2096,14 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
   }
   markGeminiAttempt();
   if(btn){ btn.disabled = true; btn.textContent = isQuestion ? 'Pytam AI...' : 'Analizuję...'; }
-  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI analizuje dane. To może potrwać kilkanaście sekund — nie klikaj ponownie.' : 'Gemini analizuje treningi, regenerację Garmin i dziennik dnia. To może potrwać kilkanaście sekund — nie klikaj ponownie.'; }
+  if(status){ status.className = 'sync-status info'; status.textContent = isQuestion ? 'AI myśli nad odpowiedzią. To może potrwać kilkanaście sekund.' : 'AI analizuje dane. To może potrwać kilkanaście sekund.'; }
   try{
     const response = await fetch(GEMINI_AI_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.6', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.7', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2321,4 +2321,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=316').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=317').catch(()=>{}); }
