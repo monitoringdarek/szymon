@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.1.7</title>
-  <link rel="stylesheet" href="styles.css?v=317" />
+  <title>Szymon AI Coach • Road to Kalmar v3.1.8</title>
+  <link rel="stylesheet" href="styles.css?v=318" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -30,7 +30,7 @@
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
       <div class="top-actions">
         <a class="dad-help-link" href="mailto:darekwawrzynek@gmail.com?subject=Pomoc%20-%20Szymon%20AI%20Coach">Pomoc • WawrzyS</a>
         <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
@@ -39,12 +39,12 @@
 
     <main>
       <section class="screen active minimal-dashboard" id="screen-dashboard">
-        <section class="hero-card hero-wow">
+        <section class="hero-card hero-wow hero-kalmar-card">
           <div class="hero-bg"></div>
           <div class="hero-left">
             <div class="hero-kicker">ROAD TO IRONMAN</div>
-            <h1>KALMAR 2026</h1>
-            <p>226 km celu. Jeden spokojny, mądry dzień po drugim.</p>
+            <img class="kalmar-logo-main" src="ironman-kalmar-logo.png" alt="IRONMAN Kalmar" />
+            <p class="hero-slogan">226 km celu. Jeden spokojny, mądry dzień po drugim.</p>
             <div class="race-goals">
               <span class="swim">🏊 <b>3.8</b> km</span>
               <span class="bike">🚴 <b>180</b> km</span>
@@ -137,7 +137,7 @@
 
       <section class="screen" id="screen-trainings">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Analiza AI</h1>
           <p>Pierwsze automatyczne wnioski z historii Swim / Bike / Run.</p>
         </section>
@@ -222,7 +222,7 @@
 
       <section class="screen" id="screen-ai">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Wsparcie AI</h1>
           <p>Krótko: wpis dnia, analiza i rozmowa z AI Coach.</p>
         </section>
@@ -260,9 +260,8 @@
               <span class="section-label">Prawdziwe AI przez backend</span>
               <h2>Gemini AI Coach</h2>
             </div>
-            <span class="timeline-badge gemini-badge">v3.1.7</span>
+            <span class="timeline-badge gemini-badge">AI</span>
           </div>
-          <p class="gemini-intro">AI Coach ma dawać krótką, konkretną wskazówkę zawodniczą — bez technicznego chaosu.</p>
           <div id="geminiUsageInfo" class="gemini-usage-info">AI dziś: 0/6.</div>
           <div class="gemini-actions">
             <button class="main-cta" id="runGeminiAiBtn">Analizuj z Gemini AI</button>
@@ -346,7 +345,7 @@
 
       <section class="screen" id="screen-add">
         <section class="page-title with-bg compact-title">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Dodaj trening</h1>
           <p>Dodaj trening z Garmin Connect lub wprowadź ręcznie.</p>
         </section>
@@ -396,7 +395,7 @@
 
       <section class="screen" id="screen-history">
         <section class="page-title with-bg">
-          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO KALMAR 2026 • v3.1.7</div>
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Historia treningów</h1>
           <p>Przeglądaj treningi i analizuj postępy.</p>
         </section>
@@ -519,7 +518,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.1.7</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.1.8</footer>
       </section>
     </main>
 

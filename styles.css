@@ -958,3 +958,97 @@ body::-webkit-scrollbar,
 /* v3.1.6 — Gemini limit/cache/antyspam */
 .gemini-usage-info{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:14px;padding:10px 12px;color:#b9c7da;font-size:12px;font-weight:800;line-height:1.35;margin:10px 0 12px}
 .gemini-usage-info.small{margin:10px 0;color:#aebdd2}
+
+/* v3.1.8 — nowy hero Kalmar z oficjalnym logo */
+.hero-wow.hero-kalmar-card,
+.hero-kalmar-card{
+  min-height:300px;
+  padding:24px 18px;
+  border-color:rgba(255,90,22,.42);
+  background:linear-gradient(145deg,rgba(3,10,22,.98),rgba(8,24,49,.92));
+  box-shadow:0 24px 82px rgba(0,0,0,.50),0 0 56px rgba(255,90,22,.16),inset 0 1px 0 rgba(255,255,255,.055);
+}
+.hero-kalmar-card .hero-bg{
+  opacity:.96;
+  background:
+    radial-gradient(circle at 77% 31%,rgba(255,104,26,.68),transparent 23%),
+    radial-gradient(circle at 16% 0%,rgba(91,196,235,.14),transparent 30%),
+    linear-gradient(110deg,rgba(2,8,20,.98),rgba(3,14,29,.78) 54%,rgba(2,8,20,.98)),
+    radial-gradient(circle at 50% 120%,rgba(255,111,25,.17),transparent 38%);
+}
+.hero-kalmar-card .hero-left{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding-top:2px;
+}
+.hero-kalmar-card .hero-kicker{
+  margin-bottom:14px;
+  max-width:max-content;
+}
+.kalmar-logo-main{
+  width:min(100%, 330px);
+  max-height:138px;
+  object-fit:contain;
+  object-position:left center;
+  filter:drop-shadow(0 16px 30px rgba(0,0,0,.42)) drop-shadow(0 0 22px rgba(255,255,255,.06));
+  margin:0 0 10px;
+}
+.hero-kalmar-card .hero-slogan{
+  max-width:310px;
+  color:#f4f7ff;
+  font-size:16px;
+  line-height:1.28;
+  font-weight:900;
+  margin:4px 0 0;
+  text-shadow:0 8px 20px rgba(0,0,0,.35);
+}
+.hero-kalmar-card .race-goals{
+  margin-top:17px;
+  gap:10px;
+}
+.hero-kalmar-card .race-goals span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding-right:9px;
+  border-right:1px solid rgba(145,168,210,.30);
+}
+.hero-kalmar-card .race-goals span:last-child{border-right:0;padding-right:0}
+.hero-kalmar-card .race-goals b{font-size:20px;color:#fff}
+.hero-kalmar-card .countdown-wow{
+  width:132px;
+  flex-basis:132px;
+  border-radius:22px;
+  background:rgba(3,12,25,.82);
+  box-shadow:0 0 35px rgba(255,90,22,.34),inset 0 1px 0 rgba(255,255,255,.045);
+}
+.hero-kalmar-card .countdown-wow strong{
+  font-size:58px;
+  letter-spacing:-.04em;
+}
+.hero-kalmar-card .countdown-wow em{
+  border-top:1px solid rgba(145,168,210,.22);
+  padding-top:10px;
+}
+.gemini-intro{display:none!important}
+.dad-help-link{display:inline-flex;align-items:center;justify-content:center;text-align:center}
+@media(max-width:430px){
+  .hero-wow.hero-kalmar-card,
+  .hero-kalmar-card{min-height:282px;padding:20px 14px;gap:10px}
+  .kalmar-logo-main{width:min(100%, 270px);max-height:112px;margin-bottom:8px}
+  .hero-kalmar-card .hero-slogan{font-size:14px;max-width:230px}
+  .hero-kalmar-card .countdown-wow{width:108px;flex-basis:108px;padding:14px 8px}
+  .hero-kalmar-card .countdown-wow strong{font-size:44px}
+  .hero-kalmar-card .countdown-wow small{font-size:18px}
+  .hero-kalmar-card .countdown-wow em{font-size:9.5px}
+  .hero-kalmar-card .race-goals{gap:7px}
+  .hero-kalmar-card .race-goals b{font-size:17px}
+}
+@media(max-width:365px){
+  .hero-kalmar-card{display:block}
+  .hero-kalmar-card .countdown-wow{width:100%;margin-top:12px;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;text-align:left}
+  .hero-kalmar-card .countdown-wow strong{margin:0;font-size:42px;text-align:right}
+  .hero-kalmar-card .countdown-wow small{text-align:left}
+  .hero-kalmar-card .countdown-wow em{grid-column:1/-1;text-align:center;margin-top:0}
+}
