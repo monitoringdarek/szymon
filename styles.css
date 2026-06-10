@@ -959,7 +959,7 @@ body::-webkit-scrollbar,
 .gemini-usage-info{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:14px;padding:10px 12px;color:#b9c7da;font-size:12px;font-weight:800;line-height:1.35;margin:10px 0 12px}
 .gemini-usage-info.small{margin:10px 0;color:#aebdd2}
 
-/* v3.1.8 — nowy hero Kalmar z oficjalnym logo */
+/* v3.1.9 — nowy hero Kalmar z oficjalnym logo */
 .hero-wow.hero-kalmar-card,
 .hero-kalmar-card{
   min-height:300px;
@@ -1051,4 +1051,37 @@ body::-webkit-scrollbar,
   .hero-kalmar-card .countdown-wow strong{margin:0;font-size:42px;text-align:right}
   .hero-kalmar-card .countdown-wow small{text-align:left}
   .hero-kalmar-card .countdown-wow em{grid-column:1/-1;text-align:center;margin-top:0}
+}
+
+/* v3.1.9 — pełne odpowiedzi AI w przewijanym oknie */
+.gemini-output{
+  max-height:420px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding-right:12px;
+  scrollbar-width:thin;
+}
+.gemini-output.small{
+  max-height:460px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+.gemini-chat-answer{
+  max-height:360px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-right:12px;
+}
+.gemini-answer,.gemini-chat-text{
+  word-break:break-word;
+}
+.gemini-output::-webkit-scrollbar,.gemini-chat-answer::-webkit-scrollbar{width:6px}
+.gemini-output::-webkit-scrollbar-thumb,.gemini-chat-answer::-webkit-scrollbar-thumb{background:rgba(255,123,29,.45);border-radius:999px}
+.gemini-output::-webkit-scrollbar-track,.gemini-chat-answer::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
+@media(max-width:520px){
+  .gemini-output{max-height:360px}
+  .gemini-output.small{max-height:390px!important}
+  .gemini-chat-answer{max-height:320px}
 }
