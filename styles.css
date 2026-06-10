@@ -1126,3 +1126,13 @@ body::-webkit-scrollbar,
   .gemini-output,.gemini-output.small{max-height:430px!important;}
   .gemini-chat-answer{max-height:360px!important;}
 }
+
+
+/* v3.2.2 — Raport zawodnika */
+.athlete-report-card{border-color:rgba(255,123,29,.22);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
+.report-short-info{margin:8px 0 0;color:#b9c7dc;}
+.athlete-report-actions{display:grid;grid-template-columns:1.3fr .7fr .9fr;gap:10px;margin-top:14px;align-items:center}
+.athlete-report-actions button{min-height:48px}
+.athlete-report-output{margin:12px 0 0;max-height:430px;overflow:auto;-webkit-overflow-scrolling:touch;white-space:pre-wrap;border:1px solid rgba(145,168,210,.20);border-radius:18px;background:rgba(2,7,18,.56);padding:14px;color:#dbe6f8;font:13px/1.48 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+.athlete-report-output::-webkit-scrollbar{width:6px}.athlete-report-output::-webkit-scrollbar-thumb{background:rgba(255,123,29,.45);border-radius:999px}.athlete-report-output::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
+@media(max-width:520px){.athlete-report-actions{grid-template-columns:1fr}.athlete-report-output{max-height:360px}}

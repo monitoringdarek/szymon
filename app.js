@@ -1,4 +1,4 @@
-const VERSION = '3.2.0';
+const VERSION = '3.2.2';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -1848,6 +1848,157 @@ async function refreshAiJournalEntries(){
   await loadAiJournalFromCloud();
 }
 
+
+function reportDateList(days=3){
+  const base = new Date(`${todayDate()}T12:00:00`);
+  return Array.from({length: days}, (_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() - i);
+    return d.toISOString().slice(0,10);
+  });
+}
+function metricForExactDate(dateStr){
+  return dailyMetrics.find(d => String(d.metric_date || '').slice(0,10) === String(dateStr).slice(0,10)) || null;
+}
+function fmtReportValue(label, value){
+  const v = String(value || '').trim();
+  return v ? `${label}: ${v}` : `${label}: —`;
+}
+function reportWorkoutLine(item){
+  const meta = sportMeta[item.type] || sportMeta.other;
+  const parts = [];
+  parts.push(`${meta.pl}: ${activityNameFor(item).replace(' — trening Kalmar','')}`);
+  if(Number(item.distanceKm || 0) > 0) parts.push(`${formatKm(item.distanceKm)} km`);
+  if(Number(item.minutes || 0) > 0) parts.push(`${Math.round(Number(item.minutes))} min`);
+  if(Number(item.elevation || 0) > 0) parts.push(`+${Math.round(Number(item.elevation))} m`);
+  if(Number(item.calories || 0) > 0) parts.push(`${Math.round(Number(item.calories))} kcal`);
+  const tss = metricNumber(item, 'tss');
+  if(tss !== null) parts.push(`obciążenie ${Math.round(tss)}`);
+  const hr = metricNumber(item, 'avgHr') || numericOrNull(item.avgHr);
+  if(hr !== null) parts.push(`śr. tętno ${Math.round(hr)} bpm`);
+  return `- ${parts.join(' • ')}`;
+}
+function reportRecoveryLine(metric){
+  if(!metric) return 'Brak danych Garmin dla tego dnia.';
+  const bb = metric.body_battery_end ?? metric.body_battery_max ?? metric.body_battery_charged;
+  const parts = [
+    `sen ${fmtSleep(metric.sleep_minutes)}`,
+    `Body Battery ${fmtInt(bb, '/100')}`,
+    `stres ${fmtInt(metric.avg_stress)}`,
+    `tętno spoczynkowe ${fmtInt(metric.resting_hr, ' bpm')}`,
+    `kroki ${fmtInt(metric.steps)}`
+  ];
+  return parts.join(' • ');
+}
+function reportJournalLine(entry){
+  if(!entry) return 'Brak wpisu dnia.';
+  return [
+    fmtReportValue('Jedzenie', entry.food),
+    fmtReportValue('Nawodnienie', entry.hydration),
+    fmtReportValue('Samopoczucie', entry.feeling),
+    fmtReportValue('Ból/przeciążenie', entry.pain),
+    fmtReportValue('Notatka', entry.notes),
+    `Energia/stres/motywacja: ${entry.energy || '—'} / ${entry.stress || '—'} / ${entry.motivation || '—'}`
+  ].join('\n');
+}
+function reportDayConclusion({metric, entry, workouts}){
+  const notes = [];
+  const sleep = Number(metric?.sleep_minutes ?? NaN);
+  const bb = Number(metric?.body_battery_end ?? metric?.body_battery_max ?? metric?.body_battery_charged ?? NaN);
+  const stress = Number(metric?.avg_stress ?? NaN);
+  if(Number.isFinite(sleep) && sleep < 360) notes.push('sen krótki — regeneracja może nie nadążać');
+  if(Number.isFinite(bb) && bb < 50) notes.push('Body Battery nisko/średnio — ostrożnie z mocnym akcentem');
+  if(Number.isFinite(stress) && stress > 35) notes.push('stres podwyższony — pilnować odpoczynku');
+  if(entry && hasMeaningfulPain(entry.pain)) notes.push('we wpisie pojawia się ból/przeciążenie');
+  if(workouts.length >= 2) notes.push('więcej niż jeden trening w dniu — obserwować kumulację zmęczenia');
+  if(!entry?.food) notes.push('brak danych o jedzeniu — warto dopisać paliwo przed/po treningu');
+  if(!entry?.hydration) notes.push('brak danych o nawodnieniu — warto dopisać płyny/elektrolity');
+  return notes.length ? notes.join('; ') + '.' : 'Brak wyraźnych czerwonych sygnałów w dostępnych danych.';
+}
+function buildAthleteReport(days=3){
+  const dates = reportDateList(days);
+  const allWorkouts = sortTrainings(trainings).filter(t => dates.includes(trainingDate(t)));
+  const totalMin = allWorkouts.reduce((s,w)=>s+Number(w.minutes||0),0);
+  const totalKm = allWorkouts.reduce((s,w)=>s+Number(w.distanceKm||0),0);
+  const totalTss = allWorkouts.reduce((s,w)=>s+(metricNumber(w,'tss')||0),0);
+  const lines = [];
+  lines.push(`RAPORT ZAWODNIKA — OSTATNIE ${days} DNI`);
+  lines.push(`Szymon AI Coach • ${formatDate(todayDate())}`);
+  lines.push(`Cel: ${athleteProfile.target_event || 'IRONMAN Kalmar 2026'}`);
+  lines.push('');
+  lines.push('PODSUMOWANIE');
+  lines.push(`Treningi: ${allWorkouts.length}`);
+  lines.push(`Czas treningu: ${Math.round(totalMin)} min`);
+  lines.push(`Dystans łącznie: ${formatKm(totalKm)} km`);
+  if(totalTss > 0) lines.push(`Obciążenie łączne: około ${Math.round(totalTss)}`);
+  lines.push('');
+  dates.forEach(date => {
+    const dayWorkouts = allWorkouts.filter(t => trainingDate(t) === date);
+    const metric = metricForExactDate(date);
+    const entry = getAiJournalForDate(date);
+    lines.push('========================================');
+    lines.push(formatDate(date).toUpperCase());
+    lines.push('');
+    lines.push('TRENINGI');
+    if(dayWorkouts.length) dayWorkouts.forEach(w => lines.push(reportWorkoutLine(w)));
+    else lines.push('Brak treningu w danych aplikacji.');
+    lines.push('');
+    lines.push('REGENERACJA GARMIN');
+    lines.push(reportRecoveryLine(metric));
+    lines.push('');
+    lines.push('DZIENNIK SZYMONA');
+    lines.push(reportJournalLine(entry));
+    lines.push('');
+    lines.push('WNIOSKI Z DANYCH');
+    lines.push(reportDayConclusion({metric, entry, workouts: dayWorkouts}));
+    lines.push('');
+  });
+  lines.push('========================================');
+  lines.push('PYTANIE DO AI / TRENERA');
+  lines.push('Na podstawie raportu oceń stan zawodnika, ryzyko przeciążenia, najważniejsze braki w regeneracji/jedzeniu oraz najrozsądniejszy plan na kolejne 24–48 godzin.');
+  lines.push('');
+  lines.push('Uwaga: raport jest zestawieniem danych treningowych i dziennika. Nie zastępuje diagnozy medycznej ani indywidualnej opieki specjalisty.');
+  return lines.join('\n');
+}
+function setAthleteReportButtons(enabled){
+  const copy = $('copyAthleteReportBtn');
+  const print = $('printAthleteReportBtn');
+  if(copy) copy.disabled = !enabled;
+  if(print) print.disabled = !enabled;
+}
+function generateAthleteReport(){
+  const out = $('athleteReportOutput');
+  const status = $('athleteReportStatus');
+  if(!out) return;
+  const text = buildAthleteReport(3);
+  out.textContent = text;
+  out.dataset.reportText = text;
+  setAthleteReportButtons(true);
+  if(status){ status.className = 'sync-status ok'; status.textContent = 'Raport 3 dni gotowy. Możesz go skopiować albo wydrukować do PDF.'; }
+}
+async function copyAthleteReport(){
+  const out = $('athleteReportOutput');
+  const status = $('athleteReportStatus');
+  const text = out?.dataset.reportText || out?.textContent || '';
+  if(!text.trim()) return;
+  try{
+    await navigator.clipboard.writeText(text);
+    if(status){ status.className = 'sync-status ok'; status.textContent = 'Raport skopiowany do schowka.'; }
+  }catch(err){
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Nie udało się skopiować automatycznie. Przytrzymaj tekst raportu i skopiuj ręcznie.'; }
+  }
+}
+function printAthleteReport(){
+  const out = $('athleteReportOutput');
+  const text = out?.dataset.reportText || out?.textContent || '';
+  if(!text.trim()) return;
+  const win = window.open('', '_blank');
+  if(!win) return;
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Raport zawodnika</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#111}pre{white-space:pre-wrap;font-size:13px;line-height:1.45}h1{font-size:20px}</style></head><body><h1>Raport zawodnika — Szymon AI Coach</h1><pre>${escapeHtml(text)}</pre></body></html>`);
+  win.document.close();
+  setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 250);
+}
+
 function hasMeaningfulPain(text=''){
   const t = String(text).toLowerCase().trim();
   if(!t) return false;
@@ -2087,7 +2238,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.0', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.2', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2201,6 +2352,9 @@ if($('refreshAiJournalBtn')) $('refreshAiJournalBtn').addEventListener('click', 
 if($('runGeminiAiBtn')) $('runGeminiAiBtn').addEventListener('click', () => runGeminiAiCoach());
 if($('sendGeminiQuestionBtn')) $('sendGeminiQuestionBtn').addEventListener('click', () => runGeminiQuestion());
 if($('clearGeminiChatBtn')) $('clearGeminiChatBtn').addEventListener('click', () => clearGeminiChat());
+if($('generateAthleteReportBtn')) $('generateAthleteReportBtn').addEventListener('click', generateAthleteReport);
+if($('copyAthleteReportBtn')) $('copyAthleteReportBtn').addEventListener('click', copyAthleteReport);
+if($('printAthleteReportBtn')) $('printAthleteReportBtn').addEventListener('click', printAthleteReport);
 
 if($('recoveryCard')) $('recoveryCard').addEventListener('click', openRecoveryDetails);
 if($('openRecoveryFromAnalysis')) $('openRecoveryFromAnalysis').addEventListener('click', openRecoveryDetails);
@@ -2305,4 +2459,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=317').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=322').catch(()=>{}); }

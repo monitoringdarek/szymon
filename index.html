@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.2.0</title>
+  <title>Szymon AI Coach • Road to Kalmar v3.2.2</title>
   <link rel="stylesheet" href="styles.css?v=318" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
@@ -278,6 +278,25 @@
           </div>
         </section>
 
+        <section class="card athlete-report-card" id="athleteReportCard">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Raport zawodnika</span>
+              <h2>Ostatnie 3 dni</h2>
+            </div>
+            <span class="timeline-badge">PDF</span>
+          </div>
+          <p class="muted-small report-short-info">Zbierz dane w jeden raport do skopiowania albo wydruku.</p>
+          <div class="athlete-report-actions">
+            <button class="main-cta" id="generateAthleteReportBtn" type="button">Generuj raport 3 dni</button>
+            <button class="ghost" id="copyAthleteReportBtn" type="button" disabled>Kopiuj</button>
+            <button class="ghost" id="printAthleteReportBtn" type="button" disabled>Drukuj / PDF</button>
+          </div>
+          <div id="athleteReportStatus" class="sync-status info">Raport nie zużywa limitu Gemini.</div>
+          <pre id="athleteReportOutput" class="athlete-report-output">Raport pojawi się tutaj po kliknięciu przycisku.</pre>
+        </section>
+
+
         <section class="ai-support-grid">
           <article class="ai-support-tile safety" id="aiSupportSafety">
             <span>🧭</span><small>Kontrola</small><b>Mądra decyzja</b><p>Sprawdzam sygnały z organizmu.</p>
@@ -518,7 +537,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.2.0</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.2.2</footer>
       </section>
     </main>
 
@@ -616,6 +635,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=317"></script>
+  <script src="app.js?v=322"></script>
 </body>
 </html>
