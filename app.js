@@ -1,4 +1,4 @@
-const VERSION = '3.2.2';
+const VERSION = '3.2.3';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -2238,7 +2238,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.2', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.3', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
