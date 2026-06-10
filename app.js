@@ -1,4 +1,4 @@
-const VERSION = '3.1.9';
+const VERSION = '3.2.0';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -2051,26 +2051,10 @@ function renderGeminiAnalysis(data, targetId='geminiAiOutput'){
     out.innerHTML = '<div class="gemini-placeholder">Gemini nie zwrócił treści analizy.</div>';
     return;
   }
-  const wniosek = sectionFromText(text, 'Wniosek na dziś') || sectionFromText(text, 'Wniosek') || '';
-  const decyzja = sectionFromText(text, 'Decyzja treningowa') || sectionFromText(text, 'Co dziś zrobić') || '';
-  const dlaczego = sectionFromText(text, 'Dlaczego') || sectionFromText(text, 'Co widzę') || '';
-  const paliwo = sectionFromText(text, 'Paliwo i regeneracja') || '';
-  const uwaga = sectionFromText(text, 'Na co uważać') || sectionFromText(text, 'Granica bezpieczeństwa') || '';
   const meta = data.generatedAt ? `<div class="gemini-meta">Gemini AI • ${formatDate(String(data.generatedAt).slice(0,10))}${data.model ? ` • ${escapeHtml(data.model)}` : ''}</div>` : '<div class="gemini-meta">Gemini AI</div>';
-  let html = meta;
-  if(wniosek || decyzja || dlaczego || paliwo || uwaga){
-    html += '<div class="gemini-coach-answer">';
-    html += coachCard('Wniosek po ludzku', wniosek, 'main');
-    html += coachCard('Decyzja treningowa', decyzja, 'decision');
-    html += coachCard('Dlaczego', dlaczego);
-    html += coachCard('Paliwo i regeneracja', paliwo, 'fuel');
-    html += coachCard('Na co uważać', uwaga, 'warn');
-    html += '</div>';
-  } else {
-    const safeText = formatGeminiFullText(text);
-    html += `<div class="gemini-answer">${safeText}</div>`;
-  }
-  out.innerHTML = html;
+  const fullHtml = formatGeminiFullText(text);
+  out.innerHTML = `${meta}<div class="gemini-answer gemini-full-scroll">${fullHtml}</div>`;
+  try { out.scrollTop = 0; } catch {}
 }
 async function callGeminiBackend({question='', targetId='geminiAiOutput', statusId='geminiAiStatus', buttonId='runGeminiAiBtn'} = {}){
   const status = $(statusId);
@@ -2103,7 +2087,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.1.9', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.0', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;

@@ -1085,3 +1085,44 @@ body::-webkit-scrollbar,
   .gemini-output.small{max-height:390px!important}
   .gemini-chat-answer{max-height:320px}
 }
+
+
+/* v3.2.0 — pełny tekst AI w przewijanym oknie, bez ucinania */
+.gemini-output,
+.gemini-output.small{
+  display:block!important;
+  max-height:520px!important;
+  min-height:120px;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  scrollbar-width:thin;
+}
+.gemini-answer.gemini-full-scroll,
+.gemini-chat-text{
+  display:block!important;
+  max-height:none!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  word-break:break-word!important;
+  line-height:1.58!important;
+  color:#dbe6f8;
+}
+.gemini-chat-answer{
+  max-height:420px!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.gemini-answer p,
+.gemini-chat-text p{
+  margin:0 0 12px!important;
+}
+.gemini-answer p:last-child,
+.gemini-chat-text p:last-child{
+  margin-bottom:0!important;
+}
+@media(max-width:520px){
+  .gemini-output,.gemini-output.small{max-height:430px!important;}
+  .gemini-chat-answer{max-height:360px!important;}
+}
