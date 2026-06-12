@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.2.5</title>
-  <link rel="stylesheet" href="styles.css?v=318" />
+  <title>Szymon AI Coach • Road to Kalmar v3.2.6</title>
+  <link rel="stylesheet" href="styles.css?v=326" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -457,6 +457,22 @@
           <h1>Ustawienia</h1>
           <p>Konto, profil i podstawowe ustawienia.</p>
         </section>
+        <section class="card view-mode-card">
+          <div class="premium-head">
+            <div>
+              <span class="section-label">Tryb widoku</span>
+              <h2>Basic / Advanced</h2>
+            </div>
+            <span class="timeline-badge" id="viewModeBadge">Basic</span>
+          </div>
+          <p class="muted-small">Basic pokazuje tylko najważniejsze rzeczy na co dzień. Advanced odblokowuje pełne dane, analizy i narzędzia.</p>
+          <div class="view-mode-switch" role="group" aria-label="Tryb widoku">
+            <button id="viewModeBasicBtn" type="button" class="active">Basic</button>
+            <button id="viewModeAdvancedBtn" type="button">Advanced</button>
+          </div>
+          <div id="viewModeStatus" class="sync-status info">Aktualny widok: Basic.</div>
+        </section>
+
         <section class="card account-card">
           <h2>Konto</h2>
           <p class="muted-small">Konto Szymona jest zalogowane na tym urządzeniu.</p>
@@ -537,7 +553,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.2.5</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.2.6</footer>
       </section>
     </main>
 
@@ -635,6 +651,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=322"></script>
+  <script src="app.js?v=326"></script>
 </body>
 </html>

@@ -2238,7 +2238,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.5', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.6', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2301,6 +2301,40 @@ async function runGeminiQuestion(){
 }
 
 
+
+const VIEW_MODE_KEY = 'szymonKalmarViewModeV326';
+function getViewMode(){
+  return localStorage.getItem(VIEW_MODE_KEY) || 'basic';
+}
+function setViewMode(mode){
+  const next = mode === 'advanced' ? 'advanced' : 'basic';
+  localStorage.setItem(VIEW_MODE_KEY, next);
+  applyViewMode(next);
+}
+function applyViewMode(mode=getViewMode()){
+  const next = mode === 'advanced' ? 'advanced' : 'basic';
+  document.body.classList.toggle('view-basic', next === 'basic');
+  document.body.classList.toggle('view-advanced', next === 'advanced');
+  const basicBtn = $('viewModeBasicBtn');
+  const advBtn = $('viewModeAdvancedBtn');
+  if(basicBtn) basicBtn.classList.toggle('active', next === 'basic');
+  if(advBtn) advBtn.classList.toggle('active', next === 'advanced');
+  const badge = $('viewModeBadge');
+  if(badge) badge.textContent = next === 'basic' ? 'Basic' : 'Advanced';
+  const status = $('viewModeStatus');
+  if(status){
+    status.className = 'sync-status ok';
+    status.textContent = next === 'basic'
+      ? 'Basic: prosty widok na co dzień.'
+      : 'Advanced: pełne dane i narzędzia.';
+  }
+  if(next === 'basic'){
+    const active = document.querySelector('.screen.active');
+    const allowed = new Set(['screen-dashboard','screen-ai','screen-settings']);
+    if(active && !allowed.has(active.id)) showTab('dashboard');
+  }
+}
+
 function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); renderAiSupport(); updatePreview(); }
 function updatePreview(){
   const type = $('sportType').value;
@@ -2325,6 +2359,7 @@ function updatePreview(){
   }
 }
 function showTab(tab){
+  if(getViewMode && getViewMode() === 'basic' && !['dashboard','ai','settings'].includes(tab)) tab = 'dashboard';
   $all('.screen').forEach(s => s.classList.remove('active'));
   const screen = $(`screen-${tab}`);
   if(screen) screen.classList.add('active');
@@ -2338,6 +2373,9 @@ function setSport(type){
 }
 
 $all('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+if($('viewModeBasicBtn')) $('viewModeBasicBtn').addEventListener('click', () => setViewMode('basic'));
+if($('viewModeAdvancedBtn')) $('viewModeAdvancedBtn').addEventListener('click', () => setViewMode('advanced'));
+applyViewMode();
 $all('[data-goto]').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.goto)));
 $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () => setSport(btn.dataset.sport)));
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderHistory(); }));

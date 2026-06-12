@@ -1136,3 +1136,28 @@ body::-webkit-scrollbar,
 .athlete-report-output{margin:12px 0 0;max-height:430px;overflow:auto;-webkit-overflow-scrolling:touch;white-space:pre-wrap;border:1px solid rgba(145,168,210,.20);border-radius:18px;background:rgba(2,7,18,.56);padding:14px;color:#dbe6f8;font:13px/1.48 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
 .athlete-report-output::-webkit-scrollbar{width:6px}.athlete-report-output::-webkit-scrollbar-thumb{background:rgba(255,123,29,.45);border-radius:999px}.athlete-report-output::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
 @media(max-width:520px){.athlete-report-actions{grid-template-columns:1fr}.athlete-report-output{max-height:360px}}
+
+
+/* v3.2.6 — Tryb Basic / Advanced */
+.view-mode-card{border-color:rgba(255,123,29,.24);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
+.view-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
+.view-mode-switch button{min-height:52px;border:1px solid rgba(145,168,210,.30);border-radius:16px;background:rgba(255,255,255,.04);color:#dbe6f8;font-weight:1000;font-size:16px;}
+.view-mode-switch button.active{border-color:rgba(255,123,29,.75);background:linear-gradient(135deg,rgba(255,123,29,.28),rgba(255,62,8,.16));box-shadow:0 0 22px rgba(255,90,22,.16), inset 0 0 0 1px rgba(255,123,29,.24);color:#fff;}
+body.view-basic .bottom-nav button[data-tab="trainings"],
+body.view-basic .bottom-nav button[data-tab="add"],
+body.view-basic .bottom-nav button[data-tab="history"]{display:none;}
+body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}
+body.view-basic .coach-actions button[data-goto="trainings"],
+body.view-basic .coach-actions button[data-goto="history"],
+body.view-basic .weekly-mini-card,
+body.view-basic .recent-minimal-card,
+body.view-basic .data-sources-card,
+body.view-basic .settings-card .settings-actions .danger{display:none!important;}
+body.view-basic #screen-dashboard .dashboard-pulse-grid{grid-template-columns:1fr;}
+body.view-basic #screen-dashboard .pulse-card[data-goto="history"],
+body.view-basic #screen-dashboard .pulse-card[data-goto="settings"]{display:none;}
+body.view-basic .ai-support-grid,
+body.view-basic .ai-memory-card{display:none;}
+body.view-basic .page-title p,
+body.view-basic .muted-small{line-height:1.38;}
+@media(max-width:520px){body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}}
