@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.2.7</title>
-  <link rel="stylesheet" href="styles.css?v=327" />
+  <title>Szymon AI Coach • Road to Kalmar v3.2.8</title>
+  <link rel="stylesheet" href="styles.css?v=328" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -451,6 +451,69 @@
         </section>
       </section>
 
+
+
+      <section class="screen" id="screen-lab">
+        <section class="page-title with-bg pc-title">
+          <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
+          <h1>Centrum analizy PC</h1>
+          <p>Duży ekran do historii, postępów, wykresów i porównania segmentów triathlonu.</p>
+        </section>
+
+        <section class="pc-hero-grid">
+          <article class="card pc-command-card">
+            <span class="section-label">Advanced / PC</span>
+            <h2>Panel trenera i zawodnika</h2>
+            <p>Telefon zostaje prosty. Tutaj zbieramy pełną historię Garmina, regenerację, obciążenie, starty i progres do Kalmar.</p>
+            <div class="pc-kpi-row">
+              <div><small>Treningi</small><b id="pcTotalWorkouts">0</b></div>
+              <div><small>Czas</small><b id="pcTotalHours">0 h</b></div>
+              <div><small>Dane Garmin</small><b id="pcAdvancedCount">0</b></div>
+            </div>
+          </article>
+          <article class="card pc-readiness-card">
+            <span class="section-label">Sygnał dnia</span>
+            <h2 id="pcSignalTitle">Czekam na dane</h2>
+            <p id="pcSignalText">Po synchronizacji pokażę tu decyzję: mocny trening, lekko albo regeneracja.</p>
+            <div class="pc-ring-line"><span>Gotowość</span><strong id="pcReadiness">--/100</strong></div>
+          </article>
+        </section>
+
+        <section class="pc-metrics-grid">
+          <article class="pc-metric swim"><span>🏊 Pływanie</span><b id="pcSwimKm">0 km</b><small id="pcSwimTime">0 min</small></article>
+          <article class="pc-metric bike"><span>🚴 Rower</span><b id="pcBikeKm">0 km</b><small id="pcBikeTime">0 min</small></article>
+          <article class="pc-metric run"><span>🏃 Bieganie</span><b id="pcRunKm">0 km</b><small id="pcRunTime">0 min</small></article>
+          <article class="pc-metric load"><span>🔥 Obciążenie</span><b id="pcLoadScore">--</b><small>z danych Garmin i historii</small></article>
+        </section>
+
+        <section class="pc-layout-grid">
+          <article class="card pc-chart-card">
+            <div class="card-head tight"><h2>Trend ostatnich treningów</h2><span class="timeline-badge">historia</span></div>
+            <div id="pcTrendChart" class="pc-trend-chart"></div>
+          </article>
+
+          <article class="card pc-chart-card">
+            <div class="card-head tight"><h2>Balans dyscyplin</h2><span class="timeline-badge">km</span></div>
+            <div id="pcSportBalance" class="pc-sport-balance"></div>
+          </article>
+        </section>
+
+        <section class="card pc-segments-card">
+          <div class="card-head tight"><h2>Ostatni start multisport</h2><span class="timeline-badge">Garmin segments</span></div>
+          <div id="pcRaceSegments" class="pc-race-segments"></div>
+        </section>
+
+        <section class="card pc-roadmap-card">
+          <div class="card-head tight"><h2>Co budujemy, żeby dogonić Rest or Train</h2><span class="timeline-badge">plan</span></div>
+          <div class="pc-roadmap-list">
+            <div><b>1</b><span>Garmin Sync zapisuje segmenty multisport automatycznie.</span></div>
+            <div><b>2</b><span>Historia pokazuje progres: tempo, moc, HR, regenerację i obciążenie.</span></div>
+            <div><b>3</b><span>AI Coach analizuje start jako pływanie + T1 + rower + T2 + bieg.</span></div>
+            <div><b>4</b><span>Raport po zawodach porównuje decyzje, koszt roweru i jakość biegu.</span></div>
+          </div>
+        </section>
+      </section>
+
       <section class="screen" id="screen-settings">
         <section class="page-title">
           <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
@@ -553,7 +616,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.2.7</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.2.8</footer>
       </section>
     </main>
 
@@ -683,9 +746,10 @@
       <button data-tab="add">＋<span>Dodaj</span></button>
       <button class="plus ai-main-nav" data-tab="ai" aria-label="AI">✦<span>AI</span></button>
       <button data-tab="history">↺<span>Historia</span></button>
+      <button data-tab="lab" class="advanced-only-nav">▥<span>PC</span></button>
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=327"></script>
+  <script src="app.js?v=328"></script>
 </body>
 </html>
