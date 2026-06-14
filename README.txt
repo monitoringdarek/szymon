@@ -1,4 +1,4 @@
-Szymon AI Coach v3.2.6 — Raport zawodnika
+Szymon AI Coach v3.2.7 — Raport zawodnika
 
 Pliki do wgrania na GitHub Pages:
 - index.html
@@ -23,7 +23,7 @@ Bez zmian:
 - SQL/RLS,
 - Garmin Sync Agent.
 
-Zmiany v3.2.6: nowe icon-180, przycisk raportu skrócony do „Generuj”, trzy przyciski raportu wyrównane.
+Zmiany v3.2.7: nowe icon-180, przycisk raportu skrócony do „Generuj”, trzy przyciski raportu wyrównane.
 
 
-v3.2.6: dodano tryb widoku Basic / Advanced. Basic pokazuje prosty widok dzienny, Advanced odblokowuje pełne dane.
+v3.2.7: dodano tryb widoku Basic / Advanced. Basic pokazuje prosty widok dzienny, Advanced odblokowuje pełne dane.

@@ -1138,7 +1138,7 @@ body::-webkit-scrollbar,
 @media(max-width:520px){.athlete-report-actions{grid-template-columns:1fr}.athlete-report-output{max-height:360px}}
 
 
-/* v3.2.6 — Tryb Basic / Advanced */
+/* v3.2.7 — Tryb Basic / Advanced */
 .view-mode-card{border-color:rgba(255,123,29,.24);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
 .view-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
 .view-mode-switch button{min-height:52px;border:1px solid rgba(145,168,210,.30);border-radius:16px;background:rgba(255,255,255,.04);color:#dbe6f8;font-weight:1000;font-size:16px;}
@@ -1161,3 +1161,16 @@ body.view-basic .ai-memory-card{display:none;}
 body.view-basic .page-title p,
 body.view-basic .muted-small{line-height:1.38;}
 @media(max-width:520px){body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}}
+
+
+/* v3.2.7 — Triathlon / multisport segment details */
+.race-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}
+.race-block[hidden]{display:none!important}
+.race-block h3{margin:0;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}
+.race-check{display:flex!important;align-items:center;gap:9px;margin:10px 0 12px!important;color:#fff;font-weight:900}
+.race-check input{width:20px;height:20px;accent-color:#ff6a18}
+.race-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.race-segment{border:1px solid rgba(145,168,210,.20);border-radius:16px;padding:10px;background:rgba(2,7,18,.35)}
+.race-segment h4{margin:0 0 8px;color:#fff;font-size:15px}
+.race-block label{display:block;margin-top:8px}.race-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px;font-size:12px}.race-block input{width:100%;min-height:44px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:13px;padding:0 10px;font-weight:850;outline:none}.race-transitions{margin-top:10px}
+@media(max-width:720px){.race-grid{grid-template-columns:1fr}.race-segment{padding:12px}.race-block input{min-height:48px}}

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.2.6</title>
-  <link rel="stylesheet" href="styles.css?v=326" />
+  <title>Szymon AI Coach • Road to Kalmar v3.2.7</title>
+  <link rel="stylesheet" href="styles.css?v=327" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -553,7 +553,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.2.6</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v3.2.7</footer>
       </section>
     </main>
 
@@ -599,6 +599,41 @@
               <button id="clearGarminTextBtn" class="ghost danger">Wyczyść dodatkowe</button>
             </div>
           </div>
+        </div>
+
+
+        <div class="race-block compact" id="triathlonRaceBlock">
+          <div class="card-head tight"><h3>Start triathlonowy / multisport</h3><span class="source-badge auto">Race</span></div>
+          <p class="muted-small">Uzupełnij segmenty startu, żeby AI oceniało pływanie, rower i bieg osobno.</p>
+          <label class="race-check"><input id="raceEnabled" type="checkbox"> <span>To był start / test triathlonowy</span></label>
+          <div class="race-grid">
+            <div class="race-segment swim">
+              <h4>🏊 Pływanie</h4>
+              <label><span>Dystans km</span><input id="raceSwimDistance" type="number" min="0" step="0.01" placeholder="0.45"></label>
+              <label><span>Czas min</span><input id="raceSwimMinutes" type="number" min="0" step="1" placeholder="8"></label>
+              <label><span>Tempo</span><input id="raceSwimPace" type="text" placeholder="np. 1:40/100m"></label>
+              <label><span>Tętno</span><input id="raceSwimHr" type="text" placeholder="np. 156 bpm"></label>
+            </div>
+            <div class="race-segment bike">
+              <h4>🚴 Rower</h4>
+              <label><span>Dystans km</span><input id="raceBikeDistance" type="number" min="0" step="0.01" placeholder="20"></label>
+              <label><span>Czas min</span><input id="raceBikeMinutes" type="number" min="0" step="1" placeholder="31"></label>
+              <label><span>Moc / NP / IF</span><input id="raceBikePower" type="text" placeholder="np. 246W, NP 253W, IF 1.10"></label>
+              <label><span>Tętno</span><input id="raceBikeHr" type="text" placeholder="np. 165 bpm"></label>
+            </div>
+            <div class="race-segment run">
+              <h4>🏃 Bieg</h4>
+              <label><span>Dystans km</span><input id="raceRunDistance" type="number" min="0" step="0.01" placeholder="5.5"></label>
+              <label><span>Czas min</span><input id="raceRunMinutes" type="number" min="0" step="1" placeholder="23"></label>
+              <label><span>Tempo</span><input id="raceRunPace" type="text" placeholder="np. 4:07/km"></label>
+              <label><span>Tętno</span><input id="raceRunHr" type="text" placeholder="np. 171 / max 185"></label>
+            </div>
+          </div>
+          <div class="edit-grid race-transitions">
+            <label><span>T1 min</span><input id="raceT1" type="number" min="0" step="0.1" placeholder="opcjonalnie"></label>
+            <label><span>T2 min</span><input id="raceT2" type="number" min="0" step="0.1" placeholder="opcjonalnie"></label>
+          </div>
+          <label><span>Notatka startowa</span><input id="raceNote" type="text" placeholder="np. rower mocno, bieg ciężki po rowerze"></label>
         </div>
 
         <div class="edit-block">
@@ -651,6 +686,6 @@
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=326"></script>
+  <script src="app.js?v=327"></script>
 </body>
 </html>

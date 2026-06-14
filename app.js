@@ -531,6 +531,7 @@ function fromDb(row){
     rawData: row.raw_data || null,
     advancedData: row.advanced_data || null,
     rawAdvancedText: notes.rawAdvancedText || '',
+    raceSegments: notes.raceSegments || (row.advanced_data && row.advanced_data.raceSegments) || null,
     cloud: true
   };
 }
@@ -558,7 +559,7 @@ function toDb(item){
     np_watts: numericOrNull(metricValue(item, 'npPower')) || null,
     intensity_factor: numericOrNull(metricValue(item, 'intensityFactor')) || null,
     tss: numericOrNull(metricValue(item, 'tss')) || null,
-    advanced_data: item.metrics && Object.keys(item.metrics).length ? { metrics: item.metrics, rawAdvancedText: item.rawAdvancedText || '' } : null,
+    advanced_data: (item.metrics && Object.keys(item.metrics).length) || item.raceSegments ? { metrics: item.metrics || {}, rawAdvancedText: item.rawAdvancedText || '', raceSegments: item.raceSegments || null } : null,
     notes: JSON.stringify({
       source: item.sourceRaw || item.source || 'aplikacja',
       elevation: item.elevation || 0,
@@ -577,6 +578,7 @@ function toDb(item){
       rawDescription: item.rawDescription || '',
       metrics: item.metrics || {},
       rawAdvancedText: item.rawAdvancedText || '',
+      raceSegments: item.raceSegments || null,
       version: VERSION
     })
   };
@@ -1140,6 +1142,8 @@ function advancedInsight(item){
   return [...new Set(parts)].join(' ');
 }
 function detailAiText(item){
+  const race = raceSegmentsSummary(item.raceSegments);
+  if(race) return `Start triathlonowy rozbity na segmenty. ${race}. AI powinien oceniać pływanie, rower i bieg osobno, a nie jako jedną aktywność.`;
   const pace = calcPace(item.distanceKm, item.minutes, item.type);
   const km = Number(item.distanceKm || 0);
   const min = Number(item.minutes || 0);
@@ -1292,6 +1296,59 @@ function mergeAdvancedIntoSelected(clear=false){
   setSync(`Odczytano ${Object.keys(parsed.metrics).length} dodatkowych pól Garmin. Kliknij „Zapisz zmiany”.`, 'ok');
 }
 
+
+function isTriathlonLike(item){
+  const txt = `${item?.type||''} ${item?.name||''} ${item?.source||''} ${item?.note||''}`.toLowerCase();
+  return txt.includes('multi') || txt.includes('triathlon') || txt.includes('duathlon') || txt.includes('silesiaman') || txt.includes('bieruń') || txt.includes('bierun') || txt.includes('other');
+}
+function readRaceSegments(){
+  const val = id => ($(id)?.value || '').trim();
+  const num = id => { const v = val(id); return v === '' ? null : Number(v); };
+  return {
+    enabled: !!$('raceEnabled')?.checked,
+    eventType: 'triathlon',
+    swim: { distanceKm: num('raceSwimDistance'), minutes: num('raceSwimMinutes'), pace: val('raceSwimPace'), hr: val('raceSwimHr') },
+    bike: { distanceKm: num('raceBikeDistance'), minutes: num('raceBikeMinutes'), power: val('raceBikePower'), hr: val('raceBikeHr') },
+    run: { distanceKm: num('raceRunDistance'), minutes: num('raceRunMinutes'), pace: val('raceRunPace'), hr: val('raceRunHr') },
+    transitions: { t1: num('raceT1'), t2: num('raceT2') },
+    note: val('raceNote')
+  };
+}
+function hasRaceSegments(r){
+  if(!r || !r.enabled) return false;
+  const parts = [r.swim, r.bike, r.run];
+  return parts.some(p => p && (p.distanceKm || p.minutes || p.pace || p.power || p.hr)) || !!r.note;
+}
+function fillRaceSegments(item){
+  const r = item?.raceSegments || {};
+  if($('raceEnabled')) $('raceEnabled').checked = !!r.enabled;
+  const set = (id, v) => { if($(id)) $(id).value = v ?? ''; };
+  set('raceSwimDistance', r.swim?.distanceKm); set('raceSwimMinutes', r.swim?.minutes); set('raceSwimPace', r.swim?.pace); set('raceSwimHr', r.swim?.hr);
+  set('raceBikeDistance', r.bike?.distanceKm); set('raceBikeMinutes', r.bike?.minutes); set('raceBikePower', r.bike?.power); set('raceBikeHr', r.bike?.hr);
+  set('raceRunDistance', r.run?.distanceKm); set('raceRunMinutes', r.run?.minutes); set('raceRunPace', r.run?.pace); set('raceRunHr', r.run?.hr);
+  set('raceT1', r.transitions?.t1); set('raceT2', r.transitions?.t2); set('raceNote', r.note);
+}
+function raceSegmentsSummary(r){
+  if(!hasRaceSegments(r)) return '';
+  const seg = (name,p) => {
+    if(!p) return '';
+    const vals = [];
+    if(p.distanceKm) vals.push(`${formatKm(p.distanceKm)} km`);
+    if(p.minutes) vals.push(minutesToClock(p.minutes));
+    if(p.pace) vals.push(p.pace);
+    if(p.power) vals.push(p.power);
+    if(p.hr) vals.push(`HR ${p.hr}`);
+    return vals.length ? `${name}: ${vals.join(', ')}` : '';
+  };
+  const lines = [seg('Pływanie', r.swim), seg('Rower', r.bike), seg('Bieg', r.run)].filter(Boolean);
+  const tr = [];
+  if(r.transitions?.t1) tr.push(`T1 ${r.transitions.t1} min`);
+  if(r.transitions?.t2) tr.push(`T2 ${r.transitions.t2} min`);
+  if(tr.length) lines.push(`Przejścia: ${tr.join(', ')}`);
+  if(r.note) lines.push(`Notatka: ${r.note}`);
+  return lines.join(' • ');
+}
+
 function openWorkoutDetails(id){
   const item = trainings.find(x => String(x.id) === String(id));
   if(!item) return;
@@ -1310,6 +1367,8 @@ function openWorkoutDetails(id){
   $('detailsHeart').textContent = item.avgHr ? `${Math.round(Number(item.avgHr))} bpm${item.maxHr ? ` / max ${Math.round(Number(item.maxHr))}` : ''}` : '--';
   $('detailsGarminId').textContent = item.garminActivityId || (item.sourceUrl ? extractGarminActivityId(item.sourceUrl) : '') || '--';
   $('detailsAiText').textContent = detailAiText(item);
+  if($('triathlonRaceBlock')) $('triathlonRaceBlock').hidden = false;
+  fillRaceSegments(item);
   $('editTitle').value = activityNameFor(item).replace(' — trening Kalmar','');
   $('editDistance').value = Number(item.distanceKm || 0).toFixed(2);
   if($('editWorkoutDate')) $('editWorkoutDate').value = trainingDate(item);
@@ -1344,6 +1403,7 @@ async function saveWorkoutDetails(){
     note: $('editNote').value.trim(),
     metrics: item.metrics || {},
     rawAdvancedText: $('editGarminPaste')?.value.trim() || item.rawAdvancedText || '',
+    raceSegments: hasRaceSegments(readRaceSegments()) ? readRaceSegments() : null,
     avgHr: item.avgHr || null,
     maxHr: item.maxHr || null,
     calories: item.calories || 0,
@@ -2238,7 +2298,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.6', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.7', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
