@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v4.0.2-readiness-pro-local</title>
-  <link rel="stylesheet" href="styles.css?v=402-readiness-pro-local" />
+  <title>Szymon AI Coach PRO • v4.1.2-ai-pro-tabs-local</title>
+  <link rel="stylesheet" href="styles.css?v=412-ai-pro-tabs-local" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
+      <div class="brand-pill"><span class="mdot">●</span> SZYM0N AI COACH PRO</div>
       <h1>Szymon AI Coach</h1>
       <p class="auth-lead">Prywatny dziennik przygotowań do Kalmar. Zaloguj konto Szymona, żeby treningi były widoczne tylko dla niego.</p>
       <label>Email</label>
@@ -24,13 +24,13 @@
       <input id="authPassword" type="password" autocomplete="current-password" placeholder="hasło" />
       <button id="loginBtn" class="main-cta">Zaloguj</button>
       <div id="authStatus" class="sync-status info">Konto utwórz wcześniej w Supabase → Authentication → Users.</div>
-      <p class="auth-note">Service role key, hasła bazy i connection string zostają prywatne. W aplikacji używany jest tylko publiczny klucz.</p>
+      <p class="auth-note">Tajne klucze, hasła bazy i connection string zostają prywatne. W aplikacji używany jest tylko publiczny klucz.</p>
     </div>
   </section>
 
   <div class="phone-app" id="appShell" hidden>
     <header class="topbar">
-      <div class="brand-pill"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
+      <div class="brand-pill"><span class="mdot">●</span> SZYM0N AI COACH PRO</div>
       <div class="top-actions">
         <a class="dad-help-link" href="mailto:darekwawrzynek@gmail.com?subject=Pomoc%20-%20Szymon%20AI%20Coach">Pomoc • WawrzyS</a>
         <div id="cloudStatus" class="cloud-status waiting"><span></span> Supabase...</div>
@@ -39,7 +39,7 @@
 
     <main>
       <section class="screen active minimal-dashboard" id="screen-dashboard">
-        <section class="hero-card hero-wow hero-kalmar-card">
+        <section class="hero-card hero-wow hero-kalmar-card legacy-pro-hidden">
           <div class="hero-bg"></div>
           <div class="hero-left">
             <div class="hero-kicker">ROAD TO IRONMAN</div>
@@ -65,6 +65,8 @@
             <h2 id="todayCoachTitle">Czekam na dane Garmin...</h2>
             <p id="todayCoachBrief">Po synchronizacji pokażę krótką, ludzką odpowiedź: trenować, lekko ruszyć się czy odpocząć.</p>
             <div id="readinessProDetails" class="readiness-pro-details">
+              <span>Dane z dnia: <b id="readinessMetricDate">—</b></span>
+              <span>Readiness: <b id="readinessLevel">—</b></span>
               <span>Sen: <b id="readinessSleep">—</b></span>
               <span>Body Battery: <b id="readinessBodyBattery">—</b></span>
               <span>Stress avg: <b id="readinessStress">—</b></span>
@@ -72,7 +74,7 @@
               <span>Load 28d: <b id="readinessLoad28d">—</b></span>
             </div>
             <p id="readinessJournalNote" class="readiness-journal-note">Czekam na wpis dziennika.</p>
-            <div class="coach-actions">
+            <div class="coach-actions legacy-pro-hidden">
               <button class="main-cta slim" data-goto="trainings">Pełna analiza</button>
               <button class="ghost slim" data-goto="history">Historia</button>
             </div>
@@ -83,7 +85,7 @@
               <strong id="readiness">57</strong>
               <small>/100</small>
             </div>
-            <div class="progress-mini">
+            <div class="progress-mini legacy-pro-hidden">
               <span>Droga do Kalmar</span>
               <strong id="progressText">--%</strong>
               <small id="quoteText">Every workout counts.</small>
@@ -91,7 +93,24 @@
           </div>
         </section>
 
-        <section class="dashboard-pulse-grid">
+        <section class="card ai-coach-pro-card" id="aiCoachProCard" aria-labelledby="aiCoachProTitle">
+          <div class="card-head">
+            <div>
+              <span class="section-label">AI Coach PRO</span>
+              <h2 id="aiCoachProTitle">AI Coach PRO</h2>
+            </div>
+            <span class="timeline-badge">PRO</span>
+          </div>
+          <div id="aiCoachProPanel" class="ai-coach-pro-grid">
+            <div><span>Decyzja</span><b id="aiCoachProDecision">Czekam na readiness PRO.</b></div>
+            <div><span>Dlaczego</span><p id="aiCoachProWhy">Brak danych.</p></div>
+            <div><span>Plan na dziś</span><p id="aiCoachProPlan">Brak planu bez danych.</p></div>
+            <div><span>Czego unikać</span><p id="aiCoachProAvoid">Brak danych.</p></div>
+            <div><span>Jakość danych</span><p id="aiCoachProDataQuality">Czekam na widoki Garmin PRO.</p></div>
+          </div>
+        </section>
+
+        <section class="dashboard-pulse-grid legacy-pro-hidden">
           <div class="pulse-card clickable" id="recoveryCard" role="button" tabindex="0" title="Pokaż historię regeneracji">
             <span class="pulse-icon">🫀</span>
             <div>
@@ -137,7 +156,7 @@
         </section>
 
         <section class="card weekly-mini-card">
-          <div class="card-head"><h2>Tydzień Garmin PRO</h2><button class="text-btn" data-goto="trainings">Analiza ›</button></div>
+          <div class="card-head"><h2>Tydzień Garmin PRO</h2></div>
           <div class="mini-sports-row">
             <span class="swim">🏊 <b id="swimKm">0 km</b><small id="swimTime">0 min</small></span>
             <span class="bike">🚴 <b id="bikeKm">0 km</b><small id="bikeTime">0 min</small></span>
@@ -147,7 +166,7 @@
         </section>
 
         <section class="card recent-card recent-minimal-card">
-          <div class="card-head"><h2>Ostatnia aktywność Garmin PRO</h2><button class="text-btn" data-goto="history">Legacy ›</button></div>
+          <div class="card-head"><h2>Ostatnia aktywność Garmin PRO</h2></div>
           <div id="recentList" class="workout-list compact one-item"></div>
         </section>
 
@@ -245,6 +264,78 @@
       </section>
 
       <section class="screen" id="screen-ai">
+        <section class="page-title ai-pro-title">
+          <div class="brand-pill small"><span class="mdot">●</span> GARMIN PRO ONLY</div>
+          <h1>AI PRO</h1>
+          <p>Plan startu i analiza wykonania oparte na Garmin PRO, gotowości i obciążeniu.</p>
+        </section>
+
+        <section class="card ai-pro-mode-card">
+          <div class="card-head">
+            <div>
+              <span class="section-label">Tryb AI PRO</span>
+              <h2>Wybierz pracę trenerską</h2>
+            </div>
+            <span class="timeline-badge">PRO</span>
+          </div>
+          <div class="ai-pro-mode-grid" role="group" aria-label="Tryb AI PRO">
+            <button type="button" class="active" data-ai-pro-mode="plan" aria-pressed="true">
+              <b>Przed startem — Plan startu</b>
+              <span>Wpisz założenia startu. AI PRO oceni gotowość na podstawie Garmin PRO, regeneracji i obciążenia.</span>
+            </button>
+            <button type="button" data-ai-pro-mode="analysis" aria-pressed="false">
+              <b>Po zawodach — Analiza wykonania</b>
+              <span>Po starcie AI PRO analizuje pobraną aktywność Garmin, segmenty, obciążenie i regenerację.</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="card ai-pro-panel" id="aiProPlanPanel">
+          <div class="card-head">
+            <div>
+              <span class="section-label">Przed startem</span>
+              <h2>Plan startu</h2>
+            </div>
+            <span class="timeline-badge">szkic</span>
+          </div>
+          <p class="muted-small">To jest przygotowane miejsce na plan. Na tym etapie nic nie zapisuje się do Supabase ani pamięci lokalnej.</p>
+          <div class="ai-pro-plan-grid">
+            <div><span>Nazwa zawodów</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Data startu</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Typ startu</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Cel</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Plan pływania</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Plan roweru</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Plan biegu</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Odżywianie</span><b>Do uzupełnienia w następnym etapie</b></div>
+            <div><span>Ryzyka / uwagi</span><b>Do uzupełnienia w następnym etapie</b></div>
+          </div>
+          <div class="sync-status info">Plan startu będzie porównywany z Garmin PRO po zawodach. Teraz to tylko bezpieczny szkielet UI.</div>
+        </section>
+
+        <section class="card ai-pro-panel" id="aiProAnalysisPanel" hidden>
+          <div class="card-head">
+            <div>
+              <span class="section-label">Po zawodach</span>
+              <h2>Analiza wykonania</h2>
+            </div>
+            <span class="timeline-badge">Garmin PRO</span>
+          </div>
+          <p class="muted-small">Analiza zostanie wykonana po pobraniu aktywności Garmin. AI PRO porówna plan startu z wykonaniem: swim / bike / run, HR, moc, tempo, load i regenerację po starcie.</p>
+          <div class="ai-pro-latest-card" id="aiProLatestCard">
+            <span class="section-label">Ostatnia aktywność Garmin PRO</span>
+            <h3 id="aiProLatestName">Czekam na Garmin PRO.</h3>
+            <div class="ai-pro-latest-grid">
+              <div><span>Data</span><b id="aiProLatestDate">—</b></div>
+              <div><span>Sport</span><b id="aiProLatestSport">—</b></div>
+              <div><span>Dystans</span><b id="aiProLatestDistance">—</b></div>
+              <div><span>Load</span><b id="aiProLatestLoad">—</b></div>
+            </div>
+          </div>
+          <div class="sync-status info">Bez ręcznej analizy i bez starych danych. Ten ekran czyta tylko widoki Garmin PRO.</div>
+        </section>
+
+        <div class="legacy-pro-hidden">
         <section class="page-title with-bg">
           <div class="brand-pill small"><span class="mdot">●</span> ROAD TO IRONMAN KALMAR 2026</div>
           <h1>Wsparcie AI</h1>
@@ -384,6 +475,7 @@
           <div id="aiMemorySummary" class="ai-memory-summary">Brak wpisów. Pierwszy wpis dnia stworzy początek pamięci AI.</div>
           <div id="aiJournalList" class="ai-journal-list"></div>
         </section>
+        </div>
       </section>
 
       <section class="screen" id="screen-add">
@@ -577,7 +669,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v4.0.2-readiness-pro-local</footer>
+        <footer>Szymon AI Coach PRO • v4.1.2-ai-pro-tabs-local</footer>
       </section>
     </main>
 
@@ -719,11 +811,12 @@
         <span>Analiza</span>
       </button>
       <button data-tab="add" class="legacy-add-nav">＋<span>Legacy</span></button>
-      <button class="plus ai-main-nav" data-tab="ai" aria-label="AI">✦<span>AI</span></button>
+      <button class="pro-ai-nav" data-tab="ai" aria-label="AI">✦<span>AI</span></button>
       <button data-tab="history">↺<span>Historia</span></button>
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
+      <button type="button" id="openGarminProHistoryNav">↻<span>Historia PRO</span></button>
     </nav>
   </div>
-  <script src="app.js?v=402-readiness-pro-local"></script>
+  <script src="app.js?v=412-ai-pro-tabs-local"></script>
 </body>
 </html>

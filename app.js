@@ -1,4 +1,4 @@
-const VERSION = '4.0.2-readiness-pro-local';
+const VERSION = '4.1.2-ai-pro-tabs-local';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -51,6 +51,7 @@ let garminProAiContext = null;
 let garminProReadiness = null;
 let garminProReadinessError = false;
 let garminProDashboardError = false;
+let aiProMode = 'plan';
 let historySearch = '';
 let historyRange = '30';
 let aiJournal = readAiJournal();
@@ -703,12 +704,9 @@ async function bootAppData(){
   renderAll();
   await loadProfile();
   await loadGarminSyncState();
-  await loadDailyMetrics();
   await loadGarminProReadiness();
   await loadGarminProDashboard();
   await loadGarminProCards();
-  await loadAiJournalFromCloud();
-  await loadTrainings();
 }
 async function loadProfile(){
   try{
@@ -887,6 +885,8 @@ async function loadGarminProDashboard(){
     garminProDashboardError = true;
   }
   renderGarminProDashboard();
+  renderAiCoachPro();
+  renderAiProScreen();
 }
 async function loadGarminProReadiness(){
   try{
@@ -909,6 +909,7 @@ async function loadGarminProReadiness(){
       'swim_7d_km',
       'bike_7d_km',
       'run_7d_km',
+      'activity_count_7d',
       'journal_date',
       'journal_energy',
       'journal_stress',
@@ -926,6 +927,7 @@ async function loadGarminProReadiness(){
     garminProReadinessError = true;
   }
   renderGarminProReadiness();
+  renderAiCoachPro();
 }
 function fmtInt(v, suffix=''){
   const n = Number(v);
@@ -1173,6 +1175,116 @@ function proRound(value){
   if(!Number.isFinite(n)) return '—';
   return Math.round(n).toLocaleString('pl-PL');
 }
+function hasPainSignal(text){
+  const value = String(text || '').trim();
+  if(!value || /^(brak|brak bólu|brak bolu|nie|nie ma|none|ok|-|—)$/i.test(value)) return false;
+  return true;
+}
+function buildAiCoachProText(readiness, weekly, latest){
+  const r = readiness || {};
+  const score = Number(r.training_readiness_score);
+  const hasScore = Number.isFinite(score);
+  const level = String(r.training_readiness_level || '').trim().toUpperCase();
+  const metricDate = String(r.metric_date || '').slice(0,10);
+  const journalDate = String(r.journal_date || '').slice(0,10);
+  const journalIsOld = Boolean(metricDate && journalDate && journalDate < metricDate);
+  const painSignal = hasPainSignal(r.journal_pain);
+  const load7d = Number(r.load_7d);
+  const duration7d = Number(r.duration_7d_min);
+  const latestName = latest?.event_name || latest?.sport_type || latest?.activity_type || '';
+  const decision = r.pro_recommendation || (hasScore ? 'OCENA częściowa' : 'Czekam na readiness Garmin');
+  const why = r.pro_reason || [
+    hasScore ? `Readiness ${Math.round(score)}/100${level ? ` (${level})` : ''}` : '',
+    Number.isFinite(Number(r.sleep_minutes)) ? `sen ${Math.round(Number(r.sleep_minutes))} min` : '',
+    Number.isFinite(Number(r.body_battery_end)) ? `Body Battery ${Math.round(Number(r.body_battery_end))}` : '',
+    Number.isFinite(Number(r.avg_stress)) ? `stress avg ${Math.round(Number(r.avg_stress))}` : '',
+    Number.isFinite(load7d) ? `load 7d ${Math.round(load7d)}` : ''
+  ].filter(Boolean).join(', ') + '.';
+
+  let todayPlan = 'Dziś decyzję oprzyj na Garmin readiness i realnym samopoczuciu.';
+  let avoid = 'Nie dokładaj obciążenia bez potwierdzenia gotowości Garmin.';
+  let risk = 'Ryzyko oceniam tylko z dostępnych danych PRO.';
+  if((hasScore && score <= 20) || level === 'POOR'){
+    todayPlan = 'Dziś tylko regeneracja, mobilność, spacer albo bardzo lekka technika. Bez mocnych akcentów.';
+    avoid = 'Bez interwałów, mocnego biegu, mocnego roweru i dokładania obciążenia.';
+    risk = 'Niska gotowość Garmin i świeże obciążenie po ostatniej aktywności zwiększają ryzyko przeciążenia.';
+  } else if((hasScore && score <= 49) || level === 'LOW'){
+    todayPlan = 'Dziś lekki trening techniczny albo spokojna regeneracja. Intensywność trzymaj nisko.';
+    avoid = 'Bez testów tempa, długich dokładek i mocnego finiszu.';
+    risk = 'Niska gotowość Garmin ogranicza margines bezpieczeństwa.';
+  } else if((hasScore && score <= 74) || level === 'MODERATE'){
+    todayPlan = 'Możesz zrobić trening kontrolowany, ale bez ścigania i bez dokładania drugiego akcentu.';
+    avoid = 'Unikaj interwałów, jeśli sen, Body Battery albo dziennik pokazują zmęczenie.';
+    risk = 'Gotowość jest umiarkowana, więc jakość regeneracji decyduje o tym, czy trening ma sens.';
+  } else if((hasScore && score >= 75) || level === 'HIGH'){
+    todayPlan = 'Można zrobić planowy trening, jeśli nie ma bólu i zmęczenia z dziennika.';
+    avoid = 'Nie łącz mocnego bodźca z ignorowaniem bólu albo spadku energii.';
+    risk = 'Ryzyko rośnie głównie wtedy, gdy dziennik lub ostatnia aktywność pokazują przeciążenie.';
+  }
+  if(painSignal){
+    avoid = `${avoid} W dzienniku jest sygnał bólu, więc bez mocnego treningu.`;
+    risk = 'Ból w dzienniku zwiększa ryzyko przeciążenia; mocny akcent wymaga odpuszczenia albo konsultacji.';
+  }
+  const qualityParts = ['Ocena oparta na Garmin readiness, regeneracji 24h i obciążeniu treningowym'];
+  if(Number.isFinite(duration7d)) qualityParts.push(`7 dni: ${Math.round(duration7d)} min`);
+  if(Number.isFinite(load7d)) qualityParts.push(`load 7d ${Math.round(load7d)}`);
+  if(weekly?.activity_count) qualityParts.push(`aktywności tydzień ${weekly.activity_count}`);
+  if(latestName) qualityParts.push(`ostatnia aktywność: ${latestName}`);
+  if(journalDate) qualityParts.push(`dziennik: ${journalDate}${journalIsOld ? ' — Dziennik może być nieaktualny' : ''}`);
+  else qualityParts.push('brak dziennika w kontekście');
+
+  return {
+    title: 'AI Coach PRO',
+    decision,
+    why,
+    todayPlan,
+    avoid,
+    risk,
+    dataQuality: `${qualityParts.join('. ')}.`
+  };
+}
+function renderAiCoachPro(){
+  const ai = buildAiCoachProText(garminProReadiness, garminProWeeklySummary, garminProLatest);
+  const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
+  set('aiCoachProTitle', ai.title);
+  set('aiCoachProDecision', ai.decision);
+  set('aiCoachProWhy', ai.why);
+  set('aiCoachProPlan', ai.todayPlan);
+  set('aiCoachProAvoid', ai.avoid);
+  set('aiCoachProRisk', ai.risk);
+  set('aiCoachProDataQuality', ai.dataQuality);
+}
+function renderAiProScreen(){
+  $all('[data-ai-pro-mode]').forEach(btn => {
+    const active = btn.dataset.aiProMode === aiProMode;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const planPanel = $('aiProPlanPanel');
+  const analysisPanel = $('aiProAnalysisPanel');
+  if(planPanel) planPanel.hidden = aiProMode !== 'plan';
+  if(analysisPanel) analysisPanel.hidden = aiProMode !== 'analysis';
+
+  const latest = garminProLatest;
+  const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
+  if(!latest){
+    set('aiProLatestName', 'Brak ostatniej aktywności Garmin PRO.');
+    set('aiProLatestDate', '—');
+    set('aiProLatestSport', '—');
+    set('aiProLatestDistance', '—');
+    set('aiProLatestLoad', '—');
+    return;
+  }
+  set('aiProLatestName', latest.event_name || latest.sport_type || latest.activity_type || 'Aktywność Garmin PRO');
+  set('aiProLatestDate', latest.workout_date ? formatDate(latest.workout_date) : '—');
+  set('aiProLatestSport', garminProSportLabel(latest.sport_type || latest.activity_type));
+  set('aiProLatestDistance', Number.isFinite(Number(latest.distance_km)) ? `${formatKm(Number(latest.distance_km))} km` : '—');
+  set('aiProLatestLoad', Number.isFinite(Number(latest.training_load)) ? Math.round(Number(latest.training_load)).toLocaleString('pl-PL') : '—');
+}
+function setAiProMode(mode){
+  aiProMode = mode === 'analysis' ? 'analysis' : 'plan';
+  renderAiProScreen();
+}
 function renderGarminProReadiness(){
   const r = garminProReadiness;
   const set = (id, value) => { const el=$(id); if(el) el.textContent = value; };
@@ -1202,6 +1314,8 @@ function renderGarminProReadiness(){
 
   const donutLabel = $('readinessDonut')?.querySelector('span');
   if(donutLabel) donutLabel.textContent = level ? `Garmin ${level}` : 'Garmin';
+  set('readinessMetricDate', metricDate || '—');
+  set('readinessLevel', `${score === null ? '—' : `${score}/100`}${level ? ` ${level}` : ''}`);
   set('readinessSleep', Number.isFinite(Number(r.sleep_minutes)) ? `${Math.round(Number(r.sleep_minutes))} min` : '—');
   set('readinessBodyBattery', `${proRound(r.body_battery_start)} → ${proRound(r.body_battery_end)}`);
   set('readinessStress', proRound(r.avg_stress));
@@ -2657,7 +2771,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v4.0.2-readiness-pro-local', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v4.1.2-ai-pro-tabs-local', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2754,7 +2868,7 @@ function applyViewMode(mode=getViewMode()){
   }
 }
 
-function renderAll(){ updateKalmarRoad(); renderTotals(); renderLegacyHistory(); renderGarminProDashboard(); renderRecovery(); renderGarminProCards(); analyze(); renderGarminProReadiness(); renderGarminProDashboard(); renderAiSupport(); updatePreview(); }
+function renderAll(){ renderGarminProDashboard(); renderGarminProCards(); renderGarminProReadiness(); renderAiCoachPro(); renderAiProScreen(); }
 function updatePreview(){
   const type = $('sportType').value;
   const meta = sportMeta[type] || sportMeta.run;
@@ -2778,11 +2892,12 @@ function updatePreview(){
   }
 }
 function showTab(tab){
-  if(getViewMode && getViewMode() === 'basic' && !['dashboard','ai','settings'].includes(tab)) tab = 'dashboard';
+  if(!['dashboard','ai','settings'].includes(tab)) tab = 'dashboard';
   $all('.screen').forEach(s => s.classList.remove('active'));
   const screen = $(`screen-${tab}`);
   if(screen) screen.classList.add('active');
   $all('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if(tab === 'ai') renderAiProScreen();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function setSport(type){
@@ -2791,11 +2906,15 @@ function setSport(type){
   updatePreview();
 }
 
-$all('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+$all('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => {
+  if(btn.id === 'openGarminProHistoryNav'){ openGarminProDetails(); return; }
+  showTab(btn.dataset.tab);
+}));
 if($('viewModeBasicBtn')) $('viewModeBasicBtn').addEventListener('click', () => setViewMode('basic'));
 if($('viewModeAdvancedBtn')) $('viewModeAdvancedBtn').addEventListener('click', () => setViewMode('advanced'));
 applyViewMode();
 $all('[data-goto]').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.goto)));
+$all('[data-ai-pro-mode]').forEach(btn => btn.addEventListener('click', () => setAiProMode(btn.dataset.aiProMode)));
 $all('#sportSegmented button').forEach(btn => btn.addEventListener('click', () => setSport(btn.dataset.sport)));
 $all('#filterRow button').forEach(btn => btn.addEventListener('click', () => { activeFilter = btn.dataset.filter; $all('#filterRow button').forEach(b=>b.classList.toggle('active', b===btn)); renderLegacyHistory(); }));
 if($('historySearch')) $('historySearch').addEventListener('input', e => { historySearch = e.target.value || ''; renderLegacyHistory(); });
@@ -2873,9 +2992,9 @@ $('saveManualBtn').addEventListener('click', async () => {
   setImportReport(null);
   updatePreview();
 });
-$('refreshBtn').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); await loadTrainings(); });
-$('refreshBtn2').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); await loadTrainings(); });
-if($('refreshGarminMiniBtn')) $('refreshGarminMiniBtn').addEventListener('click', async () => { await loadDailyMetrics(); await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); renderRecovery(); analyze(); renderGarminProReadiness(); });
+$('refreshBtn').addEventListener('click', async()=>{ await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); renderAll(); });
+$('refreshBtn2').addEventListener('click', async()=>{ await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); renderAll(); });
+if($('refreshGarminMiniBtn')) $('refreshGarminMiniBtn').addEventListener('click', async () => { await loadGarminProReadiness(); await loadGarminProDashboard(); await loadGarminProCards(); await loadGarminSyncState(); renderAll(); });
 if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
 if($('loginBtn')) $('loginBtn').addEventListener('click', signIn);
 if($('authPassword')) $('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') signIn(); });
@@ -2919,4 +3038,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=402-readiness-pro-local').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=412-ai-pro-tabs-local').catch(()=>{}); }
