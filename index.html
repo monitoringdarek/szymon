@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Szymon AI Coach • Road to Kalmar v3.2.9</title>
-  <link rel="stylesheet" href="styles.css?v=329" />
+  <title>Szymon AI Coach • Road to Kalmar v4.0.2-readiness-pro-local</title>
+  <link rel="stylesheet" href="styles.css?v=402-readiness-pro-local" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020814">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -64,6 +64,14 @@
             <span class="section-label">Co dziś zrobić?</span>
             <h2 id="todayCoachTitle">Czekam na dane Garmin...</h2>
             <p id="todayCoachBrief">Po synchronizacji pokażę krótką, ludzką odpowiedź: trenować, lekko ruszyć się czy odpocząć.</p>
+            <div id="readinessProDetails" class="readiness-pro-details">
+              <span>Sen: <b id="readinessSleep">—</b></span>
+              <span>Body Battery: <b id="readinessBodyBattery">—</b></span>
+              <span>Stress avg: <b id="readinessStress">—</b></span>
+              <span>Load 7d: <b id="readinessLoad7d">—</b></span>
+              <span>Load 28d: <b id="readinessLoad28d">—</b></span>
+            </div>
+            <p id="readinessJournalNote" class="readiness-journal-note">Czekam na wpis dziennika.</p>
             <div class="coach-actions">
               <button class="main-cta slim" data-goto="trainings">Pełna analiza</button>
               <button class="ghost slim" data-goto="history">Historia</button>
@@ -96,7 +104,7 @@
           <div class="pulse-card" data-goto="history" role="button" tabindex="0">
             <span class="pulse-icon">🏁</span>
             <div>
-              <small>Ostatni trening</small>
+              <small>Ostatnia aktywność PRO</small>
               <b id="dashboardLatestTitle">—</b>
               <p id="dashboardLatestMeta">Garmin Sync uzupełni historię.</p>
             </div>
@@ -121,22 +129,25 @@
             </div>
             <span class="timeline-badge">read only</span>
           </div>
-          <p class="muted-small">Prawdziwe dane z Garmin Sync Agent PRO — tylko odczyt.</p>
-          <div id="garminProStatus" class="sync-status info">Pobieram dane Garmin PRO...</div>
-          <div id="garminProCards" class="garmin-pro-list"></div>
+          <p class="muted-small">Prawdziwe dane z Garmin Sync Agent PRO — tylko odczyt. Pełne karty są w historii PRO.</p>
+          <div class="garmin-pro-compact-actions">
+            <div id="garminProStatus" class="sync-status info">Pobieram dane Garmin PRO...</div>
+            <button id="openGarminProDetailsBtn" class="ghost slim" type="button">Historia PRO</button>
+          </div>
         </section>
 
         <section class="card weekly-mini-card">
-          <div class="card-head"><h2>Tydzień w skrócie</h2><button class="text-btn" data-goto="trainings">Analiza ›</button></div>
+          <div class="card-head"><h2>Tydzień Garmin PRO</h2><button class="text-btn" data-goto="trainings">Analiza ›</button></div>
           <div class="mini-sports-row">
             <span class="swim">🏊 <b id="swimKm">0 km</b><small id="swimTime">0 min</small></span>
             <span class="bike">🚴 <b id="bikeKm">0 km</b><small id="bikeTime">0 min</small></span>
             <span class="run">🏃 <b id="runKm">0 km</b><small id="runTime">0 min</small></span>
+            <span class="load">⚡ <b id="proLoad7d">Load 0</b><small id="proLoad28d">28d: 0</small></span>
           </div>
         </section>
 
         <section class="card recent-card recent-minimal-card">
-          <div class="card-head"><h2>Ostatni zapis</h2><button class="text-btn" data-goto="history">Szukaj w historii ›</button></div>
+          <div class="card-head"><h2>Ostatnia aktywność Garmin PRO</h2><button class="text-btn" data-goto="history">Legacy ›</button></div>
           <div id="recentList" class="workout-list compact one-item"></div>
         </section>
 
@@ -566,7 +577,7 @@
           <h2>📱 Instalacja na iPhone</h2>
           <p>Safari → Udostępnij → Dodaj do ekranu początkowego.</p>
         </section>
-        <footer>Szymon AI Coach • Road to Kalmar v3.2.9</footer>
+        <footer>Szymon AI Coach • Road to Kalmar v4.0.2-readiness-pro-local</footer>
       </section>
     </main>
 
@@ -685,6 +696,20 @@
       </div>
     </section>
 
+    <section id="garminProDetails" class="details-overlay" hidden>
+      <div class="details-panel recovery-panel garmin-pro-panel">
+        <div class="details-top">
+          <div>
+            <span class="details-badge">Garmin PRO</span>
+            <h2>Historia PRO</h2>
+            <p>Pełne karty aktywności Garmin Sync Agent PRO.</p>
+          </div>
+          <button id="closeGarminProDetailsBtn" class="close-btn" aria-label="Zamknij">×</button>
+        </div>
+        <div id="garminProCards" class="garmin-pro-list garmin-pro-history-list"></div>
+      </div>
+    </section>
+
     <nav class="bottom-nav">
       <button class="active" data-tab="dashboard">⌂<span>Pulpit</span></button>
       <button data-tab="trainings" aria-label="Analiza">
@@ -693,12 +718,12 @@
         </span>
         <span>Analiza</span>
       </button>
-      <button data-tab="add">＋<span>Dodaj</span></button>
+      <button data-tab="add" class="legacy-add-nav">＋<span>Legacy</span></button>
       <button class="plus ai-main-nav" data-tab="ai" aria-label="AI">✦<span>AI</span></button>
       <button data-tab="history">↺<span>Historia</span></button>
       <button data-tab="settings">⚙<span>Ustawienia</span></button>
     </nav>
   </div>
-  <script src="app.js?v=329"></script>
+  <script src="app.js?v=402-readiness-pro-local"></script>
 </body>
 </html>

@@ -658,6 +658,33 @@ body::-webkit-scrollbar,
   font-size:15px;
   font-weight:720;
 }
+.readiness-pro-details{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin:12px 0 2px;
+}
+.readiness-pro-details span{
+  border:1px solid rgba(145,168,210,.18);
+  background:rgba(255,255,255,.035);
+  border-radius:14px;
+  padding:9px 10px;
+  color:#9fb0c8;
+  font-size:12px;
+  font-weight:900;
+}
+.readiness-pro-details b{
+  display:block;
+  color:#fff;
+  font-size:14px;
+  margin-top:2px;
+}
+.readiness-journal-note{
+  margin-top:9px!important;
+  color:#aebbd2!important;
+  font-size:12px!important;
+  line-height:1.35;
+}
 .coach-actions{
   display:flex;
   gap:10px;
@@ -758,7 +785,7 @@ body::-webkit-scrollbar,
 }
 .mini-sports-row{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(4,1fr);
   gap:8px;
 }
 .mini-sports-row span{
@@ -780,6 +807,10 @@ body::-webkit-scrollbar,
 .mini-sports-row small{
   color:#96a8bf;
   font-weight:850;
+}
+.mini-sports-row .load{
+  border-color:rgba(255,209,102,.28);
+  background:rgba(255,209,102,.07);
 }
 .recent-minimal-card{
   background:rgba(7,20,40,.58);
@@ -815,7 +846,7 @@ body::-webkit-scrollbar,
   .wow-readiness{flex-direction:row;justify-content:flex-start;width:100%}
   .pulse-card{grid-template-columns:42px minmax(0,1fr) auto}
   .pulse-card b{max-width:190px}
-  .mini-sports-row{grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .mini-sports-row{grid-template-columns:1fr 1fr;gap:7px}
   .mini-sports-row span{padding:9px 7px;min-height:68px}
   .mini-sports-row b{font-size:15px}
 }
@@ -1138,7 +1169,7 @@ body::-webkit-scrollbar,
 @media(max-width:520px){.athlete-report-actions{grid-template-columns:1fr}.athlete-report-output{max-height:360px}}
 
 
-/* v3.2.9 — Tryb Basic / Advanced */
+/* v4.0.2-readiness-pro-local — Tryb Basic / Advanced */
 .view-mode-card{border-color:rgba(255,123,29,.24);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
 .view-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
 .view-mode-switch button{min-height:52px;border:1px solid rgba(145,168,210,.30);border-radius:16px;background:rgba(255,255,255,.04);color:#dbe6f8;font-weight:1000;font-size:16px;}
@@ -1163,7 +1194,7 @@ body.view-basic .muted-small{line-height:1.38;}
 @media(max-width:520px){body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}}
 
 
-/* v3.2.9 — Triathlon / multisport segment details */
+/* v4.0.2-readiness-pro-local — Triathlon / multisport segment details */
 .race-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}
 .race-block[hidden]{display:none!important}
 .race-block h3{margin:0;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}
@@ -1175,11 +1206,14 @@ body.view-basic .muted-small{line-height:1.38;}
 .race-block label{display:block;margin-top:8px}.race-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px;font-size:12px}.race-block input{width:100%;min-height:44px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:13px;padding:0 10px;font-weight:850;outline:none}.race-transitions{margin-top:10px}
 @media(max-width:720px){.race-grid{grid-template-columns:1fr}.race-segment{padding:12px}.race-block input{min-height:48px}}
 
-/* v3.2.9 — Garmin PRO read-only dashboard cards */
+/* v4.0.2-readiness-pro-local — Garmin PRO read-only dashboard cards */
 .garmin-pro-card{
   border-color:rgba(56,189,248,.24);
   background:linear-gradient(145deg,rgba(7,22,43,.94),rgba(5,12,25,.98));
 }
+.garmin-pro-compact-actions{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:12px}
+.garmin-pro-compact-actions .sync-status{min-height:48px;display:grid;align-content:center}
+.ghost.slim{min-height:48px;padding:0 14px;white-space:nowrap}
 .garmin-pro-list{display:grid;gap:10px;margin-top:12px}
 .garmin-pro-item{
   border:1px solid rgba(145,168,210,.18);
@@ -1216,4 +1250,12 @@ body.view-basic .muted-small{line-height:1.38;}
 .garmin-pro-tags span{border:1px solid rgba(255,123,29,.28);background:rgba(255,123,29,.10);color:#ffd7c7;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:950}
 .garmin-pro-item p{margin:10px 0 0;color:#d3dfef;line-height:1.35;font-size:13px}
 .garmin-pro-summary{border-top:1px solid rgba(145,168,210,.14);padding-top:10px;color:#eaf4ff!important}
-@media(max-width:430px){.garmin-pro-metrics{grid-template-columns:1fr 1fr}.garmin-pro-top{display:block}.garmin-pro-top em{display:inline-block;margin-top:8px}}
+.garmin-pro-panel .garmin-pro-list{margin-top:0}
+.garmin-pro-history-list{padding-bottom:8px}
+@media(max-width:430px){.garmin-pro-compact-actions{grid-template-columns:1fr}.garmin-pro-metrics{grid-template-columns:1fr 1fr}.garmin-pro-top{display:block}.garmin-pro-top em{display:inline-block;margin-top:8px}}
+
+/* v4 PRO CLEAN — manual workouts stay legacy, hidden from main navigation */
+.bottom-nav button[data-tab="add"],
+.bottom-nav .legacy-add-nav{display:none!important}
+.bottom-nav{grid-template-columns:repeat(5,1fr)}
+body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr)}
