@@ -1,4 +1,4 @@
-const VERSION = '3.2.8';
+const VERSION = '3.2.9';
 const RACE_DATE = new Date('2026-08-15T07:00:00+02:00');
 const START_PREP_DATE = new Date('2025-06-01T00:00:00+02:00');
 const LOCAL_BACKUP_KEY = 'szymonKalmarTrainingHistoryV191Backup';
@@ -17,6 +17,7 @@ const GARMIN_EDGE_ENDPOINT = `${SUPABASE_URL}/functions/v1/garmin-public-import`
 const PROFILE_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_profile`;
 const GARMIN_SYNC_STATE_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_sync_state`;
 const DAILY_METRICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_daily_metrics`;
+const GARMIN_PRO_CARDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_cards`;
 const AI_JOURNAL_ENDPOINT = `${SUPABASE_URL}/rest/v1/ai_coach_journal`;
 const GEMINI_AI_ENDPOINT = `${SUPABASE_URL}/functions/v1/gemini-ai-coach`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
@@ -34,6 +35,8 @@ let athleteProfile = { athlete_name:'Szymon', target_event:'IRONMAN Kalmar 2026'
 let garminSyncState = null;
 let dailyMetrics = [];
 let latestDailyMetric = null;
+let garminProCards = [];
+let garminProError = false;
 let historySearch = '';
 let historyRange = '30';
 let aiJournal = readAiJournal();
@@ -323,7 +326,6 @@ const quotes = [
 ];
 
 function $(id){ return document.getElementById(id); }
-function set(id, text){ const el = $(id); if(el) el.textContent = text; }
 function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function todayDate(){ return new Date().toISOString().slice(0,10); }
@@ -532,7 +534,7 @@ function fromDb(row){
     rawData: row.raw_data || null,
     advancedData: row.advanced_data || null,
     rawAdvancedText: notes.rawAdvancedText || '',
-    raceSegments: notes.raceSegments || (row.advanced_data && (row.advanced_data.raceSegments || row.advanced_data.multisport_segments || row.advanced_data.multisportSegments)) || null,
+    raceSegments: notes.raceSegments || (row.advanced_data && row.advanced_data.raceSegments) || null,
     cloud: true
   };
 }
@@ -688,6 +690,7 @@ async function bootAppData(){
   await loadProfile();
   await loadGarminSyncState();
   await loadDailyMetrics();
+  await loadGarminProCards();
   await loadAiJournalFromCloud();
   await loadTrainings();
 }
@@ -813,6 +816,35 @@ async function loadDailyMetrics(){
     dailyMetrics = [];
     latestDailyMetric = null;
   }
+}
+async function loadGarminProCards(){
+  const status = $('garminProStatus');
+  if(status){ status.className = 'sync-status info'; status.textContent = 'Pobieram dane Garmin PRO...'; }
+  try{
+    const columns = [
+      'garmin_activity_id',
+      'event_name',
+      'sport_type',
+      'workout_date',
+      'distance_km',
+      'duration_min',
+      'hr_avg',
+      'hr_max',
+      'training_load',
+      'segment_summary',
+      'bike_if_category',
+      'run_split_type',
+      'auto_summary'
+    ].join(',');
+    const rows = await apiGet(`${GARMIN_PRO_CARDS_ENDPOINT}?select=${columns}&order=workout_date.desc&limit=8`);
+    garminProCards = rows || [];
+    garminProError = false;
+  }catch(err){
+    console.warn('Nie udało się pobrać danych Garmin PRO', err);
+    garminProCards = [];
+    garminProError = true;
+  }
+  renderGarminProCards();
 }
 function fmtInt(v, suffix=''){
   const n = Number(v);
@@ -1499,6 +1531,57 @@ function renderHistory(){
   }
   const countLabel = $('historyCountLabel');
   if(countLabel) countLabel.textContent = `${filtered.length} / ${full.length}`;
+}
+function garminProSportLabel(type){
+  const key = String(type || '').toLowerCase();
+  const meta = sportMeta[key] || (key.includes('swim') ? sportMeta.swim : key.includes('bike') || key.includes('cycl') ? sportMeta.bike : key.includes('run') ? sportMeta.run : sportMeta.other);
+  return `${meta.icon} ${meta.label || type || 'Sport'}`;
+}
+function garminProMetric(value, suffix=''){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '—';
+  return `${Math.round(n).toLocaleString('pl-PL')}${suffix}`;
+}
+function renderGarminProCards(){
+  const list = $('garminProCards');
+  const status = $('garminProStatus');
+  if(!list) return;
+  if(garminProError){
+    list.innerHTML = '<div class="empty-history">Nie udało się pobrać danych Garmin PRO.</div>';
+    if(status){ status.className = 'sync-status warn'; status.textContent = 'Nie udało się pobrać danych Garmin PRO.'; }
+    return;
+  }
+  if(!garminProCards.length){
+    list.innerHTML = '<div class="empty-history">Brak danych Garmin PRO.</div>';
+    if(status){ status.className = 'sync-status info'; status.textContent = 'Brak danych Garmin PRO.'; }
+    return;
+  }
+  if(status){ status.className = 'sync-status ok'; status.textContent = `Garmin PRO: ${garminProCards.length} ostatnich aktywności. Tylko odczyt.`; }
+  list.innerHTML = garminProCards.map(card => {
+    const title = escapeHtml(card.event_name || `Aktywność Garmin ${card.garmin_activity_id || ''}`.trim());
+    const sport = garminProSportLabel(card.sport_type);
+    const date = card.workout_date ? formatDate(String(card.workout_date).slice(0,10)) : 'brak daty';
+    const distance = Number.isFinite(Number(card.distance_km)) ? `${formatKm(card.distance_km)} km` : '—';
+    const duration = Number.isFinite(Number(card.duration_min)) ? minutesToClock(Number(card.duration_min)) : '—';
+    const hr = card.hr_avg || card.hr_max ? `${garminProMetric(card.hr_avg, ' bpm')} / max ${garminProMetric(card.hr_max, ' bpm')}` : '—';
+    const load = garminProMetric(card.training_load);
+    const tags = [card.bike_if_category, card.run_split_type].filter(Boolean).map(x => `<span>${escapeHtml(x)}</span>`).join('');
+    return `<article class="garmin-pro-item">
+      <div class="garmin-pro-top">
+        <div><b>${title}</b><small>${escapeHtml(sport)} • ${date}</small></div>
+        <em>${escapeHtml(String(card.garmin_activity_id || 'PRO'))}</em>
+      </div>
+      <div class="garmin-pro-metrics">
+        <span>Dystans <b>${distance}</b></span>
+        <span>Czas <b>${duration}</b></span>
+        <span>HR <b>${hr}</b></span>
+        <span>Load <b>${load}</b></span>
+      </div>
+      ${tags ? `<div class="garmin-pro-tags">${tags}</div>` : ''}
+      ${card.segment_summary ? `<p>${escapeHtml(card.segment_summary)}</p>` : ''}
+      ${card.auto_summary ? `<p class="garmin-pro-summary">${escapeHtml(card.auto_summary)}</p>` : ''}
+    </article>`;
+  }).join('');
 }
 function generateWeeklyPlan(readiness, loadLabel, missing){
   const base = [
@@ -2299,7 +2382,7 @@ async function callGeminiBackend({question='', targetId='geminiAiOutput', status
       mode: 'cors',
       cache: 'no-store',
       headers: headers({'Content-Type':'application/json'}),
-      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.7', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
+      body: JSON.stringify({ date: todayDate(), source: 'pwa-v3.2.9', mode: isQuestion ? 'chat' : 'analysis', question: String(question || '').trim() })
     });
     const raw = await response.text();
     let data = null;
@@ -2396,117 +2479,7 @@ function applyViewMode(mode=getViewMode()){
   }
 }
 
-
-function pcMinutesLabel(minutes){
-  const m = Math.round(Number(minutes || 0));
-  if(m >= 60) return `${(m/60).toFixed(1).replace('.', ',')} h`;
-  return `${m} min`;
-}
-function pcSportTotals(items){
-  const totals = {
-    swim:{km:0,min:0}, bike:{km:0,min:0}, run:{km:0,min:0}, strength:{km:0,min:0}, other:{km:0,min:0}
-  };
-  items.forEach(x => {
-    const key = totals[x.type] ? x.type : 'other';
-    totals[key].km += Number(x.distanceKm || 0);
-    totals[key].min += Number(x.minutes || 0);
-  });
-  return totals;
-}
-function pcSegmentRows(item){
-  const r = item?.raceSegments;
-  if(!r) return [];
-  if(Array.isArray(r)) return r;
-  if(Array.isArray(r.segments)) return r.segments;
-  if(Array.isArray(r.multisport_segments)) return r.multisport_segments;
-  const rows = [];
-  if(r.swim) rows.push({sport:'Pływanie', icon:'🏊', ...r.swim});
-  if(r.transitions?.t1) rows.push({sport:'T1', icon:'🔁', minutes:r.transitions.t1});
-  if(r.bike) rows.push({sport:'Rower', icon:'🚴', ...r.bike});
-  if(r.transitions?.t2) rows.push({sport:'T2', icon:'🔁', minutes:r.transitions.t2});
-  if(r.run) rows.push({sport:'Bieg', icon:'🏃', ...r.run});
-  return rows.filter(x => x && (x.distanceKm || x.distance_km || x.distance || x.minutes || x.elapsed_minutes || x.elapsedDuration || x.duration || x.avgHr || x.averageHR || x.avgPower || x.averagePower || x.normalizedPower || x.power));
-}
-function pcFindLatestRace(items){
-  return items.find(x => pcSegmentRows(x).length) || items.find(x => isTriathlonLike(x)) || null;
-}
-function pcMetric(item, key){
-  return metricNumber(item, key);
-}
-function renderPcTrend(items){
-  const el = $('pcTrendChart');
-  if(!el) return;
-  const recent = [...items].slice(0,10).reverse();
-  if(!recent.length){ el.innerHTML = '<div class="pc-empty">Brak treningów do wykresu.</div>'; return; }
-  const max = Math.max(...recent.map(x => Number(x.minutes || 0)), 1);
-  el.innerHTML = recent.map(x => {
-    const meta = sportMeta[x.type] || sportMeta.other;
-    const h = Math.max(8, Math.round((Number(x.minutes || 0) / max) * 100));
-    return `<button class="pc-trend-bar ${meta.cls}" title="${escapeHtml(activityNameFor(x))} • ${pcMinutesLabel(x.minutes)} • ${formatKm(x.distanceKm)} km" data-id="${x.id}"><i style="height:${h}%"></i><span>${meta.icon}</span><small>${String(trainingDate(x)).slice(5)}</small></button>`;
-  }).join('');
-  $all('#pcTrendChart .pc-trend-bar').forEach(btn => btn.addEventListener('click', () => openWorkoutDetails(btn.dataset.id)));
-}
-function renderPcBalance(totals){
-  const el = $('pcSportBalance');
-  if(!el) return;
-  const rows = [
-    ['swim','🏊 Pływanie', totals.swim.km, 'swim'],
-    ['bike','🚴 Rower', totals.bike.km, 'bike'],
-    ['run','🏃 Bieganie', totals.run.km, 'run']
-  ];
-  const max = Math.max(...rows.map(r => r[2]), 1);
-  el.innerHTML = rows.map(([key,label,km,cls]) => `<div class="pc-balance-row ${cls}"><span>${label}</span><div><i style="width:${Math.round((km/max)*100)}%"></i></div><b>${formatKm(km)} km</b></div>`).join('');
-}
-function renderPcSegments(items){
-  const el = $('pcRaceSegments');
-  if(!el) return;
-  const race = pcFindLatestRace(items);
-  if(!race){
-    el.innerHTML = '<div class="pc-empty">Po wdrożeniu Garmin Sync Agent z segmentami zobaczysz tutaj pływanie, T1, rower, T2 i bieg bez ręcznego wpisywania.</div>';
-    return;
-  }
-  const rows = pcSegmentRows(race);
-  if(!rows.length){
-    el.innerHTML = `<div class="pc-empty"><b>${escapeHtml(activityNameFor(race))}</b><br>Ten trening wygląda jak multisport, ale nie ma jeszcze zapisanych segmentów. Następny krok: Garmin Sync Agent zapisuje lapDTOs do Supabase.</div>`;
-    return;
-  }
-  el.innerHTML = `<div class="pc-race-head"><b>${escapeHtml(activityNameFor(race))}</b><span>${formatDate(trainingDate(race))}</span></div>` + rows.map((seg, idx) => {
-    const sportName = seg.sport || seg.type || seg.activityType || seg.name || `Segment ${idx+1}`;
-    const icon = seg.icon || (String(sportName).toLowerCase().includes('swim') || String(sportName).toLowerCase().includes('pływ') ? '🏊' : String(sportName).toLowerCase().includes('bike') || String(sportName).toLowerCase().includes('rower') || String(sportName).toLowerCase().includes('cycling') ? '🚴' : String(sportName).toLowerCase().includes('run') || String(sportName).toLowerCase().includes('bieg') ? '🏃' : '🔁');
-    const dist = firstDefined(seg.distanceKm, seg.distance_km, seg.distance_m ? Number(seg.distance_m)/1000 : null, seg.distance ? Number(seg.distance) > 100 ? Number(seg.distance)/1000 : Number(seg.distance) : null);
-    const min = firstDefined(seg.minutes, seg.elapsed_minutes, seg.duration_minutes, seg.elapsedDuration ? Number(seg.elapsedDuration)/60 : null, seg.duration ? Number(seg.duration)/60 : null);
-    const hr = firstDefined(seg.hr, seg.avgHr, seg.averageHR, seg.average_hr);
-    const power = firstDefined(seg.power, seg.avgPower, seg.averagePower, seg.average_power);
-    const np = firstDefined(seg.normalizedPower, seg.npPower, seg.np_watts);
-    return `<article class="pc-segment"><span>${icon}</span><div><b>${escapeHtml(String(sportName).replace('open_water_swimming','Pływanie').replace('transition_v2','Przejście').replace('cycling','Rower').replace('running','Bieg'))}</b><small>${dist ? `${formatKm(dist)} km` : '—'} • ${min ? pcMinutesLabel(min) : '—'}</small></div><em>${hr ? `HR ${Math.round(Number(hr))}` : ''}${power ? ` • ${Math.round(Number(power))} W` : ''}${np ? ` • NP ${Math.round(Number(np))}` : ''}</em></article>`;
-  }).join('');
-}
-function renderPcLab(){
-  const root = $('screen-lab');
-  if(!root) return;
-  const items = sortTrainings(trainings.length ? trainings : [demo]);
-  const totals = pcSportTotals(items);
-  const totalMin = items.reduce((sum,x) => sum + Number(x.minutes || 0), 0);
-  const advancedCount = items.filter(x => hasAdvancedMetrics(x) || pcSegmentRows(x).length || x.advancedData).length;
-  set('pcTotalWorkouts', String(items.length));
-  set('pcTotalHours', `${(totalMin/60).toFixed(1).replace('.', ',')} h`);
-  set('pcAdvancedCount', String(advancedCount));
-  set('pcSwimKm', `${formatKm(totals.swim.km)} km`); set('pcSwimTime', pcMinutesLabel(totals.swim.min));
-  set('pcBikeKm', `${formatKm(totals.bike.km)} km`); set('pcBikeTime', pcMinutesLabel(totals.bike.min));
-  set('pcRunKm', `${formatKm(totals.run.km)} km`); set('pcRunTime', pcMinutesLabel(totals.run.min));
-  const loadScore = items.slice(0,14).reduce((sum,x)=> sum + Number(x.minutes||0)/5 + advancedTrainingLoad(x), 0);
-  set('pcLoadScore', Math.round(loadScore).toString());
-  const readiness = $('readiness')?.textContent || '--';
-  set('pcReadiness', `${readiness}/100`.replace('/100/100','/100'));
-  const latest = items[0];
-  if($('pcSignalTitle')) $('pcSignalTitle').textContent = latest ? `Ostatnio: ${activityNameFor(latest).replace(' — trening Kalmar','')}` : 'Czekam na dane';
-  if($('pcSignalText')) $('pcSignalText').textContent = latest ? `${formatDate(trainingDate(latest))} • ${formatKm(latest.distanceKm)} km • ${pcMinutesLabel(latest.minutes)}. Pełna analiza PC będzie rosła razem z historią Garmina.` : 'Po synchronizacji pokażę tu decyzję: mocny trening, lekko albo regeneracja.';
-  renderPcTrend(items);
-  renderPcBalance(totals);
-  renderPcSegments(items);
-}
-
-function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); analyze(); renderAiSupport(); renderPcLab(); updatePreview(); }
+function renderAll(){ updateKalmarRoad(); renderTotals(); renderHistory(); renderRecovery(); renderGarminProCards(); analyze(); renderAiSupport(); updatePreview(); }
 function updatePreview(){
   const type = $('sportType').value;
   const meta = sportMeta[type] || sportMeta.run;
@@ -2622,9 +2595,9 @@ $('saveManualBtn').addEventListener('click', async () => {
   setImportReport(null);
   updatePreview();
 });
-$('refreshBtn').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
-$('refreshBtn2').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminSyncState(); await loadTrainings(); });
-if($('refreshGarminMiniBtn')) $('refreshGarminMiniBtn').addEventListener('click', async () => { await loadDailyMetrics(); await loadGarminSyncState(); renderRecovery(); analyze(); });
+$('refreshBtn').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminProCards(); await loadGarminSyncState(); await loadTrainings(); });
+$('refreshBtn2').addEventListener('click', async()=>{ await loadDailyMetrics(); await loadGarminProCards(); await loadGarminSyncState(); await loadTrainings(); });
+if($('refreshGarminMiniBtn')) $('refreshGarminMiniBtn').addEventListener('click', async () => { await loadDailyMetrics(); await loadGarminProCards(); await loadGarminSyncState(); renderRecovery(); analyze(); });
 if($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
 if($('loginBtn')) $('loginBtn').addEventListener('click', signIn);
 if($('authPassword')) $('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') signIn(); });
@@ -2668,4 +2641,4 @@ if(loadStoredAuth()){
   renderAll();
 }
 localStorage.setItem('lastVersion', VERSION);
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=322').catch(()=>{}); }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=329').catch(()=>{}); }
