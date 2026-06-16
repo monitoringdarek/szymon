@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-507-analysis-precision';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-508-analysis-logic-hotfix';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=507-analysis-precision',
-  './app.js?v=507-analysis-precision',
+  './styles.css?v=508-analysis-logic-hotfix',
+  './app.js?v=508-analysis-logic-hotfix',
   './manifest.json'
 ];
 

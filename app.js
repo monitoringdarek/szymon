@@ -1,4 +1,4 @@
-const VERSION = 'v5.0.7-analysis-precision-ui-local';
+const VERSION = 'v5.0.8-analysis-logic-hotfix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -889,12 +889,31 @@ function contextMatchesActivity(record, activity){
   if(!record || !activity) return false;
   const activityId = String(activity.activity_id || '');
   const garminId = String(activity.garmin_activity_id || '');
-  const date = String(activity.workout_date || '').slice(0, 10);
-  return Boolean(
-    activityId && String(record.activity_id || '') === activityId ||
-    garminId && String(record.garmin_activity_id || '') === garminId ||
-    date && String(record.workout_date || '').slice(0, 10) === date && activityName(record) === activityName(activity)
-  );
+  if(activityId && String(record.activity_id || '') === activityId) return true;
+  if(garminId && String(record.garmin_activity_id || '') === garminId) return true;
+  return false;
+}
+
+function fallbackContextMatchesActivity(record, activity){
+  if(!record || !activity) return false;
+  const date = fmtDateIso(activity.workout_date);
+  if(!date || fmtDateIso(record.workout_date) !== date) return false;
+  return activityName(record) === activityName(activity);
+}
+
+function findActivityContext(activity){
+  if(!activity) return null;
+  const exact = activityContexts.find(item => contextMatchesActivity(item, activity));
+  if(exact) return exact;
+  const fallbackMatches = activityContexts.filter(item => fallbackContextMatchesActivity(item, activity));
+  if(fallbackMatches.length === 1) return fallbackMatches[0];
+  if(fallbackMatches.length > 1){
+    console.warn('Niepewne dopasowanie kontekstu aktywności — zostawiam analizę podstawową.', {
+      workout_date: fmtDateIso(activity.workout_date),
+      event_name: activityName(activity)
+    });
+  }
+  return null;
 }
 
 function normalizeContextActivity(record, fallbackActivity){
@@ -912,7 +931,7 @@ function normalizeContextActivity(record, fallbackActivity){
 }
 
 function buildActivityContext(activity){
-  const record = activityContexts.find(item => contextMatchesActivity(item, activity));
+  const record = findActivityContext(activity);
   if(!record){
     return {
       hasFullContext: false,
@@ -958,10 +977,22 @@ function compactDailyLine(item){
   ].filter(Boolean).join(', ');
 }
 
+function itemMatchesRelativeDay(item, relation, record){
+  if(!item) return false;
+  if(item.relative_day === relation) return true;
+  const itemDate = fmtDateIso(item.metric_date || item.journal_date);
+  const workoutDate = fmtDateIso(record?.workout_date);
+  if(!itemDate || !workoutDate) return false;
+  if(relation === 'activity_day') return itemDate === workoutDate;
+  if(relation === 'before') return itemDate >= addDaysIso(workoutDate, -3) && itemDate < workoutDate;
+  if(relation === 'after') return itemDate > workoutDate && itemDate <= addDaysIso(workoutDate, 1);
+  return false;
+}
+
 function contextWindowText(record, relation){
   if(!record) return 'brak danych';
-  const daily = parseJsonArray(record.daily_metrics_window).filter(item => item.relative_day === relation);
-  const journal = parseJsonArray(record.journal_window).filter(item => item.relative_day === relation);
+  const daily = parseJsonArray(record.daily_metrics_window).filter(item => itemMatchesRelativeDay(item, relation, record));
+  const journal = parseJsonArray(record.journal_window).filter(item => itemMatchesRelativeDay(item, relation, record));
   const parts = [];
   if(daily.length) parts.push(`Garmin: ${daily.map(compactDailyLine).join(' | ')}`);
   if(journal.length) parts.push(`Dziennik: ${journal.map(compactDailyLine).join(' | ')}`);
@@ -1118,6 +1149,87 @@ function recoveryAfterText(record){
   return dailyLineForDate(record, 1);
 }
 
+function segmentTypes(record){
+  return parseJsonArray(record.segments).map(segment => String(segment.segment_type || '').toLowerCase());
+}
+
+function hasSegment(record, type){
+  return segmentTypes(record).includes(type);
+}
+
+function runHrText(record){
+  const run = parseJsonArray(record.segments).find(segment => String(segment.segment_type || '').toLowerCase() === 'run');
+  if(run?.hr_avg != null || run?.hr_max != null){
+    return `${run.hr_avg != null ? Math.round(Number(run.hr_avg)) : 'brak danych'}/${run.hr_max != null ? Math.round(Number(run.hr_max)) : 'brak danych'}`;
+  }
+  if(record.run_start_hr != null) return `start HR ${Math.round(Number(record.run_start_hr))}`;
+  return '';
+}
+
+function afterReadinessCost(record){
+  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
+  if(!after) return '';
+  const score = numberOrNull(after.training_readiness_score);
+  const level = String(after.training_readiness_level || '').toUpperCase();
+  const batteryEnd = numberOrNull(after.body_battery_end);
+  if(score != null && score <= 20) return `D+1 readiness ${Math.round(score)}/100 ${level || ''} pokazuje duży koszt regeneracyjny.`.trim();
+  if(batteryEnd != null && batteryEnd < 45) return `D+1 Body Battery ${Math.round(batteryEnd)} sugeruje wyraźny koszt regeneracyjny.`;
+  return '';
+}
+
+function buildDynamicKalmarConclusion(record){
+  if(!record) return 'Wniosek pod Ironman Kalmar: brak danych.';
+  const sport = String(record.sport_type || record.activity_type || '').toLowerCase();
+  const hasSwim = hasSegment(record, 'swim') || sport.includes('swim');
+  const hasBike = hasSegment(record, 'bike') || sport.includes('bike') || sport.includes('cycl');
+  const hasRun = hasSegment(record, 'run') || sport.includes('run');
+  const isMulti = Boolean(record.is_multisport) || sport.includes('triathlon') || sport.includes('multi') || (hasSwim && hasBike && hasRun);
+  const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
+  const npFromSummary = extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]);
+  const np = record.np_watts != null ? fmtMaybeNumber(record.np_watts, ' W') : npFromSummary;
+  const load = numberOrNull(record.training_load);
+  const hrAvg = numberOrNull(record.hr_avg);
+  const hrMax = numberOrNull(record.hr_max);
+  const recoveryCost = afterReadinessCost(record);
+  const runHr = runHrText(record);
+
+  if(isMulti){
+    const parts = ['Wniosek pod Ironman Kalmar: ten start pokazuje układ pływanie–rower–bieg, więc najważniejsza jest kontrola kosztu między dyscyplinami.'];
+    if(hasBike && (bikeIf != null || np || record.bike_if_category)){
+      parts.push(`Rower jest mocnym elementem, ale wymaga kontroli${bikeIf != null ? ` — IF ${fmtIf(bikeIf)}` : ''}${np ? `, NP ${np}` : ''}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    }
+    if(hasRun && runHr) parts.push(`Bieg był wykonywany wysoko tętniowo (${runHr}), więc koszt roweru trzeba pilnować przed dłuższymi dystansami.`);
+    if(recoveryCost) parts.push(recoveryCost);
+    if(!hasBike && !hasRun && load != null) parts.push(`Load ${fmtNumber(load)} pokazuje koszt całego startu, ale brakuje pełnych danych segmentów do głębszej oceny.`);
+    return parts.join(' ');
+  }
+
+  if(hasBike){
+    const parts = ['Wniosek pod Ironman Kalmar: rower trzeba rozwijać jako stabilną, ekonomiczną pracę, a nie tylko pojedynczy mocny bodziec.'];
+    if(bikeIf != null || np || record.bike_if_category) parts.push(`Dostępne dane rowerowe: ${bikeIf != null ? `IF ${fmtIf(bikeIf)}` : 'IF brak danych'}${np ? `, NP ${np}` : ', NP brak danych'}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    if(hrAvg != null || hrMax != null) parts.push(`HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pokazuje koszt intensywności.`);
+    if(recoveryCost) parts.push(recoveryCost);
+    return parts.join(' ');
+  }
+
+  if(hasRun){
+    const pace = extractMetric(record, [/\btempo\s*([0-9]+:[0-9]{2}\/?km)/i]);
+    const parts = ['Wniosek pod Ironman Kalmar: ten bieg oceniaj przez tempo, tętno i koszt regeneracji, bo w Ironmanie kluczowa będzie odporność na zmęczenie po rowerze.'];
+    if(pace || hrAvg != null || hrMax != null || load != null) parts.push(`Dane biegu: tempo ${pace || 'brak danych'}, HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'}, load ${load != null ? fmtNumber(load) : 'brak danych'}.`);
+    if(recoveryCost) parts.push(recoveryCost);
+    return parts.join(' ');
+  }
+
+  if(hasSwim){
+    const parts = ['Wniosek pod Ironman Kalmar: pływanie ma być ekonomiczne i spokojne, żeby nie zabierało zasobów przed rowerem.'];
+    if(hrAvg != null || hrMax != null) parts.push(`HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pozwala ocenić koszt wejścia w wysiłek.`);
+    if(recoveryCost) parts.push(recoveryCost);
+    return parts.join(' ');
+  }
+
+  return 'Wniosek pod Ironman Kalmar: ocena ograniczona do dostępnych danych aktywności. Brak danych segmentowych do sportowej interpretacji.';
+}
+
 function fullCoachAnalysis(record){
   const load = numberOrNull(record.training_load);
   const hrAvg = numberOrNull(record.hr_avg);
@@ -1126,7 +1238,7 @@ function fullCoachAnalysis(record){
   const runStartHr = numberOrNull(record.run_start_hr);
   const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
   const activityDay = metricForDate(parseJsonArray(record.daily_metrics_window), fmtDateIso(record.workout_date));
-  const before = parseJsonArray(record.daily_metrics_window).filter(item => item.relative_day === 'before');
+  const before = parseJsonArray(record.daily_metrics_window).filter(item => itemMatchesRelativeDay(item, 'before', record));
   const moderateBefore = before.some(item => String(item.training_readiness_level || '').toUpperCase() === 'MODERATE');
   const sentences = [];
   sentences.push(`Analiza PRO — pełny kontekst D-3 → D+1, zakotwiczona w ${fmtDateIso(record.workout_date) || 'brak danych'}.`);
@@ -1150,7 +1262,6 @@ function fullCoachAnalysis(record){
   }else{
     sentences.push('Koszt po aktywności: D+1 brak danych.');
   }
-  sentences.push('Pod Ironman Kalmar: moc roweru jest atutem, ale intensywność musi być kontrolowana, bo koszt regeneracyjny i bieg są wrażliwe na przepalenie roweru.');
   return sentences.join(' ');
 }
 
@@ -1161,65 +1272,6 @@ function fullRecoveryRecommendation(record){
     return 'Po tej aktywności priorytetem jest regeneracja, sen, nawodnienie i bardzo lekki ruch. Do mocniejszego bodźca wracaj dopiero po odbiciu readiness i Body Battery, nie dzień po takim starcie.';
   }
   return 'Po tej aktywności wybierz lekki trening lub technikę i kontroluj obciążenie. Mocniejszy bodziec dopiero, gdy readiness, sen i Body Battery potwierdzą regenerację.';
-}
-
-function buildFactBasedActivityAnalysis(activityContext){
-  if(!activityContext?.activity){
-    return buildBasicActivityAnalysis(null, {});
-  }
-  if(!activityContext.hasFullContext){
-    const basic = buildBasicActivityAnalysis(activityContext.activity, {});
-    return {
-      facts: basic.facts,
-      contextBefore: activityContext.message,
-      activityDay: 'brak danych',
-      recoveryContext: 'brak danych',
-      coachAnalysis: `Analiza podstawowa — ograniczona do dostępnych danych. ${basic.rating} ${basic.segments} ${basic.good} ${basic.caution}`,
-      kalmar: basic.kalmar,
-      recovery: basic.recovery
-    };
-  }
-  const basic = buildBasicActivityAnalysis(activityContext.activity, {});
-  const record = activityContext.contextRecord;
-  const before = contextWindowText(record, 'before');
-  const activityDay = contextWindowText(record, 'activity_day');
-  const after = contextWindowText(record, 'after');
-  return {
-    facts: basic.facts,
-    contextBefore: before,
-    activityDay,
-    recoveryContext: after,
-    coachAnalysis: `Analiza trenerska zakotwiczona w ${String(record.workout_date || '').slice(0, 10)}. ${basic.rating} ${basic.segments} ${basic.good} ${basic.caution}`,
-    kalmar: basic.kalmar,
-    recovery: basic.recovery
-  };
-}
-
-function buildActivityAiAnalysis(activity){
-  return buildFactBasedActivityAnalysis(buildActivityContext(activity));
-}
-
-function renderFactsBlock(rows){
-  return `<div class="facts-block"><span>Fakty Garmin PRO</span><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></div>`;
-}
-
-function renderAnalysisBlock(title, text){
-  return `<div><span>${escapeHtml(title)}</span><p>${escapeHtml(text || 'brak danych')}</p></div>`;
-}
-
-function renderActivityAiAnalysis(targetId, activity){
-  const target = $(targetId);
-  if(!target) return;
-  const analysis = buildActivityAiAnalysis(activity, analysisContext());
-  target.innerHTML = [
-    renderFactsBlock(analysis.facts),
-    renderAnalysisBlock('Kontekst 3 dni przed', analysis.contextBefore),
-    renderAnalysisBlock('Dzień aktywności', analysis.activityDay),
-    renderAnalysisBlock('Regeneracja po aktywności', analysis.recoveryContext),
-    renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis),
-    renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar),
-    renderAnalysisBlock('Zalecenie', analysis.recovery)
-  ].join('');
 }
 
 function buildFactBasedActivityAnalysis(activityContext){
@@ -1259,9 +1311,21 @@ function buildFactBasedActivityAnalysis(activityContext){
     activityDay: activityDayText(record),
     recoveryContext: recoveryAfterText(record),
     coachAnalysis: fullCoachAnalysis(record),
-    kalmar: 'Wniosek pod Ironman Kalmar: mocny rower jest realnym atutem, ale musi być kontrolowany. Przy IF 0.930, NP 253 W i biegu na wysokim HR ryzyko przepalenia roweru jest konkretne: koszt regeneracyjny po starcie i jakość biegu są na to wrażliwe.',
+    kalmar: buildDynamicKalmarConclusion(record),
     recovery: fullRecoveryRecommendation(record)
   };
+}
+
+function buildActivityAiAnalysis(activity){
+  return buildFactBasedActivityAnalysis(buildActivityContext(activity));
+}
+
+function renderFactsBlock(rows){
+  return `<div class="facts-block"><span>Fakty Garmin PRO</span><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></div>`;
+}
+
+function renderAnalysisBlock(title, text){
+  return `<div><span>${escapeHtml(title)}</span><p>${escapeHtml(text || 'brak danych')}</p></div>`;
 }
 
 function renderActivityAiAnalysis(targetId, activity){
@@ -1358,7 +1422,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=507-analysis-precision').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=508-analysis-logic-hotfix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
