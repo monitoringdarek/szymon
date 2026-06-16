@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-510-layout-polish-ui';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-511-metric-row-align';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=510-layout-polish-ui',
-  './app.js?v=510-layout-polish-ui',
+  './styles.css?v=511-metric-row-align',
+  './app.js?v=511-metric-row-align',
   './manifest.json'
 ];
 
