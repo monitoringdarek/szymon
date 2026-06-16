@@ -1,4 +1,4 @@
-const VERSION = 'v5.0.8-analysis-logic-hotfix-local';
+const VERSION = 'v5.0.9-readable-analysis-ui-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1055,8 +1055,7 @@ function contextActivityFacts(record){
     ['NP / IF', firstData(record.np_watts, npFromSummary, null) || firstData(record.intensity_factor, record.bike_if_value, ifFromSummary, null) ? `${record.np_watts != null ? fmtMaybeNumber(record.np_watts, ' W') : (npFromSummary || 'brak danych')} / ${record.intensity_factor != null ? fmtIf(record.intensity_factor) : record.bike_if_value != null ? fmtIf(record.bike_if_value) : (ifFromSummary ? fmtIf(ifFromSummary) : 'brak danych')}` : 'brak danych'],
     ['EF', ef || 'brak danych'],
     ['Coach flags', coachFlags.length ? coachFlags.join(', ') : 'brak danych'],
-    ['Load 7d / 28d przed aktywnością', record.load_7d_before_activity != null || record.load_28d_before_activity != null ? `${record.load_7d_before_activity != null ? fmtNumber(record.load_7d_before_activity) : 'brak danych'} / ${record.load_28d_before_activity != null ? fmtNumber(record.load_28d_before_activity) : 'brak danych'}` : 'brak danych'],
-    ['Auto summary', textOrMissing(record.auto_summary)]
+    ['Load 7d / 28d przed aktywnością', record.load_7d_before_activity != null || record.load_28d_before_activity != null ? `${record.load_7d_before_activity != null ? fmtNumber(record.load_7d_before_activity) : 'brak danych'} / ${record.load_28d_before_activity != null ? fmtNumber(record.load_28d_before_activity) : 'brak danych'}` : 'brak danych']
   ];
 }
 
@@ -1070,38 +1069,49 @@ function segmentLabel(type){
   return type || 'Segment';
 }
 
-function segmentLine(segment, record){
+function segmentCardData(segment, record){
   const type = String(segment.segment_type || '').toLowerCase();
+  const title = segmentLabel(type);
   const duration = segment.duration_seconds != null ? fmtSeconds(segment.duration_seconds) : 'brak danych';
-  const hr = segment.hr_avg != null || segment.hr_max != null ? `HR ${segment.hr_avg != null ? Math.round(Number(segment.hr_avg)) : 'brak danych'}/${segment.hr_max != null ? Math.round(Number(segment.hr_max)) : 'brak danych'}` : 'HR brak danych';
-  if(type === 't1' || type === 't2'){
-    return `${segmentLabel(type)}: ${duration}, ${hr}.`;
-  }
+  const hr = segment.hr_avg != null || segment.hr_max != null ? `${segment.hr_avg != null ? Math.round(Number(segment.hr_avg)) : 'brak danych'} / ${segment.hr_max != null ? Math.round(Number(segment.hr_max)) : 'brak danych'}` : 'brak danych';
   const distance = segment.distance_meters != null ? fmtKmDot(Number(segment.distance_meters) / 1000) : 'brak danych';
-  const pace = type === 'swim'
-    ? (segment.swim_pace_sec_per_100m != null ? `${fmtSeconds(segment.swim_pace_sec_per_100m)}/100 m` : 'tempo brak danych')
-    : (segment.pace_min_per_km != null ? fmtPace(segment.pace_min_per_km) : 'tempo brak danych');
-  if(type === 'bike'){
-    const extras = [];
-    if(record.bike_if_value != null) extras.push(`IF ${fmtIf(record.bike_if_value)}`);
-    const np = extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]);
-    if(np) extras.push(`NP ${np}`);
-    if(record.bike_if_category) extras.push(`kategoria ${record.bike_if_category}`);
-    return `${segmentLabel(type)}: ${distance}, ${duration}, ${extras.length ? `${extras.join(', ')}, ` : ''}${hr}.`;
+  const lines = [];
+  if(type === 't1' || type === 't2'){
+    lines.push(['Czas', duration]);
+    lines.push(['HR', hr]);
+    return { type, title, lines };
   }
-  const extras = [];
-  if(type === 'run' && record.run_start_hr != null) extras.push(`start HR ${Math.round(Number(record.run_start_hr))}`);
-  return `${segmentLabel(type)}: ${distance}, ${duration}, ${pace}, ${hr}${extras.length ? `, ${extras.join(', ')}` : ''}.`;
+  lines.push(['Dystans', distance]);
+  lines.push(['Czas', duration]);
+  if(type === 'swim'){
+    lines.push(['Tempo', segment.swim_pace_sec_per_100m != null ? `${fmtSeconds(segment.swim_pace_sec_per_100m)}/100 m` : 'brak danych']);
+  }else if(type === 'run'){
+    lines.push(['Tempo', segment.pace_min_per_km != null ? fmtPace(segment.pace_min_per_km) : 'brak danych']);
+  }
+  if(type === 'bike'){
+    lines.push(['IF', record.bike_if_value != null ? fmtIf(record.bike_if_value) : 'brak danych']);
+    const np = extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]);
+    lines.push(['NP', np || 'brak danych']);
+    if(record.bike_if_category) lines.push(['Ocena', record.bike_if_category]);
+  }
+  lines.push(['HR', hr]);
+  if(type === 'run' && record.run_start_hr != null) lines.push(['Start HR', Math.round(Number(record.run_start_hr))]);
+  return { type, title, lines };
 }
 
-function buildSegmentsText(record){
+function buildSegmentCards(record){
   const segments = parseJsonArray(record.segments);
-  if(!segments.length) return 'brak danych';
+  if(!segments.length) return [];
   return segments
     .slice()
     .sort((a, b) => Number(a.segment_order || 0) - Number(b.segment_order || 0))
-    .map(segment => segmentLine(segment, record))
-    .join(' ');
+    .map(segment => segmentCardData(segment, record));
+}
+
+function buildSegmentsText(record){
+  const cards = buildSegmentCards(record);
+  if(!cards.length) return 'brak danych';
+  return cards.map(card => `${card.title}: ${card.lines.map(([label, value]) => `${label} ${value}`).join(', ')}`).join('. ');
 }
 
 function metricForDate(items, date){
@@ -1109,44 +1119,51 @@ function metricForDate(items, date){
 }
 
 function journalLine(item){
-  if(!item) return 'dziennik brak danych';
+  if(!item) return 'brak danych';
   return [
     item.energy != null ? `energia ${item.energy}` : '',
     item.stress != null ? `stress dziennik ${item.stress}` : '',
     item.motivation != null ? `motywacja ${item.motivation}` : '',
     item.feeling ? `samopoczucie: ${item.feeling}` : '',
     item.pain ? `ból: ${item.pain}` : '',
+    item.food ? `jedzenie: ${item.food}` : '',
+    item.hydration ? `nawodnienie: ${item.hydration}` : '',
     item.notes ? `notatka: ${item.notes}` : ''
-  ].filter(Boolean).join(', ') || 'dziennik brak danych';
+  ].filter(Boolean).join(', ') || 'brak danych';
 }
 
-function dailyLineForDate(record, offset){
+function dailyDataForOffset(record, offset){
   const date = addDaysIso(record.workout_date, offset);
   const daily = metricForDate(parseJsonArray(record.daily_metrics_window), date);
   const journal = metricForDate(parseJsonArray(record.journal_window), date);
   const label = offset < 0 ? `D${offset}` : offset > 0 ? `D+${offset}` : 'Dzień aktywności';
-  if(!date) return `${label}: brak danych`;
-  if(!daily && !journal) return `${label} ${date}: brak danych`;
-  const dailyText = daily ? [
-    daily.training_readiness_score != null ? `readiness ${Math.round(Number(daily.training_readiness_score))}/100 ${daily.training_readiness_level || ''}`.trim() : 'readiness brak danych',
-    daily.sleep_minutes != null ? `sen ${Math.round(Number(daily.sleep_minutes))} min` : 'sen brak danych',
-    daily.body_battery_start != null || daily.body_battery_end != null ? `Body Battery ${daily.body_battery_start != null ? Math.round(Number(daily.body_battery_start)) : 'brak danych'} → ${daily.body_battery_end != null ? Math.round(Number(daily.body_battery_end)) : 'brak danych'}` : 'Body Battery brak danych',
-    daily.avg_stress != null ? `stress ${Math.round(Number(daily.avg_stress))}` : 'stress brak danych',
-    daily.resting_hr != null ? `resting HR ${Math.round(Number(daily.resting_hr))}` : 'resting HR brak danych'
-  ].join(', ') : 'Garmin brak danych';
-  return `${label} ${date}: ${dailyText}. ${journalLine(journal)}.`;
+  return { label, date, daily, journal };
+}
+
+function timelineCardForOffset(record, offset){
+  const entry = dailyDataForOffset(record, offset);
+  const daily = entry.daily;
+  const rows = [
+    ['Readiness', daily?.training_readiness_score != null ? `${Math.round(Number(daily.training_readiness_score))}/100 ${daily.training_readiness_level || ''}`.trim() : 'brak danych'],
+    ['Sen', daily?.sleep_minutes != null ? `${Math.round(Number(daily.sleep_minutes))} min` : 'brak danych'],
+    ['Body Battery', daily?.body_battery_start != null || daily?.body_battery_end != null ? `${daily.body_battery_start != null ? Math.round(Number(daily.body_battery_start)) : 'brak danych'} → ${daily.body_battery_end != null ? Math.round(Number(daily.body_battery_end)) : 'brak danych'}` : 'brak danych'],
+    ['Stress', daily?.avg_stress != null ? Math.round(Number(daily.avg_stress)) : 'brak danych'],
+    ['Resting HR', daily?.resting_hr != null ? Math.round(Number(daily.resting_hr)) : 'brak danych'],
+    ['Dziennik', journalLine(entry.journal)]
+  ];
+  return { ...entry, rows };
 }
 
 function contextBeforeText(record){
-  return [-3, -2, -1].map(offset => dailyLineForDate(record, offset)).join(' ');
+  return [-3, -2, -1].map(offset => timelineCardForOffset(record, offset));
 }
 
 function activityDayText(record){
-  return dailyLineForDate(record, 0);
+  return [timelineCardForOffset(record, 0)];
 }
 
 function recoveryAfterText(record){
-  return dailyLineForDate(record, 1);
+  return [timelineCardForOffset(record, 1)];
 }
 
 function segmentTypes(record){
@@ -1157,8 +1174,12 @@ function hasSegment(record, type){
   return segmentTypes(record).includes(type);
 }
 
+function segmentByType(record, type){
+  return parseJsonArray(record.segments).find(segment => String(segment.segment_type || '').toLowerCase() === type) || null;
+}
+
 function runHrText(record){
-  const run = parseJsonArray(record.segments).find(segment => String(segment.segment_type || '').toLowerCase() === 'run');
+  const run = segmentByType(record, 'run');
   if(run?.hr_avg != null || run?.hr_max != null){
     return `${run.hr_avg != null ? Math.round(Number(run.hr_avg)) : 'brak danych'}/${run.hr_max != null ? Math.round(Number(run.hr_max)) : 'brak danych'}`;
   }
@@ -1195,9 +1216,7 @@ function buildDynamicKalmarConclusion(record){
 
   if(isMulti){
     const parts = ['Wniosek pod Ironman Kalmar: ten start pokazuje układ pływanie–rower–bieg, więc najważniejsza jest kontrola kosztu między dyscyplinami.'];
-    if(hasBike && (bikeIf != null || np || record.bike_if_category)){
-      parts.push(`Rower jest mocnym elementem, ale wymaga kontroli${bikeIf != null ? ` — IF ${fmtIf(bikeIf)}` : ''}${np ? `, NP ${np}` : ''}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
-    }
+    if(hasBike && (bikeIf != null || np || record.bike_if_category)) parts.push(`Rower jest mocnym elementem, ale wymaga kontroli${bikeIf != null ? ` — IF ${fmtIf(bikeIf)}` : ''}${np ? `, NP ${np}` : ''}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
     if(hasRun && runHr) parts.push(`Bieg był wykonywany wysoko tętniowo (${runHr}), więc koszt roweru trzeba pilnować przed dłuższymi dystansami.`);
     if(recoveryCost) parts.push(recoveryCost);
     if(!hasBike && !hasRun && load != null) parts.push(`Load ${fmtNumber(load)} pokazuje koszt całego startu, ale brakuje pełnych danych segmentów do głębszej oceny.`);
@@ -1235,30 +1254,25 @@ function fullCoachAnalysis(record){
   const hrAvg = numberOrNull(record.hr_avg);
   const hrMax = numberOrNull(record.hr_max);
   const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
-  const runStartHr = numberOrNull(record.run_start_hr);
   const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
   const activityDay = metricForDate(parseJsonArray(record.daily_metrics_window), fmtDateIso(record.workout_date));
   const before = parseJsonArray(record.daily_metrics_window).filter(item => itemMatchesRelativeDay(item, 'before', record));
   const moderateBefore = before.some(item => String(item.training_readiness_level || '').toUpperCase() === 'MODERATE');
+  const hasBike = hasSegment(record, 'bike');
+  const hasRun = hasSegment(record, 'run');
   const sentences = [];
-  sentences.push(`Analiza PRO — pełny kontekst D-3 → D+1, zakotwiczona w ${fmtDateIso(record.workout_date) || 'brak danych'}.`);
   if(moderateBefore || activityDay?.training_readiness_level){
-    sentences.push(`Szymon wszedł w aktywność z gotowością MODERATE, ale sen w oknie startowym był krótki albo niepełny tam, gdzie są dane.`);
+    sentences.push('Szymon wszedł w aktywność z gotowością umiarkowaną, ale sen w oknie startowym był krótki albo niepełny tam, gdzie mamy dane.');
   }else{
     sentences.push('Wejście w aktywność: readiness przed startem brak danych.');
   }
   if(load != null || hrAvg != null || hrMax != null){
-    sentences.push(`To był mocny bodziec startowy: wysokie obciążenie i wysokie tętno pokazują duży koszt, nie zwykły trening kontrolny.`);
+    sentences.push(`Sam bodziec był mocny: obciążenie ${load != null ? fmtNumber(load) : 'brak danych'} i HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pokazują koszt większy niż zwykły lekki trening.`);
   }
-  if(bikeIf != null || record.bike_if_category){
-    const np = extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]);
-    sentences.push(`Rower był atutem, ale intensywność roweru była już w strefie, która może zabrać jakość biegu.`);
-  }
-  if(runStartHr != null || String(record.auto_summary || '').includes('HR 171/185')){
-    sentences.push('Bieg został wykonany wysoko tętniowo, więc po mocnym rowerze organizm nie miał dużego marginesu luzu.');
-  }
+  if(hasBike && (bikeIf != null || record.bike_if_category)) sentences.push('Rower był mocnym elementem startu, więc w dłuższym triathlonie trzeba pilnować, żeby nie zabrał jakości biegu.');
+  if(hasRun && runHrText(record)) sentences.push(`Bieg był wykonywany wysoko tętniowo (${runHrText(record)}), czyli organizm pracował już blisko górnego zakresu.`);
   if(after){
-    sentences.push(`D+1 potwierdza koszt regeneracyjny: readiness spadło do ${after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}` : 'brak danych'}, a Body Battery do ${after.body_battery_end != null ? Math.round(Number(after.body_battery_end)) : 'brak danych'}.`);
+    sentences.push(`D+1 potwierdza koszt regeneracyjny: readiness ${after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}` : 'brak danych'}, Body Battery ${after.body_battery_end != null ? Math.round(Number(after.body_battery_end)) : 'brak danych'}.`);
   }else{
     sentences.push('Koszt po aktywności: D+1 brak danych.');
   }
@@ -1274,45 +1288,94 @@ function fullRecoveryRecommendation(record){
   return 'Po tej aktywności wybierz lekki trening lub technikę i kontroluj obciążenie. Mocniejszy bodziec dopiero, gdy readiness, sen i Body Battery potwierdzą regenerację.';
 }
 
+function buildGoodPoints(record){
+  const points = [];
+  const swim = segmentByType(record, 'swim');
+  const bike = segmentByType(record, 'bike');
+  const run = segmentByType(record, 'run');
+  if(swim) points.push(`Pływanie zostało wykonane konkretnie: ${swim.distance_meters != null ? fmtKmDot(Number(swim.distance_meters) / 1000) : 'brak danych'}, ${swim.duration_seconds != null ? fmtSeconds(swim.duration_seconds) : 'brak danych'}, HR ${swim.hr_avg != null ? Math.round(Number(swim.hr_avg)) : 'brak danych'}/${swim.hr_max != null ? Math.round(Number(swim.hr_max)) : 'brak danych'}.`);
+  if(bike) points.push(`Rower jest mocnym atutem: ${bike.distance_meters != null ? fmtKmDot(Number(bike.distance_meters) / 1000) : 'brak danych'}, IF ${record.bike_if_value != null ? fmtIf(record.bike_if_value) : 'brak danych'}, NP ${extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]) || 'brak danych'}.`);
+  if(run) points.push(`Bieg został dowieziony po rowerze: ${run.distance_meters != null ? fmtKmDot(Number(run.distance_meters) / 1000) : 'brak danych'}, ${run.duration_seconds != null ? fmtSeconds(run.duration_seconds) : 'brak danych'}, tempo ${run.pace_min_per_km != null ? fmtPace(run.pace_min_per_km) : 'brak danych'}.`);
+  if(!points.length) points.push('Dane Garmin PRO pozwalają opisać aktywność, ale brak pełnych segmentów ogranicza ocenę szczegółową.');
+  return points.slice(0, 4);
+}
+
+function buildRiskPoints(record){
+  const points = [];
+  const load = numberOrNull(record.training_load);
+  const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
+  const runHr = runHrText(record);
+  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
+  if(load != null && load >= 250) points.push(`Load ${fmtNumber(load)} to mocny bodziec i wymaga ostrożnej regeneracji.`);
+  if(bikeIf != null && bikeIf >= 0.9) points.push(`Rower był intensywny: IF ${fmtIf(bikeIf)}. Przy dłuższym dystansie taki koszt trzeba mocno kontrolować.`);
+  if(runHr) points.push(`Bieg był na wysokim tętnie (${runHr}), więc nie był to lekki dobieg bez kosztu.`);
+  if(after?.training_readiness_score != null && Number(after.training_readiness_score) <= 20) points.push(`D+1 readiness ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''} pokazuje bardzo duży koszt po aktywności.`);
+  if(!points.length) points.push('Brak wyraźnych czerwonych flag w dostępnych danych, ale analiza jest ograniczona do tego, co zwraca Garmin PRO.');
+  return points.slice(0, 4);
+}
+
+function buildHeadline(record){
+  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
+  const load = record.training_load != null ? fmtNumber(record.training_load) : 'brak danych';
+  const hr = record.hr_avg != null || record.hr_max != null ? `${record.hr_avg != null ? Math.round(Number(record.hr_avg)) : 'brak danych'}/${record.hr_max != null ? Math.round(Number(record.hr_max)) : 'brak danych'}` : 'brak danych';
+  const afterText = after?.training_readiness_score != null ? ` Dzień później readiness spadło do ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}, więc koszt regeneracyjny był wyraźny.` : ' Brak danych D+1 ogranicza ocenę kosztu regeneracji.';
+  return `To była aktywność o dużym koszcie: load ${load}, HR ${hr}. Analiza jest zakotwiczona w dacie ${fmtDateIso(record.workout_date) || 'brak danych'} i porównuje start z kontekstem D-3 → D+1.${afterText}`;
+}
+
 function buildFactBasedActivityAnalysis(activityContext){
   if(!activityContext?.activity){
     return {
+      hasFullContext: false,
       facts: [['Aktywność', 'brak danych']],
       mode: 'Analiza podstawowa — ograniczona do dostępnych danych',
-      segments: 'brak danych',
-      contextBefore: 'brak danych',
-      activityDay: 'brak danych',
-      recoveryContext: 'brak danych',
+      headline: 'Brak aktywności Garmin PRO do analizy.',
+      good: ['brak danych'],
+      risks: ['brak danych'],
+      segmentCards: [],
+      contextBefore: [],
+      activityDay: [],
+      recoveryContext: [],
       coachAnalysis: 'Brak aktywności Garmin PRO do analizy.',
       kalmar: 'brak danych',
-      recovery: 'brak danych'
+      recovery: 'brak danych',
+      rawSummary: ''
     };
   }
   if(!activityContext.hasFullContext){
     const basic = buildBasicActivityAnalysis(activityContext.activity, {});
     return {
+      hasFullContext: false,
       facts: basic.facts,
       mode: 'Analiza podstawowa — ograniczona do dostępnych danych',
-      segments: basic.segments,
-      contextBefore: activityContext.message,
-      activityDay: 'brak danych',
-      recoveryContext: 'brak danych',
+      headline: `${basic.rating} ${basic.caution}`,
+      good: [basic.good],
+      risks: [basic.caution],
+      segmentCards: [],
+      contextBefore: [],
+      activityDay: [],
+      recoveryContext: [],
       coachAnalysis: `${basic.rating} ${basic.good} ${basic.caution}`,
       kalmar: basic.kalmar,
-      recovery: basic.recovery
+      recovery: basic.recovery,
+      rawSummary: activityContext.activity?.auto_summary || activityContext.activity?.segment_summary || ''
     };
   }
   const record = activityContext.contextRecord;
   return {
+    hasFullContext: true,
     facts: contextActivityFacts(record),
     mode: 'Analiza PRO — pełny kontekst D-3 → D+1',
-    segments: buildSegmentsText(record),
+    headline: buildHeadline(record),
+    good: buildGoodPoints(record),
+    risks: buildRiskPoints(record),
+    segmentCards: buildSegmentCards(record),
     contextBefore: contextBeforeText(record),
     activityDay: activityDayText(record),
     recoveryContext: recoveryAfterText(record),
     coachAnalysis: fullCoachAnalysis(record),
     kalmar: buildDynamicKalmarConclusion(record),
-    recovery: fullRecoveryRecommendation(record)
+    recovery: fullRecoveryRecommendation(record),
+    rawSummary: record.auto_summary || ''
   };
 }
 
@@ -1321,11 +1384,31 @@ function buildActivityAiAnalysis(activity){
 }
 
 function renderFactsBlock(rows){
-  return `<div class="facts-block"><span>Fakty Garmin PRO</span><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></div>`;
+  return `<details class="facts-block analysis-details"><summary>Surowe fakty Garmin PRO</summary><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></details>`;
 }
 
-function renderAnalysisBlock(title, text){
-  return `<div><span>${escapeHtml(title)}</span><p>${escapeHtml(text || 'brak danych')}</p></div>`;
+function renderAnalysisBlock(title, text, className = ''){
+  return `<section class="analysis-section ${className}"><span>${escapeHtml(title)}</span><p>${escapeHtml(text || 'brak danych')}</p></section>`;
+}
+
+function renderBulletSection(title, items, className = ''){
+  const list = (items && items.length ? items : ['brak danych']).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+  return `<section class="analysis-section ${className}"><span>${escapeHtml(title)}</span><ul class="coach-bullets">${list}</ul></section>`;
+}
+
+function renderSegmentCards(cards){
+  if(!cards || !cards.length) return renderAnalysisBlock('Segmenty', 'brak danych');
+  return `<section class="analysis-section segment-section"><span>Segmenty</span><div class="segment-card-grid">${cards.map(card => `<article class="segment-card segment-${escapeHtml(card.type)}"><h4>${escapeHtml(card.title)}</h4>${card.lines.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</article>`).join('')}</div></section>`;
+}
+
+function renderTimeline(title, entries){
+  if(!entries || !entries.length) return renderAnalysisBlock(title, 'brak danych');
+  return `<section class="analysis-section timeline-section"><span>${escapeHtml(title)}</span><div class="timeline-grid">${entries.map(entry => `<article class="timeline-card"><h4>${escapeHtml(entry.label)} · ${escapeHtml(entry.date || 'brak danych')}</h4>${entry.rows.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</article>`).join('')}</div></section>`;
+}
+
+function renderRawSummary(text){
+  if(!text) return '';
+  return `<details class="analysis-details raw-summary"><summary>Podsumowanie Garmin</summary><p>${escapeHtml(text)}</p></details>`;
 }
 
 function renderActivityAiAnalysis(targetId, activity){
@@ -1333,15 +1416,19 @@ function renderActivityAiAnalysis(targetId, activity){
   if(!target) return;
   const analysis = buildActivityAiAnalysis(activity);
   target.innerHTML = [
-    renderAnalysisBlock('Tryb analizy', analysis.mode),
+    renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
+    renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
+    renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
+    renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
+    renderSegmentCards(analysis.segmentCards),
+    renderTimeline('Kontekst przed aktywnością', analysis.contextBefore),
+    renderTimeline('Dzień aktywności', analysis.activityDay),
+    renderTimeline('Regeneracja po aktywności', analysis.recoveryContext),
+    renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis, 'coach-section'),
+    renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar, 'kalmar-section'),
+    renderAnalysisBlock('Zalecenie', analysis.recovery, 'recommendation-section'),
     renderFactsBlock(analysis.facts),
-    renderAnalysisBlock('Segmenty', analysis.segments),
-    renderAnalysisBlock('Kontekst 3 dni przed', analysis.contextBefore),
-    renderAnalysisBlock('Dzień aktywności', analysis.activityDay),
-    renderAnalysisBlock('Regeneracja po aktywności', analysis.recoveryContext),
-    renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis),
-    renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar),
-    renderAnalysisBlock('Zalecenie', analysis.recovery)
+    renderRawSummary(analysis.rawSummary)
   ].join('');
 }
 
@@ -1422,7 +1509,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=508-analysis-logic-hotfix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=509-readable-analysis-ui').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
