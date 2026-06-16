@@ -1,4 +1,4 @@
-const VERSION = 'v5.0.9-readable-analysis-ui-local';
+const VERSION = 'v5.0.10-layout-polish-ui-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1509,7 +1509,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=509-readable-analysis-ui').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=510-layout-polish-ui').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
