@@ -1,19 +1,9 @@
 {
-  "name": "Szymon AI Coach - Road to Kalmar",
-  "short_name": "Kalmar Coach",
-  "description": "Road to IRONMAN Kalmar 2026 - triathlonowy panel treningowy Szymona.",
+  "name": "Szymon AI Coach PRO",
+  "short_name": "AI Coach PRO",
+  "description": "Garmin PRO only training dashboard",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#020814",
-  "theme_color": "#020814",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "icon-180.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+  "background_color": "#04101f",
+  "theme_color": "#07182c"
 }

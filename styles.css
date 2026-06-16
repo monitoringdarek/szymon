@@ -1,1420 +1,554 @@
 :root{
-  --bg:#020814;
-  --card:#08529;
-  --card2:#0b1b34;
-  --line:#1f3557;
-  --text:#f6f8ff;
-  --muted:#aeb8cd;
-  --orange:#ff5a16;
-  --orange2:#ff8a1f;
-  --blue:#08a8ff;
-  --green:#65e04d;
-  --shadow:0 18px 60px rgba(0,0,0,.38);
-  --radius:24px;
-  --navH:92px;
+  color-scheme:dark;
+  --bg:#04101f;
+  --panel:#07182c;
+  --card:#0b1d34;
+  --card2:#0f2744;
+  --text:#f5f8ff;
+  --muted:#9fb0c8;
+  --line:rgba(151,176,214,.22);
+  --orange:#ff6a18;
+  --orange2:#ff9a3d;
+  --blue:#39c8ff;
+  --green:#56e08f;
+  --danger:#ff6b6b;
+  --shadow:0 22px 70px rgba(0,0,0,.42);
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{min-height:100%;background:var(--bg)}
-body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at 82% 4%,rgba(255,90,22,.20),transparent 26%),radial-gradient(circle at 8% 0,rgba(8,168,255,.13),transparent 30%),linear-gradient(180deg,#020814 0%,#03101f 54%,#020814 100%);color:var(--text)}
-body:before{content:"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.035) 0 1px,transparent 1px 32px);opacity:.22;pointer-events:none}
-button,input,select{font:inherit}
-button{cursor:pointer}
-.phone-app{width:min(100%,520px);min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 14px calc(var(--navH) + env(safe-area-inset-bottom) + 18px);position:relative}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
-.brand-pill{display:inline-flex;align-items:center;gap:8px;max-width:100%;white-space:nowrap;border:1px solid rgba(145,168,210,.34);border-radius:999px;padding:8px 12px;background:rgba(10,25,49,.78);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);font-size:12px;font-weight:850;letter-spacing:.03em;color:#d9e4f8;overflow:hidden;text-overflow:ellipsis}
-.brand-pill.small{font-size:11px;padding:7px 10px}.mdot{width:15px;height:15px;border-radius:3px;background:linear-gradient(180deg,var(--orange2),var(--orange));display:inline-grid;place-items:center;color:transparent;position:relative;flex:0 0 auto}.mdot:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--orange2);position:absolute;top:-6px}.cloud-status{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid rgba(145,168,210,.26);border-radius:999px;padding:8px 10px;background:rgba(10,25,49,.7);font-size:12px;color:#dce6fa}.cloud-status span{width:8px;height:8px;border-radius:50%;background:#f5c34b}.cloud-status.ok span{background:#59e35d}.cloud-status.warn span{background:#ffc145}.cloud-status.bad span{background:#ff4f4f}
-.screen{display:none;animation:fade .18s ease}.screen.active{display:block}@keyframes fade{from{opacity:.5;transform:translateY(4px)}to{opacity:1;transform:none}}
-h1{margin:0;font-size:clamp(38px,10vw,58px);letter-spacing:-.055em;line-height:.92;text-shadow:0 2px 26px rgba(255,255,255,.08)}
-h2{margin:0 0 12px;font-size:18px;line-height:1.1;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);font-weight:950}p{margin:0;color:var(--muted);line-height:1.38}.orange{color:var(--orange2)}
-.hero-card,.card,.page-title{border:1px solid rgba(129,157,205,.28);background:linear-gradient(180deg,rgba(10,27,53,.88),rgba(5,17,34,.94));box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.04);border-radius:var(--radius);overflow:hidden;position:relative}.hero-card{min-height:258px;padding:24px 18px;display:flex;gap:12px;align-items:stretch;margin-bottom:12px}.hero-bg,.page-title.with-bg:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 30%,rgba(255,111,25,.45),transparent 22%),linear-gradient(90deg,rgba(3,11,22,.95),rgba(4,16,32,.75) 45%,rgba(5,17,34,.96)),url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="%23081931"/><stop offset="1" stop-color="%23ff651a"/></linearGradient></defs><rect width="800" height="500" fill="url(%23g)"/><path d="M0 380 C160 330 300 360 430 310 C560 260 650 270 800 230 L800 500 L0 500Z" fill="%23030b17" opacity=".75"/><path d="M470 210 l15-75 l15 75 M520 210 l12-95 l12 95 M570 210 l18-120 l18 120" stroke="%23030b17" stroke-width="12"/><rect x="430" y="205" width="225" height="90" rx="8" fill="%23030b17" opacity=".82"/><path d="M200 500 C330 360 500 295 740 250" stroke="%23f3d0ab" stroke-width="12" opacity=".22" fill="none"/></svg>');background-size:cover;background-position:center;opacity:.72}.hero-left,.countdown-card{position:relative;z-index:1}.hero-left{flex:1;min-width:0}.hero-left p{font-size:16px;margin-top:10px;color:#c9d4e7}.race-title{margin-top:24px}.race-title small{display:block;font-weight:950;color:#fff;font-size:21px;letter-spacing:.05em}.race-title strong{display:block;font-weight:1000;color:var(--orange);font-size:40px;letter-spacing:.02em;line-height:1.05}.race-goals{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}.race-goals span{font-weight:900;color:#eaf1ff}.race-goals b{font-size:22px}.swim i,.swim{--sport:var(--blue)}.bike i,.bike{--sport:var(--green)}.run i,.run{--sport:var(--orange)}.countdown-card{width:132px;flex:0 0 132px;align-self:center;border:2px solid rgba(255,111,25,.95);background:rgba(5,15,31,.88);border-radius:20px;box-shadow:0 0 32px rgba(255,90,22,.28);padding:18px 10px;text-align:center}.countdown-card div{font-weight:850}.countdown-card strong{display:block;font-size:48px;line-height:1;color:var(--orange);margin:10px 0}.countdown-card small{display:block;font-size:22px}.countdown-card em{display:block;margin-top:12px;font-style:normal;color:#cbd6ea;text-transform:uppercase;font-size:11px}.countdown-card b{color:var(--orange)}
-.card{padding:18px;margin-bottom:12px}.prep-card{display:grid;grid-template-columns:1fr 1fr;gap:12px}.big-day{display:block;font-size:42px;margin:4px 0 18px}.prep-card p{margin-bottom:8px}.readiness-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px}.donut{--value:57;width:124px;height:124px;border-radius:50%;display:grid;place-items:center;align-content:center;background:conic-gradient(var(--orange) calc(var(--value)*1%),rgba(120,145,190,.22) 0);position:relative;flex:0 0 124px}.donut:before{content:"";position:absolute;inset:13px;background:#08182e;border-radius:50%;box-shadow:inset 0 0 18px rgba(0,0,0,.35)}.donut span,.donut strong,.donut small{position:relative;z-index:1}.donut span{font-size:12px;color:#b8c5d9}.donut strong{font-size:40px;line-height:.95}.progress-mini span,.progress-mini small{display:block;color:#c2cde0}.progress-mini strong{display:block;color:var(--orange);font-size:32px;line-height:1.3}
-.weekly-card .sport-row{display:grid;grid-template-columns:42px 1fr auto auto;gap:12px;align-items:center;min-height:54px;border:1px solid rgba(125,157,207,.18);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:16px;margin-top:8px;padding:8px 12px}.sport-row i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor;background:rgba(255,255,255,.04);color:var(--sport);font-style:normal}.sport-row b{font-size:20px}.sport-row strong{font-size:26px}.sport-row span{color:#d9e4f5;min-width:58px;text-align:right}.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.text-btn{border:0;background:transparent;color:#cbd6ea;font-weight:850;padding:6px 0}.workout-list{display:grid;gap:8px}.workout-item{display:grid;grid-template-columns:44px 1fr auto 20px;gap:10px;align-items:center;min-height:64px;border:1px solid rgba(125,157,207,.15);background:rgba(255,255,255,.035);border-radius:16px;padding:9px}.workout-list.compact .workout-item:nth-child(n+5){display:none}.workout-icon{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor}.workout-icon.swim{color:var(--blue)}.workout-icon.bike{color:var(--green)}.workout-icon.run{color:var(--orange)}.workout-main b{display:block}.workout-main small,.workout-metric small{display:block;color:#9faec6}.workout-metric{text-align:right}.workout-metric b{font-size:18px}.chev{color:#93a1b9;font-size:26px}.empty-history{padding:18px;text-align:center;color:var(--muted);border:1px dashed rgba(145,168,210,.3);border-radius:16px}
-.page-title{padding:22px 18px;margin-bottom:12px}.page-title.with-bg:after{z-index:0;opacity:.45}.page-title>*{position:relative;z-index:1}.page-title h1{margin-top:24px}.page-title p{font-size:18px;margin-top:8px}.compact-title h1{font-size:44px}.add-card label{display:block;color:#f7f9ff;font-weight:900;margin:14px 0 8px}.input-action{display:grid;grid-template-columns:1fr auto;gap:10px}.input-action input,.input-grid input{width:100%;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:15px;min-height:56px;padding:0 14px;outline:none}.input-action button{border:0;border-radius:16px;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;font-weight:1000;padding:0 18px;box-shadow:0 12px 24px rgba(255,90,22,.24)}.help{font-size:13px;margin-top:10px}.segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(135,161,207,.3);border-radius:18px;overflow:hidden;background:#061427}.segmented button{height:58px;border:0;border-right:1px solid rgba(135,161,207,.23);background:transparent;color:#dbe6f8;font-weight:900}.segmented button:last-child{border-right:0}.segmented button.active{background:linear-gradient(180deg,rgba(255,90,22,.20),rgba(255,90,22,.05));box-shadow:inset 0 0 0 2px var(--orange);color:#fff}#sportType{display:none}.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.input-grid label:last-child{grid-column:1/-1}.input-grid span{display:block;margin-bottom:8px;color:#c7d3e7}.preview-box{margin-top:14px;border:1px solid rgba(135,161,207,.25);border-radius:18px;padding:14px;background:rgba(255,255,255,.03)}.preview-box>b{display:block;margin-bottom:10px}.preview-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;border-radius:15px;background:rgba(255,255,255,.04);padding:12px}.preview-row span{font-weight:950}.preview-row small{display:block;color:#9facbf;margin-top:3px}.preview-box p{font-size:13px;text-align:center;margin-top:10px}.main-cta{width:100%;height:64px;border:0;border-radius:17px;margin-top:14px;background:linear-gradient(135deg,#ff7b1d,#ff3e08);color:#fff;font-size:22px;font-weight:1000;box-shadow:0 18px 34px rgba(255,80,15,.28)}
-.filter-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.filter-row button{min-height:50px;border:1px solid rgba(145,168,210,.3);border-radius:15px;background:#081529;color:#dbe6f8;font-weight:900}.filter-row button.active{border-color:var(--orange);box-shadow:0 0 22px rgba(255,90,22,.22);color:#fff;background:rgba(255,90,22,.16)}.period-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.period-grid div{border-right:1px solid rgba(145,168,210,.25);padding-right:8px}.period-grid div:last-child{border-right:0}.period-grid i{display:block;font-style:normal;font-size:26px}.period-grid span,.period-grid small{display:block;color:#aeb8cd}.period-grid strong{display:block;font-size:22px;margin:6px 0}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.summary-grid div{border:1px solid rgba(145,168,210,.22);border-radius:17px;padding:12px;background:rgba(255,255,255,.035);text-align:center}.summary-grid i{font-style:normal;font-size:26px}.summary-grid b{display:block;font-size:24px}.summary-grid span{display:block;color:#aeb8cd;font-size:12px}.ai-text{color:#cbd7ea;line-height:1.45}.ai-text p{margin-bottom:10px}.decision{padding:13px;border-radius:15px;background:rgba(255,90,22,.12);border:1px solid rgba(255,90,22,.25);font-weight:900}.plan-card ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}.plan-card li{padding:12px;border-radius:14px;background:rgba(255,255,255,.04);color:#dbe6f8}.sync-status{border-radius:16px;padding:12px;border:1px solid rgba(145,168,210,.25);background:rgba(255,255,255,.04);color:#dbe6f8;font-weight:850}.sync-status.ok{border-color:rgba(89,227,93,.35);color:#bfffc1}.sync-status.warn{border-color:rgba(255,193,69,.35);color:#ffe2a0}.settings-actions{display:grid;gap:10px;margin-top:12px}.ghost{border:1px solid rgba(145,168,210,.3);background:rgba(255,255,255,.04);color:#fff;border-radius:15px;min-height:48px;font-weight:900}.ghost.danger{border-color:rgba(255,90,22,.45);color:#ffd0bd}footer{text-align:center;color:#8795ad;font-size:12px;margin-top:12px}.bottom-nav{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 10px);transform:translateX(-50%);width:min(calc(100% - 22px),500px);height:76px;border:1px solid rgba(145,168,210,.25);background:rgba(7,21,41,.92);backdrop-filter:blur(20px);border-radius:22px;display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:6px;box-shadow:0 22px 65px rgba(0,0,0,.48);z-index:20}.bottom-nav button{border:0;border-radius:17px;background:transparent;color:#aab6ca;display:grid;place-items:center;font-size:24px;font-weight:900}.bottom-nav span{display:block;font-size:12px;margin-top:2px}.bottom-nav button.active{color:var(--orange);background:rgba(255,90,22,.13);box-shadow:inset 0 0 0 1px rgba(255,90,22,.5),0 0 22px rgba(255,90,22,.16)}.bottom-nav .plus{font-size:34px;color:#fff}.bottom-nav .plus:before{content:"";position:absolute}.bottom-nav .plus.active,.bottom-nav .plus{color:#fff}.bottom-nav .plus{position:relative}.bottom-nav .plus::first-line{font-size:36px}.bottom-nav .plus{background:transparent}.bottom-nav .plus:not(.active){color:#fff}.bottom-nav .plus > span{color:#aab6ca}.bottom-nav .plus{overflow:visible}.bottom-nav .plus::after{content:"";position:absolute;top:8px;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange2),var(--orange));z-index:-1;box-shadow:0 10px 24px rgba(255,90,22,.36)}
-@media(max-width:390px){.phone-app{padding-left:10px;padding-right:10px}.hero-card{padding:18px 14px}.race-title strong{font-size:34px}.countdown-card{width:112px;flex-basis:112px}.countdown-card strong{font-size:40px}.prep-card{grid-template-columns:1fr}.readiness-wrap{justify-content:flex-start}.weekly-card .sport-row{grid-template-columns:38px 1fr auto}.sport-row span{grid-column:3}.input-action{grid-template-columns:1fr}.input-action button{height:54px}.period-grid{grid-template-columns:1fr}.period-grid div{border-right:0;border-bottom:1px solid rgba(145,168,210,.18);padding-bottom:10px}.period-grid div:last-child{border-bottom:0}.filter-row{grid-template-columns:1fr 1fr}.workout-item{grid-template-columns:40px 1fr auto}.chev{display:none}}
-@media(min-width:720px){.phone-app{max-width:520px}.bottom-nav{max-width:500px}}
-
-/* v0.7 Garmin importer status */
-.garmin-status{
-  margin: 10px 0 14px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  font-size: .88rem;
-  line-height: 1.35;
-  border: 1px solid rgba(148,163,184,.22);
-  background: rgba(8,18,38,.56);
-  color: #b8c4d8;
-}
-.garmin-status.ok{ border-color: rgba(34,197,94,.45); color:#d7ffe5; background: rgba(16,80,51,.22); }
-.garmin-status.warn{ border-color: rgba(251,146,60,.52); color:#ffe8cf; background: rgba(120,61,18,.22); }
-.garmin-status.info{ border-color: rgba(56,189,248,.28); color:#cfefff; }
-.main-cta:disabled{opacity:.62;filter:grayscale(.15);cursor:not-allowed;box-shadow:none;background:linear-gradient(135deg,#5f6b7e,#334155)}
-.garmin-status.warn{border-color:rgba(255,186,90,.45);color:#ffd28a;background:rgba(255,140,20,.08)}
-
-/* v0.8: wygodniejsze zarządzanie historią */
-.delete-workout{
-  border:1px solid rgba(255,90,22,.55);
-  background:rgba(255,90,22,.10);
-  color:#ffb28a;
-  border-radius:12px;
-  padding:9px 10px;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:.02em;
-}
-.delete-workout:active{transform:scale(.98);background:rgba(255,90,22,.20)}
-#historyList .workout-item{grid-template-columns:44px 1fr auto auto}
-@media (max-width:420px){
-  .delete-workout{padding:8px 8px;font-size:11px}
-  #historyList .workout-item{grid-template-columns:40px 1fr auto auto;gap:7px}
-}
-
-/* v1.0 — AI Coach / Analiza */
-.ai-hero-card{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:18px;
-  background:linear-gradient(135deg, rgba(255,101,24,.13), rgba(9,25,49,.96) 42%, rgba(4,13,27,.98));
-  border-color:rgba(255,101,24,.38);
-}
-.ai-hero-card h2{margin:0 0 8px;font-size:24px;letter-spacing:.2px}
-.ai-hero-card p{margin:0;color:var(--muted);line-height:1.45}
-.ai-score{
-  min-width:104px;
-  min-height:104px;
-  border-radius:30px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  background:radial-gradient(circle at 50% 20%, rgba(255,101,24,.35), rgba(5,17,35,.95) 58%);
-  border:1px solid rgba(255,101,24,.48);
-  box-shadow:0 18px 46px rgba(255,91,17,.18);
-}
-.ai-score strong{font-size:42px;line-height:1;color:#fff}
-.ai-score span{color:var(--muted);font-weight:800}
-.week-load-line{
-  margin-top:16px;
-  padding:14px 16px;
-  border-radius:18px;
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  background:rgba(255,255,255,.045);
-  border:1px solid rgba(255,255,255,.08);
-  color:var(--muted);
-}
-.week-load-line b{color:#fff;text-align:right}
-.balance-card .balance-row{
-  display:grid;
-  grid-template-columns:82px 1fr 44px;
-  gap:12px;
-  align-items:center;
-  margin:14px 0;
-}
-.balance-row span{font-weight:900;color:#fff}
-.balance-row b{color:#fff;text-align:right}
-.bar{
-  height:13px;
-  border-radius:999px;
-  overflow:hidden;
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.08);
-}
-.bar i{display:block;height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#0ea5e9,#ff5b11);box-shadow:0 0 16px rgba(255,91,17,.25);transition:width .35s ease}
-.balance-row:nth-child(2) .bar i{background:linear-gradient(90deg,#0ea5e9,#38bdf8)}
-.balance-row:nth-child(3) .bar i{background:linear-gradient(90deg,#37d35f,#9be15d)}
-.balance-row:nth-child(4) .bar i{background:linear-gradient(90deg,#ff5b11,#ff8a00)}
-@media(max-width:520px){
-  .ai-hero-card{align-items:stretch}
-  .ai-score{min-width:94px;min-height:94px;border-radius:26px}
-  .ai-score strong{font-size:36px}
-  .week-load-line{flex-direction:column}
-  .week-load-line b{text-align:left}
-  .balance-card .balance-row{grid-template-columns:78px 1fr 40px;gap:10px}
-}
-
-/* v1.0 profile + weekly AI plan */
-.muted-small{color:#aeb8cd;font-size:13px;line-height:1.45;margin:6px 0 12px}.profile-grid{display:grid;gap:10px;margin-top:10px}.profile-grid label{display:block}.profile-grid span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:7px}.profile-grid input{width:100%;min-height:52px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:15px;padding:0 14px;font-weight:850;outline:none}.main-cta.slim{height:52px;font-size:17px;margin-top:12px}.weekly-plan-card h2{display:flex;align-items:center;gap:8px}.weekly-plan-card h2 span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(255,90,22,.20);border:1px solid rgba(255,90,22,.36);padding:4px 8px;border-radius:999px}.weekly-plan-list{display:grid;gap:8px;margin-top:12px}.plan-day{display:grid;grid-template-columns:44px 1fr;gap:4px 10px;align-items:center;padding:12px;border:1px solid rgba(145,168,210,.22);border-radius:15px;background:rgba(255,255,255,.035)}.plan-day b{grid-row:1/3;display:grid;place-items:center;width:38px;height:38px;border-radius:13px;background:rgba(255,90,22,.14);color:var(--orange);border:1px solid rgba(255,90,22,.28)}.plan-day span{font-weight:1000;color:#fff}.plan-day small{color:#aeb8cd;line-height:1.35}
-
-
-/* v1.1 — logowanie i prywatne konto */
+*{box-sizing:border-box}
 [hidden]{display:none!important}
-.auth-screen{
-  min-height:100dvh;
-  padding:calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 22px);
+html{min-height:100%;background:var(--bg)}
+body{
+  margin:0;
+  min-height:100%;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(circle at 70% 0%,rgba(255,106,24,.24),transparent 34%),
+    radial-gradient(circle at 0% 20%,rgba(57,200,255,.16),transparent 30%),
+    linear-gradient(180deg,#06172b,#030914 70%);
+  color:var(--text);
+}
+body.is-auth-checking .login-screen,
+body.is-auth-checking .app-shell{display:none!important}
+body.is-login .app-shell{display:none!important}
+body.is-login .bottom-nav{display:none!important}
+body.is-authenticated .login-screen{display:none!important}
+body.is-authenticated .app-shell{
+  display:block;
+  padding-top:14px;
+}
+body.is-login .login-screen{
+  display:grid;
+}
+button,input{font:inherit}
+button{cursor:pointer}
+.login-screen,.app-shell{
+  width:min(100%,520px);
+  min-height:100vh;
+  margin:0 auto;
+  padding:18px 14px calc(96px + env(safe-area-inset-bottom));
+}
+.login-screen{
   display:grid;
   place-items:center;
 }
-.auth-card{
-  width:min(100%,520px);
-  border:1px solid rgba(129,157,205,.28);
-  background:linear-gradient(180deg,rgba(10,27,53,.92),rgba(5,17,34,.97));
+.login-card,.card,.hero-card,.page-title{
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,rgba(12,29,52,.94),rgba(5,14,28,.98));
+  border-radius:22px;
   box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.04);
-  border-radius:28px;
+}
+.login-card{
+  width:100%;
   padding:22px;
-  position:relative;
-  overflow:hidden;
-}
-.auth-card:before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:radial-gradient(circle at 82% 4%,rgba(255,90,22,.24),transparent 34%),radial-gradient(circle at 12% 0,rgba(8,168,255,.16),transparent 36%);
-  pointer-events:none;
-}
-.auth-card>*{position:relative;z-index:1}
-.auth-card h1{margin:26px 0 12px;font-size:clamp(42px,11vw,58px)}
-.auth-lead{font-size:16px;margin-bottom:18px;color:#cbd6ea}
-.auth-card label{display:block;color:#f7f9ff;font-weight:950;margin:14px 0 8px}
-.auth-card input{width:100%;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:16px;min-height:58px;padding:0 14px;outline:none;font-weight:850}
-.auth-card .main-cta{margin-top:18px}
-.auth-note{font-size:12px;color:#9facbf;margin-top:12px;text-align:center}
-.account-card{border-color:rgba(255,90,22,.30)}
-
-/* v1.2 — szczegóły treningu */
-body.details-open{overflow:hidden}
-.details-overlay{
-  position:fixed;
-  inset:0;
-  z-index:80;
   display:grid;
-  place-items:end center;
-  padding:24px 12px calc(env(safe-area-inset-bottom) + 12px);
-  background:rgba(0,4,12,.72);
-  backdrop-filter:blur(18px);
+  gap:14px;
 }
-.details-panel{
-  width:min(100%,520px);
-  max-height:92dvh;
-  overflow:auto;
-  border:1px solid rgba(129,157,205,.32);
-  background:radial-gradient(circle at 82% 0,rgba(255,90,22,.18),transparent 28%),linear-gradient(180deg,rgba(10,27,53,.98),rgba(5,17,34,.99));
-  border-radius:28px;
-  box-shadow:0 28px 90px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.05);
-  padding:18px;
+.login-card h1,.topbar h1,.page-title h2,.card h2,.hero-card h2{
+  margin:0;
+  letter-spacing:0;
 }
-.details-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
-.details-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,90,22,.42);background:rgba(255,90,22,.10);color:#ffd7c7;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950;letter-spacing:.04em;text-transform:uppercase}
-.details-top h2{margin:10px 0 4px;color:#fff;text-transform:none;letter-spacing:-.03em;font-size:30px;line-height:1.05}
-.details-top p{font-size:13px;color:#aeb8cd}
-.close-btn{width:42px;height:42px;border:1px solid rgba(145,168,210,.28);border-radius:15px;background:rgba(255,255,255,.04);color:#fff;font-size:28px;line-height:1;font-weight:700}
-.details-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0}
-.details-stats div,.details-grid div{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:17px;padding:12px;min-width:0}
-.details-stats span,.details-grid span{display:block;color:#9facbf;font-size:12px;font-weight:850;margin-bottom:5px}.details-stats b{display:block;font-size:20px;color:#fff}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.details-grid b{display:block;font-size:15px;color:#fff;word-break:break-word}.ai-mini-card,.edit-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}.ai-mini-card h3,.edit-block h3{margin:0 0 8px;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}.ai-mini-card p{color:#d6e2f5}.edit-block label{display:block;margin-top:10px}.edit-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px}.edit-block input{width:100%;min-height:50px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:15px;padding:0 13px;font-weight:850;outline:none}.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.details-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.details-actions .main-cta{margin:0}.details-actions .danger{grid-column:auto}.details-actions-top{margin-top:12px}.details-actions-bottom{margin-top:10px}.details-actions .accent{border-color:rgba(255,90,22,.55);background:rgba(255,90,22,.10);color:#ffd7c7}.garmin-editor[hidden]{display:none!important}
-.workout-item{transition:transform .12s ease,border-color .12s ease,background .12s ease}.workout-item:active{transform:scale(.99);border-color:rgba(255,90,22,.42);background:rgba(255,90,22,.06)}
-@media(max-width:390px){.details-stats{grid-template-columns:1fr}.details-grid,.edit-grid{grid-template-columns:1fr}.details-top h2{font-size:26px}.details-actions{grid-template-columns:1fr 1fr}}
-
-/* v1.3 — ukrycie widocznych pasków przewijania, przewijanie nadal działa */
-html, body, .phone-app, .details-panel {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+.login-card p,.page-title p,.hero-card p,.muted,.activity-card p{
+  margin:0;
+  color:#c8d5e9;
+  line-height:1.45;
 }
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-.phone-app::-webkit-scrollbar,
-.details-panel::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+.eyebrow{
+  color:var(--orange2);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:950;
+  font-size:12px;
 }
-.details-overlay {
-  overflow: hidden;
+label{
+  display:grid;
+  gap:7px;
+  color:#dce6f7;
+  font-weight:850;
 }
-.details-panel {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+input{
+  min-height:54px;
+  border:1px solid rgba(157,181,219,.28);
+  border-radius:16px;
+  background:#061327;
+  color:var(--text);
+  padding:0 14px;
+  outline:none;
 }
-
-/* v1.4 — Garmin import report + szczegóły danych */
-.import-report{
-  margin:12px 0 4px;
-  border:1px solid rgba(255,90,22,.26);
-  background:linear-gradient(180deg,rgba(255,90,22,.08),rgba(255,255,255,.025));
+input:focus{
+  border-color:rgba(255,106,24,.72);
+  box-shadow:0 0 0 3px rgba(255,106,24,.13);
+}
+.primary-btn,.secondary-btn,.icon-btn{
+  border:0;
+  color:white;
+  font-weight:1000;
+}
+.primary-btn{
+  min-height:58px;
+  border-radius:17px;
+  background:linear-gradient(135deg,var(--orange2),var(--orange));
+  box-shadow:0 16px 34px rgba(255,106,24,.24);
+}
+.secondary-btn{
+  min-height:50px;
+  border-radius:15px;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line);
+}
+.icon-btn{
+  width:48px;
+  height:48px;
+  border-radius:16px;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line);
+  font-size:24px;
+}
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+.topbar h1{font-size:24px}
+.screen{display:none}
+.screen.active{display:block}
+.connection-strip{
+  border:1px solid rgba(86,224,143,.26);
+  background:linear-gradient(135deg,rgba(86,224,143,.12),rgba(57,200,255,.07));
   border-radius:18px;
-  padding:12px;
+  padding:12px 14px;
+  margin-bottom:12px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
-.import-report>b{
-  display:block;
-  color:var(--orange);
-  font-size:14px;
-  font-weight:1000;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-  margin-bottom:9px;
-}
-.import-report>div{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;
-}
-.import-report span{
-  border:1px solid rgba(145,168,210,.18);
-  background:rgba(255,255,255,.035);
-  border-radius:13px;
-  padding:8px;
-  min-width:0;
-}
-.import-report em{
-  display:block;
-  color:#9facbf;
-  font-style:normal;
-  font-size:11px;
-  font-weight:850;
-  margin-bottom:3px;
-}
-.import-report strong{
-  display:block;
-  color:#fff;
-  font-size:13px;
-  font-weight:950;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-@media(max-width:390px){
-  .import-report>div{grid-template-columns:1fr}
-}
-
-
-/* v1.5.1 — źródła danych: Strava Auto + Garmin Link */
-.data-sources-card .card-head{align-items:center}.source-badge{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;color:#fff;border:1px solid rgba(255,90,22,.45);background:rgba(255,90,22,.14)}.source-list{display:grid;gap:12px;margin-top:14px}.source-item{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:start;border:1px solid rgba(145,168,210,.22);background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:18px;padding:13px}.source-icon{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:23px;background:rgba(255,255,255,.07);border:1px solid rgba(145,168,210,.22)}.source-item h3{margin:0 0 5px;font-size:16px}.source-item p{margin:0 0 5px;color:#d8e3f5;line-height:1.35}.source-item small{display:block;color:#94a3b8;line-height:1.35}.source-state{align-self:start;border-radius:999px;padding:6px 8px;font-size:11px;font-weight:950;white-space:nowrap}.source-state.active{color:#bbf7d0;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.12)}.source-state.planned{color:#ffd8c7;border:1px solid rgba(255,90,22,.38);background:rgba(255,90,22,.12)}.source-state.later{color:#dbe6f8;border:1px solid rgba(145,168,210,.28);background:rgba(145,168,210,.1)}.strava-source .source-icon{color:#fff;background:linear-gradient(135deg,#fc4c02,#ff8a3d);box-shadow:0 10px 24px rgba(252,76,2,.22)}.garmin-source .source-icon{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.28)}.file-source .source-icon{background:rgba(145,168,210,.12)}.source-note{margin-top:13px;border-radius:16px;padding:12px;border:1px solid rgba(255,90,22,.28);background:rgba(255,90,22,.1);display:grid;gap:4px}.source-note b{color:#fff}.source-note span{color:#ffd7c7;line-height:1.35}@media(max-width:430px){.source-item{grid-template-columns:40px 1fr}.source-icon{width:40px;height:40px}.source-state{grid-column:2;justify-self:start;margin-top:2px}.data-sources-card .card-head{gap:8px}}
-
-/* v1.5.1 — czytelniejszy Garmin Link i spokojniejsze komunikaty */
-#garminLink{
-  font-size:14px;
-  font-weight:850;
-  direction:ltr;
-  text-overflow:ellipsis;
-}
-.garmin-status.warn{
-  color:#ffd59c;
-}
-.import-report strong{
-  word-break:break-word;
-}
-
-/* v1.9 Advanced Garmin AI details */
-.advanced-block{
-  margin-top:14px;
-  padding:14px;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:18px;
-  background:rgba(255,255,255,.035);
-}
-.card-head.tight{margin-bottom:10px;align-items:center;}
-.advanced-stats{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-  margin:10px 0 12px;
-}
-.advanced-stats div{
-  padding:10px 11px;
-  border-radius:14px;
-  background:rgba(255,255,255,.055);
-  border:1px solid rgba(255,255,255,.10);
-}
-.advanced-stats span{
-  display:block;
-  color:var(--muted);
-  font-size:11px;
-  font-weight:800;
-  margin-bottom:4px;
-}
-.advanced-stats b{
-  color:#fff;
-  font-size:14px;
-  line-height:1.2;
-}
-.advanced-stats.empty{
-  display:block;
-  color:var(--muted);
-  padding:12px;
-  border-radius:14px;
-  background:rgba(255,255,255,.045);
-  border:1px dashed rgba(255,255,255,.16);
-  font-size:13px;
-}
-.advanced-block textarea{
-  width:100%;
-  margin-top:8px;
-  min-height:120px;
-  resize:vertical;
-  color:#fff;
-  background:rgba(3,12,27,.88);
-  border:1px solid rgba(255,255,255,.16);
-  border-radius:14px;
-  padding:12px;
-  font:inherit;
-  line-height:1.45;
-}
-.inline-actions{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-@media(max-width:520px){
-  .advanced-stats{grid-template-columns:1fr;}
-  .inline-actions{grid-template-columns:1fr;}
-}
-
-
-/* v1.9.1 — szczegóły treningu: Garmin w osobnym przycisku */
-.advanced-block.compact{padding:14px 14px 10px;}
-.garmin-editor{margin-top:12px;}
-.details-actions-bottom .danger{border-color:rgba(255,95,95,.55);background:rgba(255,95,95,.08);}
-.details-actions-bottom .main-cta{box-shadow:0 12px 26px rgba(255,90,22,.22);}
-@media(max-width:430px){
-  .details-actions-top,.details-actions-bottom{grid-template-columns:1fr 1fr;}
-  .details-actions button{min-height:50px;}
-}
-
-
-/* v1.9.4 — dolne przyciski szczegółów w jednym rzędzie */
-.details-actions-bottom{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
-  gap:10px !important;
-  align-items:stretch !important;
-}
-.details-actions-bottom button{
-  width:100% !important;
-  min-width:0 !important;
-  min-height:52px !important;
-  margin:0 !important;
-  border-radius:16px !important;
-  font-size:16px !important;
-  font-weight:1000 !important;
-}
-.details-actions-bottom .danger{
-  grid-column:auto !important;
-}
-.details-save-btn{
-  border:0;
-  background:linear-gradient(135deg,#ff7b1d,#ff3e08);
-  color:#fff;
-  box-shadow:0 12px 26px rgba(255,90,22,.22);
-}
-@media(max-width:390px){
-  .details-actions-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
-  .details-actions-bottom button{font-size:14px !important;}
-}
-
-
-/* v1.9.4 — twarda poprawka dolnego rzędu: Usuń | Zapisz zmiany */
-.details-actions.details-actions-bottom{
-  display:grid !important;
-  grid-template-columns:1fr 1fr !important;
-  gap:10px !important;
-  width:100% !important;
-  margin-top:10px !important;
-}
-.details-actions.details-actions-bottom #deleteDetailsBtn,
-.details-actions.details-actions-bottom #saveDetailsBtn{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  width:100% !important;
-  min-width:0 !important;
-  min-height:52px !important;
-  margin:0 !important;
-  padding:0 10px !important;
-  border-radius:16px !important;
-  font-size:15px !important;
-  font-weight:1000 !important;
-  line-height:1.1 !important;
-  text-align:center !important;
-  appearance:none !important;
-  -webkit-appearance:none !important;
-}
-.details-actions.details-actions-bottom #deleteDetailsBtn{
-  border:1px solid rgba(255,95,95,.65) !important;
-  background:rgba(255,95,95,.08) !important;
-  color:#ffd0d0 !important;
-}
-.details-actions.details-actions-bottom #saveDetailsBtn{
-  border:0 !important;
-  background:linear-gradient(135deg,#ff7b1d,#ff3e08) !important;
-  color:#fff !important;
-  box-shadow:0 12px 26px rgba(255,90,22,.26) !important;
-}
-
-/* v1.9.4 — przyciski Otwórz w Garmin i Dodaj z Garmin mają identyczny wygląd */
-.details-actions.details-actions-top{
-  display:grid !important;
-  grid-template-columns:1fr 1fr !important;
-  gap:10px !important;
-  width:100% !important;
-}
-.details-actions.details-actions-top #openGarminBtn,
-.details-actions.details-actions-top #addGarminDetailsBtn{
-  border:1px solid rgba(135,161,207,.35) !important;
-  background:rgba(255,255,255,.035) !important;
-  color:#fff !important;
-  box-shadow:none !important;
-  border-radius:16px !important;
-}
-.details-actions.details-actions-top #openGarminBtn:hover,
-.details-actions.details-actions-top #addGarminDetailsBtn:hover{
-  border-color:rgba(135,161,207,.55) !important;
-  background:rgba(255,255,255,.06) !important;
-}
-
-
-/* v2.1.1 — poprawka czytelności filtrów historii */
-.filter-row button{
-  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025)) !important;
-  color:#dbe6f8 !important;
-  border:1px solid rgba(145,168,210,.32) !important;
-  box-shadow:none;
-}
-.filter-row button.active{
-  color:#fff !important;
-  border-color:var(--orange) !important;
-  background:rgba(255,90,22,.16) !important;
-  box-shadow:0 0 22px rgba(255,90,22,.22) !important;
-}
-.filter-row button:disabled{opacity:.55;filter:none;background:rgba(255,255,255,.04)!important;color:#9aa8bd!important;}
-
-/* v2.4 — Garmin Recovery / Stan organizmu */
-.recovery-card,
-.recovery-analysis-card{
-  background:linear-gradient(145deg, rgba(10,28,52,.96), rgba(4,12,25,.98));
-  border-color:rgba(42,205,143,.26);
-}
-.recovery-top{
-  display:grid;
-  grid-template-columns:130px 1fr;
-  gap:14px;
-  align-items:center;
-  margin:10px 0 14px;
-}
-.recovery-score,
-.analysis-recovery-score{
-  border:1px solid rgba(42,205,143,.32);
-  background:radial-gradient(circle at top, rgba(42,205,143,.22), rgba(255,255,255,.035) 65%);
-  border-radius:22px;
-  padding:14px;
-  min-height:96px;
+.connection-strip div{
   display:flex;
-  flex-direction:column;
-  justify-content:center;
-  box-shadow:0 16px 38px rgba(42,205,143,.10);
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
 }
-.recovery-score strong,
-.analysis-recovery-score strong{
-  color:#fff;
-  font-size:25px;
-  line-height:1;
+.connection-strip b{
+  color:#d9ffe8;
+  font-size:14px;
 }
-.recovery-score span,
-.analysis-recovery-score span{
-  color:#9ee7c6;
-  font-weight:900;
+.connection-strip span{
+  color:#b9c8dd;
   font-size:12px;
-  margin-top:7px;
-  line-height:1.3;
+  font-weight:850;
+  white-space:nowrap;
 }
-.recovery-top p{
-  margin:0;
-  color:#c7d3e7;
-  line-height:1.45;
-  font-weight:760;
-}
-.recovery-grid{
+.hero-card{
+  padding:22px;
   display:grid;
-  grid-template-columns:repeat(3, 1fr);
+  gap:14px;
+  border-color:rgba(255,106,24,.34);
+  background:linear-gradient(145deg,rgba(18,35,61,.96),rgba(6,15,30,.99));
+}
+.hero-card h2{
+  font-size:30px;
+  line-height:1.05;
+}
+.card,.page-title{
+  padding:18px;
+  margin-bottom:12px;
+}
+.page-title{
+  display:grid;
+  gap:6px;
+}
+.page-title h2{font-size:28px}
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:12px;
+}
+.section-head span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:900;
+}
+.metric-grid,.sport-week,.plan-grid,.activity-metrics,.settings-card{
+  display:grid;
+  gap:9px;
+}
+.metric-grid,.sport-week,.plan-grid{
+  grid-template-columns:1fr 1fr;
+}
+.metric-grid div,.sport-week div,.plan-grid div,.settings-card div{
+  border:1px solid rgba(151,176,214,.16);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  padding:12px;
+}
+.metric-grid span,.sport-week span,.plan-grid span,.settings-card span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-weight:950;
+  margin-bottom:5px;
+}
+.metric-grid b,.sport-week b,.plan-grid b,.settings-card b{
+  color:var(--text);
+  font-size:15px;
+}
+.coach-card{
+  border-color:rgba(86,224,143,.26);
+}
+.coach-card p{
+  font-size:17px;
+  line-height:1.45;
+  margin:0;
+  font-weight:800;
+}
+.activity-list{
+  display:grid;
   gap:10px;
 }
-.recovery-grid div{
-  min-height:72px;
+.activity-card{
+  border:1px solid rgba(151,176,214,.18);
   border-radius:18px;
-  padding:12px;
-  background:rgba(255,255,255,.045);
-  border:1px solid rgba(145,168,210,.18);
+  background:rgba(255,255,255,.04);
+  padding:13px;
 }
-.recovery-grid span{
-  display:block;
-  color:#91a3c1;
-  font-size:12px;
-  font-weight:900;
-  margin-bottom:8px;
+.history-activity-card{
+  width:100%;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease;
 }
-.recovery-grid b{
-  color:#fff;
-  font-size:18px;
-  line-height:1.1;
+.history-activity-card:hover,
+.history-activity-card:focus{
+  outline:none;
+  transform:translateY(-1px);
+  border-color:rgba(255,106,24,.48);
+  background:rgba(255,255,255,.06);
 }
-.recovery-grid.compact{grid-template-columns:repeat(2, 1fr);margin-top:12px}
-.analysis-recovery-score{
-  min-height:auto;
-  display:grid;
-  grid-template-columns:88px 1fr;
+.activity-top{
+  display:flex;
+  justify-content:space-between;
   gap:12px;
-  align-items:center;
+  align-items:flex-start;
 }
-.analysis-recovery-score strong{font-size:27px;color:#9ee7c6}
-.analysis-recovery-score span{font-size:13px;margin:0;color:#d8fbe9}
-@media(max-width:520px){
-  .recovery-top{grid-template-columns:1fr;gap:10px}
-  .recovery-score{min-height:82px}
-  .recovery-grid{grid-template-columns:repeat(2, 1fr)}
-  .analysis-recovery-score{grid-template-columns:1fr}
+.activity-top h3{
+  margin:0 0 5px;
+  font-size:18px;
 }
-
-
-/* v2.4 — historia, wyszukiwarka i regeneracja */
-.clickable{cursor:pointer;transition:transform .15s ease,border-color .15s ease}.clickable:hover{transform:translateY(-1px);border-color:rgba(255,90,22,.42)}
-.recovery-history-link{margin:6px 0 12px;color:#ffd2bf!important}
-.history-tools{display:grid;grid-template-columns:1fr 150px;gap:10px;margin:12px 0}
-.search-box{display:grid;gap:6px}.search-box span{font-weight:900;color:#cbd8ed;font-size:13px}.search-box input,.history-tools select{min-height:50px;border-radius:16px;border:1px solid rgba(145,168,210,.28);background:#07172b;color:#fff;padding:0 14px;font-weight:850;outline:none}.search-box input:focus,.history-tools select:focus{border-color:rgba(255,90,22,.7);box-shadow:0 0 0 3px rgba(255,90,22,.11)}
-.filter-row{grid-template-columns:repeat(5,1fr)!important}.filter-row button{background:#081529!important;color:#dbe6f8!important}.filter-row button.active{background:rgba(255,90,22,.16)!important;color:#fff!important}
-.recovery-panel{max-width:560px}.recovery-history-list{display:grid;gap:10px}.recovery-day{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:12px;display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:8px;align-items:start}.recovery-day.good{border-color:rgba(89,227,93,.28)}.recovery-day.low{border-color:rgba(255,95,95,.35);background:rgba(255,95,95,.06)}.recovery-day b{display:block;color:#fff}.recovery-day span,.recovery-day small{display:block;color:#aeb9ce;font-size:12px;font-weight:850}.recovery-day strong{display:block;color:#fff;margin-top:3px}.recovery-day p{grid-column:1/-1;color:#d8e4f7;margin-top:4px;line-height:1.35}
-.ai-text p:nth-child(3){border:1px solid rgba(255,90,22,.28);background:rgba(255,90,22,.10);border-radius:15px;padding:12px;color:#fff}
-@media(max-width:430px){.history-tools{grid-template-columns:1fr}.filter-row{grid-template-columns:1fr 1fr!important}.recovery-day{grid-template-columns:1fr 1fr}.recovery-day>div:first-child{grid-column:1/-1}}
-
-
-/* v2.6 — Garmin Sync mini status i czytelność danych */
-.garmin-mini-card{border-color:rgba(56,189,248,.28);background:linear-gradient(135deg,rgba(8,27,54,.92),rgba(12,22,43,.92))}.garmin-mini-status{border-radius:15px;padding:11px 12px;margin:4px 0 12px;border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.04);font-weight:850;color:#dbe6f8}.garmin-mini-status.ok{border-color:rgba(89,227,93,.32);color:#c9ffd0}.garmin-mini-status.warn{border-color:rgba(255,193,69,.35);color:#ffe4a6}.garmin-mini-status.bad{border-color:rgba(255,79,79,.38);color:#ffc2c2}.garmin-mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.garmin-mini-grid div{border:1px solid rgba(145,168,210,.2);border-radius:16px;background:rgba(255,255,255,.035);padding:11px}.garmin-mini-grid span{display:block;color:#93a4bd;font-size:11px;font-weight:900;margin-bottom:6px}.garmin-mini-grid b{display:block;color:#fff;font-size:15px}.ai-text p{border-bottom:1px solid rgba(145,168,210,.12);padding-bottom:9px}.ai-text p:last-child{border-bottom:0;padding-bottom:0}.advanced-stats b{font-variant-numeric:tabular-nums}.recovery-day b,.recovery-grid b{font-variant-numeric:tabular-nums}@media(max-width:430px){.garmin-mini-grid{grid-template-columns:1fr 1fr}.garmin-mini-grid b{font-size:14px}}
-
-/* v2.6 — Minimalistyczny WaaaaW Pulpit */
-.minimal-dashboard{
-  padding-bottom:8px;
-}
-.hero-wow{
-  min-height:284px;
-  border-color:rgba(255,90,22,.36);
-  background:linear-gradient(145deg,rgba(3,10,22,.98),rgba(8,24,49,.92));
-  box-shadow:0 24px 80px rgba(0,0,0,.48),0 0 54px rgba(255,90,22,.13),inset 0 1px 0 rgba(255,255,255,.05);
-}
-.hero-wow .hero-bg{
-  opacity:.88;
-  background:
-    radial-gradient(circle at 74% 24%,rgba(255,107,29,.72),transparent 22%),
-    radial-gradient(circle at 28% 0%,rgba(8,168,255,.18),transparent 28%),
-    linear-gradient(90deg,rgba(2,8,20,.97),rgba(2,12,26,.72) 50%,rgba(2,8,20,.98)),
-    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="%23030b18"/><stop offset=".56" stop-color="%23091830"/><stop offset="1" stop-color="%23ff651a"/></linearGradient></defs><rect width="800" height="520" fill="url(%23g)"/><path d="M0 390 C130 330 280 360 430 305 C560 260 650 270 800 230 L800 520 L0 520Z" fill="%23020914" opacity=".82"/><path d="M210 520 C330 375 510 305 765 245" stroke="%23f6d0a8" stroke-width="16" opacity=".18" fill="none"/><path d="M470 210 l15-80 l15 80 M526 210 l14-100 l14 100 M584 210 l20-130 l20 130" stroke="%23020a16" stroke-width="13"/><rect x="425" y="205" width="244" height="94" rx="10" fill="%23020a16" opacity=".82"/><circle cx="676" cy="135" r="62" fill="%23ff7b25" opacity=".28"/></svg>');
-  background-size:cover;
-  background-position:center;
-}
-.hero-kicker{
-  display:inline-flex;
-  color:#ffd1bc;
-  font-weight:1000;
-  letter-spacing:.16em;
-  font-size:12px;
-  border:1px solid rgba(255,90,22,.35);
-  background:rgba(255,90,22,.10);
+.activity-top span{
+  border:1px solid rgba(255,106,24,.32);
+  background:rgba(255,106,24,.09);
+  color:#ffd6c0;
   border-radius:999px;
-  padding:7px 10px;
-  margin-bottom:18px;
+  padding:6px 10px;
+  font-weight:950;
+  white-space:nowrap;
 }
-.hero-wow .hero-left h1{
-  font-size:clamp(50px,14vw,74px);
-  letter-spacing:-.075em;
-  color:#fff;
-  text-shadow:0 0 36px rgba(255,255,255,.12),0 8px 26px rgba(0,0,0,.35);
+.activity-metrics{
+  grid-template-columns:repeat(3,1fr);
+  margin-top:12px;
 }
-.hero-wow .hero-left p{
-  max-width:260px;
-  font-weight:780;
-  color:#d7e2f6;
+.activity-metrics b{
+  border:1px solid rgba(151,176,214,.14);
+  border-radius:14px;
+  padding:9px;
+  background:rgba(0,0,0,.14);
+  color:#f4f8ff;
+  font-size:13px;
 }
-.countdown-wow{
-  background:rgba(3,12,25,.76);
-  backdrop-filter:blur(8px);
+.activity-summary{
+  margin-top:12px!important;
+  font-size:14px;
 }
-.countdown-wow strong{
-  font-size:54px;
-}
-.coach-focus-card{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:18px;
+.analysis-link{
+  display:inline-flex;
   align-items:center;
-  border-color:rgba(255,90,22,.34);
-  background:
-    radial-gradient(circle at 8% 0%,rgba(255,90,22,.18),transparent 34%),
-    linear-gradient(145deg,rgba(11,31,58,.96),rgba(4,13,28,.98));
+  justify-content:center;
+  min-height:34px;
+  margin-top:12px;
+  border-radius:999px;
+  border:1px solid rgba(255,106,24,.35);
+  background:rgba(255,106,24,.1);
+  color:#ffd6c0;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:1000;
 }
-.section-label{
-  display:inline-block;
+.activity-detail-view{
+  display:grid;
+  gap:12px;
+}
+.back-btn{
+  width:100%;
+}
+.activity-detail-card{
+  border-color:rgba(57,200,255,.25);
+}
+.activity-detail-card h2{
+  margin-top:6px;
+}
+.activity-detail-card p{
+  color:#c8d5e9;
+  line-height:1.45;
+}
+.detail-metrics{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:9px;
+  margin-top:14px;
+}
+.detail-metrics div{
+  border:1px solid rgba(151,176,214,.16);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  padding:12px;
+}
+.detail-metrics span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-weight:950;
+  margin-bottom:5px;
+}
+.detail-metrics b{
+  font-size:16px;
+}
+.detail-summary{
+  display:grid;
+  gap:8px;
+  margin-top:14px;
+}
+.detail-summary p{
+  margin:0;
+  border:1px solid rgba(151,176,214,.14);
+  border-radius:15px;
+  background:rgba(0,0,0,.12);
+  padding:11px;
+}
+.activity-ai-card{
+  border-color:rgba(255,106,24,.32);
+}
+.activity-ai-card h2{
+  margin-top:6px;
+}
+.activity-ai-analysis{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.activity-ai-analysis div{
+  border:1px solid rgba(151,176,214,.16);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  padding:12px;
+}
+.activity-ai-analysis .facts-block{
+  border-color:rgba(86,224,143,.25);
+  background:rgba(86,224,143,.055);
+}
+.facts-block ul{
+  list-style:none;
+  display:grid;
+  gap:8px;
+  margin:0;
+  padding:0;
+}
+.facts-block li{
+  display:grid;
+  grid-template-columns:minmax(112px,.72fr) 1fr;
+  gap:10px;
+  align-items:start;
+  border-top:1px solid rgba(151,176,214,.12);
+  padding-top:8px;
+}
+.facts-block li:first-child{
+  border-top:0;
+  padding-top:0;
+}
+.facts-block b{
+  color:#c8d5e9;
+  font-size:12px;
+}
+.facts-block em{
+  color:#f4f8ff;
+  font-style:normal;
+  line-height:1.35;
+}
+.activity-ai-analysis span{
+  display:block;
   color:var(--orange2);
   font-size:12px;
   font-weight:1000;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  margin-bottom:8px;
-}
-.coach-copy h2{
-  color:#fff;
-  font-size:26px;
-  line-height:1.05;
-  letter-spacing:-.02em;
-  text-transform:none;
-  margin:0 0 10px;
-}
-.coach-copy p{
-  color:#d9e4f5;
-  font-size:15px;
-  font-weight:720;
-}
-.readiness-pro-details{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;
-  margin:12px 0 2px;
-}
-.readiness-pro-details span{
-  border:1px solid rgba(145,168,210,.18);
-  background:rgba(255,255,255,.035);
-  border-radius:14px;
-  padding:9px 10px;
-  color:#9fb0c8;
-  font-size:12px;
-  font-weight:900;
-}
-.readiness-pro-details b{
-  display:block;
-  color:#fff;
-  font-size:14px;
-  margin-top:2px;
-}
-.readiness-journal-note{
-  margin-top:9px!important;
-  color:#aebbd2!important;
-  font-size:12px!important;
-  line-height:1.35;
-}
-.ai-coach-pro-card{
-  border-color:rgba(255,123,29,.26);
-  background:linear-gradient(145deg,rgba(12,24,45,.96),rgba(5,12,24,.98));
-}
-#aiCoachProCard{
-  border-width:2px;
-  box-shadow:0 18px 46px rgba(255,90,22,.18), inset 0 1px 0 rgba(255,255,255,.05);
-}
-#aiCoachProCard .card-head h2{
-  color:#fff;
-  font-size:22px;
-}
-#aiCoachProCard .timeline-badge{
-  border-color:rgba(255,123,29,.55);
-  background:rgba(255,123,29,.13);
-  color:#ffd7c7;
-}
-.ai-coach-pro-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-  margin-top:12px;
-}
-.ai-coach-pro-grid div{
-  border:1px solid rgba(145,168,210,.16);
-  background:rgba(255,255,255,.035);
-  border-radius:16px;
-  padding:11px;
-}
-.ai-coach-pro-grid span{
-  display:block;
-  color:#9fb0c8;
-  font-size:11px;
-  font-weight:1000;
   text-transform:uppercase;
   letter-spacing:.06em;
-  margin-bottom:5px;
+  margin-bottom:6px;
 }
-.ai-coach-pro-grid b,
-.ai-coach-pro-grid p{
+.activity-ai-analysis p{
   margin:0;
-  color:#f3f7ff;
-  font-size:13px;
-  line-height:1.35;
-  font-weight:850;
+  color:#f4f8ff;
+  font-size:15px;
+  line-height:1.5;
+  font-weight:760;
 }
-.ai-coach-pro-grid div:first-child{
-  grid-column:1/-1;
-  border-color:rgba(255,123,29,.34);
-  background:rgba(255,123,29,.08);
-}
-.ai-coach-pro-grid div:first-child b{
-  font-size:18px;
-}
-.coach-actions{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  margin-top:14px;
-  flex-wrap:wrap;
-}
-.coach-actions .main-cta.slim,
-.coach-actions .ghost.slim{
-  min-height:44px;
-  height:44px;
-  margin:0;
-  padding:0 14px;
-  border-radius:14px;
-  font-size:14px;
-}
-.wow-readiness{
-  flex-direction:column;
-  align-items:center;
-  min-width:132px;
-}
-.wow-readiness .donut{
-  width:118px;
-  height:118px;
-  flex-basis:118px;
-}
-.wow-readiness .progress-mini{
-  text-align:center;
-}
-.wow-readiness .progress-mini strong{
-  font-size:22px;
-}
-.dashboard-pulse-grid{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-  margin-bottom:12px;
-}
-.pulse-card{
-  display:grid;
-  grid-template-columns:44px 1fr auto;
-  align-items:center;
-  gap:12px;
-  min-height:76px;
-  padding:13px;
-  border:1px solid rgba(145,168,210,.24);
-  border-radius:22px;
-  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
-  box-shadow:0 12px 32px rgba(0,0,0,.18);
-}
-.pulse-card[role="button"]{cursor:pointer}
-.pulse-card:active{transform:scale(.992)}
-.pulse-icon{
-  width:42px;
-  height:42px;
-  display:grid;
-  place-items:center;
+.muted-card{
+  color:var(--muted);
+  border:1px dashed rgba(151,176,214,.24);
   border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.055);
-  font-size:22px;
+  padding:14px;
+  background:rgba(255,255,255,.025);
 }
-.pulse-card small{
-  display:block;
-  color:#94a6c0;
-  font-size:11px;
-  font-weight:1000;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  margin-bottom:4px;
-}
-.pulse-card b{
-  display:block;
-  color:#fff;
-  font-size:18px;
-  line-height:1.1;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width:260px;
-}
-.pulse-card p{
-  margin-top:3px;
-  font-size:12px;
-  line-height:1.25;
-  color:#c6d3e8;
-}
-.pulse-card em{
-  color:#ffbd9d;
-  font-style:normal;
-  font-size:12px;
-  font-weight:950;
-  white-space:nowrap;
-}
-.weekly-mini-card{
-  border-color:rgba(145,168,210,.20);
-  background:rgba(7,20,40,.66);
-}
-.mini-sports-row{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-}
-.mini-sports-row span{
-  display:grid;
-  gap:4px;
-  align-content:center;
-  min-height:72px;
-  border-radius:18px;
-  border:1px solid rgba(145,168,210,.18);
-  background:rgba(255,255,255,.035);
-  padding:10px;
-  color:#fff;
-  font-weight:1000;
-}
-.mini-sports-row b{
-  display:block;
-  font-size:18px;
-}
-.mini-sports-row small{
-  color:#96a8bf;
-  font-weight:850;
-}
-.mini-sports-row .load{
-  border-color:rgba(255,209,102,.28);
-  background:rgba(255,209,102,.07);
-}
-.recent-minimal-card{
-  background:rgba(7,20,40,.58);
-}
-.workout-list.one-item .workout-item:nth-child(n+2){display:none!important}
-.dashboard-hidden-data{
-  display:none!important;
-}
-.minimal-dashboard .garmin-mini-status{
-  padding:0;
-  border:0;
-  background:transparent;
-  margin:0;
-  font-size:12px;
-  line-height:1.25;
-  color:#c6d3e8;
-}
-.minimal-dashboard .garmin-mini-status.ok,
-.minimal-dashboard .garmin-mini-status.warn,
-.minimal-dashboard .garmin-mini-status.bad{
-  border:0;
-  background:transparent;
-}
-@media(max-width:430px){
-  .hero-wow{min-height:268px;padding:21px 15px}
-  .countdown-wow{width:116px;flex-basis:116px;padding:14px 8px}
-  .countdown-wow strong{font-size:46px}
-  .hero-wow .hero-left h1{font-size:52px}
-  .race-goals{gap:8px}
-  .race-goals span{font-size:13px}
-  .race-goals b{font-size:18px}
-  .coach-focus-card{grid-template-columns:1fr;gap:12px}
-  .wow-readiness{flex-direction:row;justify-content:flex-start;width:100%}
-  .pulse-card{grid-template-columns:42px minmax(0,1fr) auto}
-  .pulse-card b{max-width:190px}
-  .mini-sports-row{grid-template-columns:1fr 1fr;gap:7px}
-  .mini-sports-row span{padding:9px 7px;min-height:68px}
-  .mini-sports-row b{font-size:15px}
-}
-
-
-/* v2.7 — Premium Regeneracja + Analiza */
-.premium-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
-.premium-head h2{margin:2px 0 0}.timeline-badge{border:1px solid rgba(145,168,210,.24);background:rgba(255,255,255,.045);border-radius:999px;padding:6px 10px;color:#bfd0ea;font-size:11px;font-weight:950;white-space:nowrap}.premium-recovery-card{position:relative;overflow:hidden}.premium-recovery-card:before{content:"";position:absolute;inset:-80px -120px auto auto;width:260px;height:260px;background:radial-gradient(circle,rgba(42,205,143,.16),transparent 68%);pointer-events:none}.premium-recovery-note{position:relative;margin-top:12px;border:1px solid rgba(42,205,143,.22);background:rgba(42,205,143,.07);border-radius:18px;padding:12px 13px;color:#dffdf0;line-height:1.4;font-weight:750}.premium-recovery-note b{color:#fff}.recovery-timeline-card{background:linear-gradient(145deg,rgba(7,18,36,.96),rgba(4,10,22,.98));border-color:rgba(145,168,210,.18)}.premium-recovery-list{display:grid;gap:10px}.premium-recovery-row{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:20px;padding:12px}.premium-recovery-row.good{border-color:rgba(42,205,143,.28);background:linear-gradient(135deg,rgba(42,205,143,.08),rgba(255,255,255,.025))}.premium-recovery-row.low{border-color:rgba(255,95,95,.35);background:linear-gradient(135deg,rgba(255,95,95,.08),rgba(255,255,255,.02))}.premium-day-main{display:flex;align-items:center;gap:10px}.premium-day-main>span{width:34px;height:34px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.08)}.premium-day-main b{display:block;color:#fff}.premium-day-main small{display:block;color:#96a6bf;font-weight:850;margin-top:2px}.premium-metrics-line{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.premium-metrics-line span{border:1px solid rgba(145,168,210,.14);border-radius:14px;padding:8px 9px;background:rgba(255,255,255,.03);color:#94a6bf;font-size:11px;font-weight:900}.premium-metrics-line span b{display:block;color:#fff;font-size:13px;margin-top:2px}.premium-metrics-line span.good{border-color:rgba(42,205,143,.27);color:#aaf5d1}.premium-metrics-line span.warn{border-color:rgba(255,193,69,.35);color:#ffe1a5}.premium-recovery-row p{margin:0;color:#cdd9ec;line-height:1.35;font-size:13px}.premium-ai-card{background:linear-gradient(145deg,rgba(18,16,41,.96),rgba(4,10,22,.98));border-color:rgba(255,123,29,.22)}.premium-ai-text{display:grid;gap:10px}.ai-human-block{display:grid;grid-template-columns:36px 1fr;gap:10px;border:1px solid rgba(145,168,210,.16);background:rgba(255,255,255,.035);border-radius:18px;padding:12px}.ai-human-block>span{width:34px;height:34px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.07);font-weight:950;color:#fff}.ai-human-block b{display:block;color:#fff;margin-bottom:4px}.ai-human-block p{margin:0!important;border:0!important;padding:0!important;color:#d6e2f4;line-height:1.4}.ai-human-block.primary{border-color:rgba(255,123,29,.30);background:rgba(255,123,29,.075)}.ai-human-block.warning{border-color:rgba(255,193,69,.35);background:rgba(255,193,69,.075)}.ai-human-block.recovery{border-color:rgba(42,205,143,.25);background:rgba(42,205,143,.06)}.premium-decision{border-radius:18px;margin-top:12px}@media(max-width:430px){.premium-metrics-line{grid-template-columns:1fr 1fr}.premium-head{align-items:flex-start}.premium-grid{grid-template-columns:1fr 1fr}.ai-human-block{grid-template-columns:32px 1fr}.ai-human-block>span{width:30px;height:30px;border-radius:12px}}
-
-
-/* v2.8 — Wsparcie AI / Dziennik trenera */
-.ai-support-hero{display:grid;grid-template-columns:1fr 88px;gap:14px;align-items:center;background:linear-gradient(145deg,rgba(18,16,41,.97),rgba(4,10,22,.98));border-color:rgba(255,123,29,.24);overflow:hidden;position:relative}.ai-support-hero:before{content:"";position:absolute;inset:-80px -90px auto auto;width:230px;height:230px;background:radial-gradient(circle,rgba(255,123,29,.22),transparent 68%);pointer-events:none}.ai-support-hero h2{margin:4px 0 8px;font-size:26px}.ai-support-hero p{margin:0;color:#d4deef;line-height:1.45}.ai-memory-orb{width:86px;height:86px;border-radius:31px;background:linear-gradient(135deg,#ffbd68,#ff5a16);display:grid;place-items:center;font-weight:1000;font-size:28px;color:#fff;box-shadow:0 18px 50px rgba(255,90,22,.35);position:relative}.ai-support-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.ai-support-tile{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.04);border-radius:22px;padding:13px;min-height:154px;display:grid;align-content:start;gap:5px}.ai-support-tile.primary{background:linear-gradient(145deg,rgba(255,90,22,.12),rgba(255,255,255,.035));border-color:rgba(255,90,22,.28)}.ai-support-tile span{width:42px;height:42px;border-radius:17px;display:grid;place-items:center;background:rgba(255,255,255,.07);font-size:22px}.ai-support-tile small{color:#92a4bd;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.ai-support-tile b{color:#fff;font-size:15px}.ai-support-tile p{margin:0;color:#cbd8eb;line-height:1.35;font-size:13px}.ai-support-tile.good{border-color:rgba(42,205,143,.28);background:linear-gradient(145deg,rgba(42,205,143,.09),rgba(255,255,255,.03))}.ai-support-tile.warn{border-color:rgba(255,193,69,.35);background:linear-gradient(145deg,rgba(255,193,69,.08),rgba(255,255,255,.03))}.ai-support-tile.danger{border-color:rgba(255,95,95,.38);background:linear-gradient(145deg,rgba(255,95,95,.09),rgba(255,255,255,.03))}.ai-journal-card label{display:grid;gap:7px;margin-top:12px}.ai-journal-card label span{color:#c5d2e6;font-weight:900}.ai-journal-card textarea,.ai-journal-card select,.ai-journal-card input{width:100%;border:1px solid rgba(145,168,210,.24);background:rgba(4,12,26,.82);border-radius:16px;color:#fff;padding:12px 13px;font:inherit;outline:none}.ai-journal-card textarea:focus,.ai-journal-card select:focus,.ai-journal-card input:focus{border-color:rgba(255,123,29,.62);box-shadow:0 0 0 3px rgba(255,90,22,.12)}.ai-scale-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ai-journal-actions{display:grid;grid-template-columns:1fr .7fr;gap:10px;margin-top:14px}.ai-memory-summary{border:1px solid rgba(255,123,29,.22);background:rgba(255,123,29,.07);border-radius:18px;padding:13px;color:#dbe6f8;line-height:1.45;font-weight:750;margin-bottom:12px}.ai-memory-summary b{color:#fff}.ai-journal-list{display:grid;gap:10px}.ai-journal-entry{border:1px solid rgba(145,168,210,.17);background:rgba(255,255,255,.035);border-radius:19px;padding:12px}.ai-journal-entry.pain{border-color:rgba(255,193,69,.34);background:linear-gradient(145deg,rgba(255,193,69,.07),rgba(255,255,255,.03))}.ai-entry-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}.ai-entry-head b{color:#fff}.ai-entry-head span{color:#9dafc8;font-size:12px;font-weight:850;text-align:right}.ai-journal-entry p{margin:6px 0 0;color:#d1ddef;line-height:1.35;font-size:13px}.ai-journal-entry strong{color:#fff}.bottom-nav{height:78px}.bottom-nav button{font-size:21px}.bottom-nav span{font-size:11px}@media(max-width:430px){.ai-support-hero{grid-template-columns:1fr 74px}.ai-memory-orb{width:72px;height:72px;border-radius:25px;font-size:24px}.ai-support-grid{grid-template-columns:1fr 1fr;gap:8px}.ai-support-tile{padding:11px;min-height:150px}.ai-scale-grid{grid-template-columns:1fr}.ai-journal-actions{grid-template-columns:1fr}.ai-entry-head{display:block}.ai-entry-head span{text-align:left;display:block;margin-top:3px}.bottom-nav{width:min(calc(100% - 14px),500px);padding:5px;gap:1px}.bottom-nav span{font-size:10px}.bottom-nav button{font-size:19px}.bottom-nav .plus{font-size:28px}.bottom-nav .plus::after{width:40px;height:40px;top:9px}}
-
-/* v2.8.2 — nowoczesne ikony, WawrzyS i bezpieczne AI */
-.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.dad-help-link{border:1px solid rgba(255,123,29,.34);background:linear-gradient(135deg,rgba(255,123,29,.16),rgba(255,255,255,.045));color:#fff;text-decoration:none;border-radius:999px;padding:8px 10px;font-size:11px;font-weight:1000;letter-spacing:.02em;box-shadow:0 10px 28px rgba(255,90,22,.12);white-space:nowrap}
-.dad-help-link:hover,.dad-help-link:focus{border-color:rgba(255,184,107,.72);box-shadow:0 0 0 3px rgba(255,123,29,.12),0 12px 32px rgba(255,90,22,.2);outline:none}
-.nav-icon.modern-icon{width:27px;height:27px;display:grid;place-items:center;margin-bottom:1px;border-radius:10px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.02));border:1px solid rgba(145,168,210,.16)}
-.nav-icon.modern-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.15;stroke-linecap:round;stroke-linejoin:round}
-.nav-icon.modern-icon.ai-modern svg{fill:none;stroke-width:1.95}
-.bottom-nav button.active .nav-icon.modern-icon{background:rgba(255,90,22,.16);border-color:rgba(255,90,22,.45);box-shadow:0 0 20px rgba(255,90,22,.14)}
-@media(max-width:430px){.topbar{align-items:flex-start}.top-actions{gap:6px}.dad-help-link{padding:7px 9px;font-size:10px}.nav-icon.modern-icon{width:25px;height:25px}.nav-icon.modern-icon svg{width:20px;height:20px}}
-
-/* v2.8.2 — safety layer */
-.ai-safety-card{border-color:rgba(255,193,69,.28);background:linear-gradient(145deg,rgba(18,20,35,.97),rgba(5,12,24,.98));position:relative;overflow:hidden}.ai-safety-card:before{content:"";position:absolute;inset:-90px -110px auto auto;width:260px;height:260px;background:radial-gradient(circle,rgba(255,193,69,.16),transparent 70%);pointer-events:none}.safety-badge{border-color:rgba(255,193,69,.35);color:#ffe0a0;background:rgba(255,193,69,.08)}.ai-safety-status{position:relative;border:1px solid rgba(145,168,210,.18);border-radius:18px;padding:13px;margin:12px 0;color:#dce7f7;line-height:1.45;font-weight:800;background:rgba(255,255,255,.04)}.ai-safety-status.good{border-color:rgba(42,205,143,.32);background:rgba(42,205,143,.07);color:#dffff0}.ai-safety-status.warn{border-color:rgba(255,193,69,.36);background:rgba(255,193,69,.08);color:#ffe4ad}.ai-safety-status.danger{border-color:rgba(255,95,95,.46);background:rgba(255,95,95,.10);color:#ffd0d0}.ai-safety-rules{position:relative;margin:0;padding:0;list-style:none;display:grid;gap:8px}.ai-safety-rules li{border:1px solid rgba(145,168,210,.15);background:rgba(255,255,255,.035);border-radius:15px;padding:11px;color:#d4e0f1;line-height:1.35;font-size:13px}.ai-support-tile.safety{border-color:rgba(255,193,69,.28);background:linear-gradient(145deg,rgba(255,193,69,.09),rgba(255,255,255,.03))}.ai-human-block.danger{border-color:rgba(255,95,95,.42);background:rgba(255,95,95,.095)}.ai-human-block.safety-block b{letter-spacing:.01em}.plan-day.safety{border-color:rgba(255,193,69,.30)!important;background:rgba(255,193,69,.06)!important}.premium-decision{line-height:1.35}.sync-status.danger{border-color:rgba(255,95,95,.46);color:#ffd0d0;background:rgba(255,95,95,.10)}
-
-
-/* v2.8.3 — dopieszczona góra aplikacji */
-.topbar{
-  flex-direction:column;
-  align-items:stretch;
-  gap:8px;
-  margin-bottom:14px;
-  padding:2px 0 10px;
-  position:relative;
-}
-.topbar:before,.topbar:after{
-  content:"";
-  display:block;
-  height:1px;
-  background:linear-gradient(90deg,transparent,rgba(255,123,29,.42),rgba(145,168,210,.18),transparent);
-}
-.topbar:before{margin-bottom:2px}
-.topbar:after{margin-top:2px}
-.topbar>.brand-pill{
-  width:100%;
-  justify-content:center;
-  padding:9px 12px;
-  border-color:rgba(145,168,210,.32);
-  background:linear-gradient(135deg,rgba(10,25,49,.82),rgba(10,25,49,.55));
-  font-size:11px;
-  letter-spacing:.045em;
-}
-.top-actions{
-  width:100%;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  align-items:center;
-}
-.dad-help-link,.cloud-status{
-  justify-content:center;
-  min-height:34px;
-}
-.dad-help-link{
-  background:linear-gradient(135deg,rgba(255,123,29,.18),rgba(255,255,255,.045));
-}
-.cloud-status{
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-@media(max-width:430px){
-  .topbar{gap:7px;padding-bottom:9px}
-  .topbar>.brand-pill{font-size:10.5px;padding:8px 10px}
-  .top-actions{grid-template-columns:1fr 1fr;gap:7px}
-  .dad-help-link,.cloud-status{font-size:10px;padding:7px 8px;min-height:32px}
-}
-@media(max-width:355px){
-  .top-actions{grid-template-columns:1fr}
-}
-
-/* v2.9.2 — formularz dziennika czyści się po zapisie */
-.journal-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-.journal-head-actions .text-btn{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:999px;padding:7px 11px;color:#dbe7fb}
-.ai-journal-actions{grid-template-columns:1fr .75fr .75fr!important}
-.ai-journal-actions .danger{border-color:rgba(255,95,95,.35)}
-@media(max-width:430px){.journal-head-actions{justify-content:flex-start}.ai-journal-actions{grid-template-columns:1fr!important}}
-
-
-/* v3.0 Gemini AI Coach */
-.gemini-ai-card{border-color:rgba(119,146,255,.30);background:linear-gradient(145deg,rgba(10,18,42,.98),rgba(5,10,23,.99));position:relative;overflow:hidden}
-.gemini-ai-card:before{content:"";position:absolute;inset:-120px -120px auto auto;width:280px;height:280px;background:radial-gradient(circle,rgba(119,146,255,.20),transparent 70%);pointer-events:none}
-.gemini-badge{border-color:rgba(119,146,255,.45);color:#d9e1ff;background:rgba(119,146,255,.12)}
-.gemini-intro{position:relative;color:#cbd7ea;line-height:1.45;margin:0 0 14px}
-.gemini-actions{position:relative;display:grid;gap:10px;margin:12px 0}
-.gemini-output{position:relative;margin-top:12px;border:1px solid rgba(145,168,210,.18);border-radius:18px;background:rgba(255,255,255,.035);padding:14px;color:#dbe6f8;line-height:1.5}
-.gemini-placeholder{color:#9eacc4;font-weight:800}
-.gemini-meta{font-size:12px;color:#9aa8bf;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:900}
-.gemini-answer p{margin:0 0 12px}.gemini-answer p:last-child{margin-bottom:0}.gemini-answer strong{color:#fff}
-#runGeminiAiBtn:disabled{opacity:.62;filter:saturate(.65)}
-
-/* v3.1 — AI Coach po ludzku */
-.gemini-coach-answer{display:grid;gap:10px}
-.gemini-coach-card{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:18px;padding:13px 14px;color:#dbe6f8;line-height:1.45}
-.gemini-coach-card b{display:block;color:#fff;margin-bottom:5px;font-size:14px}
-.gemini-coach-card p{margin:0!important;color:#dbe6f8}
-.gemini-coach-card.main{border-color:rgba(255,123,29,.35);background:linear-gradient(135deg,rgba(255,123,29,.13),rgba(255,255,255,.035))}
-.gemini-coach-card.decision{border-color:rgba(42,205,143,.32);background:rgba(42,205,143,.07)}
-.gemini-coach-card.fuel{border-color:rgba(119,146,255,.30);background:rgba(119,146,255,.07)}
-.gemini-coach-card.warn{border-color:rgba(255,193,69,.36);background:rgba(255,193,69,.075)}
-.gemini-chat-box{position:relative;margin-top:14px;border-top:1px solid rgba(145,168,210,.18);padding-top:14px;display:grid;gap:10px}
-.gemini-chat-box label{font-weight:950;color:#fff;letter-spacing:.02em}
-.gemini-chat-box textarea{width:100%;border:1px solid rgba(145,168,210,.24);background:rgba(2,7,18,.58);color:#fff;border-radius:16px;padding:12px;resize:vertical;min-height:82px;font:inherit;line-height:1.35;outline:none}
-.gemini-chat-box textarea:focus{border-color:rgba(255,123,29,.55);box-shadow:0 0 0 3px rgba(255,123,29,.12)}
-.gemini-send{min-height:48px}
-.gemini-output.small{margin-top:0;background:rgba(255,255,255,.025)}
-
-/* v3.1.1 — AI is the main coach action in bottom nav */
-.bottom-nav .ai-main-nav{letter-spacing:.02em}
-.bottom-nav .ai-main-nav > span{color:#fff;font-weight:1000}
-.bottom-nav .ai-main-nav::after{background:linear-gradient(135deg,#ff8a2a,#ff4d15);box-shadow:0 12px 30px rgba(255,90,22,.42),0 0 0 1px rgba(255,255,255,.14) inset}
-/* v3.1.3 — pełna rozmowa AI Coach */
-.gemini-output.small{max-height:none;overflow:visible}
-.gemini-chat-turn{display:grid;gap:10px;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid rgba(145,168,210,.16)}
-.gemini-chat-turn:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
-.gemini-chat-question,.gemini-chat-answer{border:1px solid rgba(145,168,210,.20);border-radius:16px;padding:12px 13px;background:rgba(255,255,255,.035)}
-.gemini-chat-question{border-color:rgba(255,123,29,.30);background:rgba(255,123,29,.08)}
-.gemini-chat-answer{border-color:rgba(42,205,143,.25);background:rgba(42,205,143,.055)}
-.gemini-chat-question span,.gemini-chat-answer span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:950;color:#9eacc4;margin-bottom:7px}
-.gemini-chat-question p,.gemini-chat-answer p{margin:0;color:#ecf3ff;line-height:1.55;white-space:normal}.gemini-chat-text{color:#ecf3ff;line-height:1.58;display:block}.gemini-chat-text p{margin:0 0 12px}.gemini-chat-text p:last-child{margin-bottom:0}
-.gemini-chat-answer strong{color:#fff}
-
-/* v3.1.5 — prosty AI Chat: jedno pytanie, jedna odpowiedź */
-.gemini-chat-actions{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
-.gemini-clear{min-width:104px;border-color:rgba(145,168,210,.28)!important;background:rgba(255,255,255,.045)!important;color:#dbe6f8!important}
-.gemini-clear:hover{border-color:rgba(255,123,29,.42)!important;background:rgba(255,123,29,.08)!important;color:#fff!important}
-.gemini-chat-turn{margin-bottom:0;padding-bottom:0;border-bottom:0}
-@media(max-width:520px){.gemini-chat-actions{grid-template-columns:1fr}.gemini-clear{min-width:0}}
-
-/* v3.1.6 — Gemini limit/cache/antyspam */
-.gemini-usage-info{border:1px solid rgba(145,168,210,.18);background:rgba(255,255,255,.035);border-radius:14px;padding:10px 12px;color:#b9c7da;font-size:12px;font-weight:800;line-height:1.35;margin:10px 0 12px}
-.gemini-usage-info.small{margin:10px 0;color:#aebdd2}
-
-/* v3.1.9 — nowy hero Kalmar z oficjalnym logo */
-.hero-wow.hero-kalmar-card,
-.hero-kalmar-card{
-  min-height:300px;
-  padding:24px 18px;
-  border-color:rgba(255,90,22,.42);
-  background:linear-gradient(145deg,rgba(3,10,22,.98),rgba(8,24,49,.92));
-  box-shadow:0 24px 82px rgba(0,0,0,.50),0 0 56px rgba(255,90,22,.16),inset 0 1px 0 rgba(255,255,255,.055);
-}
-.hero-kalmar-card .hero-bg{
-  opacity:.96;
-  background:
-    radial-gradient(circle at 77% 31%,rgba(255,104,26,.68),transparent 23%),
-    radial-gradient(circle at 16% 0%,rgba(91,196,235,.14),transparent 30%),
-    linear-gradient(110deg,rgba(2,8,20,.98),rgba(3,14,29,.78) 54%,rgba(2,8,20,.98)),
-    radial-gradient(circle at 50% 120%,rgba(255,111,25,.17),transparent 38%);
-}
-.hero-kalmar-card .hero-left{
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  padding-top:2px;
-}
-.hero-kalmar-card .hero-kicker{
-  margin-bottom:14px;
-  max-width:max-content;
-}
-.kalmar-logo-main{
-  width:min(100%, 330px);
-  max-height:138px;
-  object-fit:contain;
-  object-position:left center;
-  filter:drop-shadow(0 16px 30px rgba(0,0,0,.42)) drop-shadow(0 0 22px rgba(255,255,255,.06));
-  margin:0 0 10px;
-}
-.hero-kalmar-card .hero-slogan{
-  max-width:310px;
-  color:#f4f7ff;
-  font-size:16px;
-  line-height:1.28;
-  font-weight:900;
-  margin:4px 0 0;
-  text-shadow:0 8px 20px rgba(0,0,0,.35);
-}
-.hero-kalmar-card .race-goals{
-  margin-top:17px;
-  gap:10px;
-}
-.hero-kalmar-card .race-goals span{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  padding-right:9px;
-  border-right:1px solid rgba(145,168,210,.30);
-}
-.hero-kalmar-card .race-goals span:last-child{border-right:0;padding-right:0}
-.hero-kalmar-card .race-goals b{font-size:20px;color:#fff}
-.hero-kalmar-card .countdown-wow{
-  width:132px;
-  flex-basis:132px;
-  border-radius:22px;
-  background:rgba(3,12,25,.82);
-  box-shadow:0 0 35px rgba(255,90,22,.34),inset 0 1px 0 rgba(255,255,255,.045);
-}
-.hero-kalmar-card .countdown-wow strong{
-  font-size:58px;
-  letter-spacing:-.04em;
-}
-.hero-kalmar-card .countdown-wow em{
-  border-top:1px solid rgba(145,168,210,.22);
-  padding-top:10px;
-}
-.gemini-intro{display:none!important}
-.dad-help-link{display:inline-flex;align-items:center;justify-content:center;text-align:center}
-@media(max-width:430px){
-  .hero-wow.hero-kalmar-card,
-  .hero-kalmar-card{min-height:282px;padding:20px 14px;gap:10px}
-  .kalmar-logo-main{width:min(100%, 270px);max-height:112px;margin-bottom:8px}
-  .hero-kalmar-card .hero-slogan{font-size:14px;max-width:230px}
-  .hero-kalmar-card .countdown-wow{width:108px;flex-basis:108px;padding:14px 8px}
-  .hero-kalmar-card .countdown-wow strong{font-size:44px}
-  .hero-kalmar-card .countdown-wow small{font-size:18px}
-  .hero-kalmar-card .countdown-wow em{font-size:9.5px}
-  .hero-kalmar-card .race-goals{gap:7px}
-  .hero-kalmar-card .race-goals b{font-size:17px}
-}
-@media(max-width:365px){
-  .hero-kalmar-card{display:block}
-  .hero-kalmar-card .countdown-wow{width:100%;margin-top:12px;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;text-align:left}
-  .hero-kalmar-card .countdown-wow strong{margin:0;font-size:42px;text-align:right}
-  .hero-kalmar-card .countdown-wow small{text-align:left}
-  .hero-kalmar-card .countdown-wow em{grid-column:1/-1;text-align:center;margin-top:0}
-}
-
-/* v3.1.9 — pełne odpowiedzi AI w przewijanym oknie */
-.gemini-output{
-  max-height:420px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  padding-right:12px;
-  scrollbar-width:thin;
-}
-.gemini-output.small{
-  max-height:460px!important;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
-}
-.gemini-chat-answer{
-  max-height:360px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  padding-right:12px;
-}
-.gemini-answer,.gemini-chat-text{
-  word-break:break-word;
-}
-.gemini-output::-webkit-scrollbar,.gemini-chat-answer::-webkit-scrollbar{width:6px}
-.gemini-output::-webkit-scrollbar-thumb,.gemini-chat-answer::-webkit-scrollbar-thumb{background:rgba(255,123,29,.45);border-radius:999px}
-.gemini-output::-webkit-scrollbar-track,.gemini-chat-answer::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
-@media(max-width:520px){
-  .gemini-output{max-height:360px}
-  .gemini-output.small{max-height:390px!important}
-  .gemini-chat-answer{max-height:320px}
-}
-
-
-/* v3.2.0 — pełny tekst AI w przewijanym oknie, bez ucinania */
-.gemini-output,
-.gemini-output.small{
-  display:block!important;
-  max-height:520px!important;
-  min-height:120px;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
-  -webkit-overflow-scrolling:touch!important;
-  overscroll-behavior:contain!important;
-  scrollbar-width:thin;
-}
-.gemini-answer.gemini-full-scroll,
-.gemini-chat-text{
-  display:block!important;
-  max-height:none!important;
-  overflow:visible!important;
-  white-space:normal!important;
-  word-break:break-word!important;
-  line-height:1.58!important;
-  color:#dbe6f8;
-}
-.gemini-chat-answer{
-  max-height:420px!important;
-  overflow-y:auto!important;
-  -webkit-overflow-scrolling:touch!important;
-}
-.gemini-answer p,
-.gemini-chat-text p{
-  margin:0 0 12px!important;
-}
-.gemini-answer p:last-child,
-.gemini-chat-text p:last-child{
-  margin-bottom:0!important;
-}
-@media(max-width:520px){
-  .gemini-output,.gemini-output.small{max-height:430px!important;}
-  .gemini-chat-answer{max-height:360px!important;}
-}
-
-
-/* v3.2.2 — Raport zawodnika */
-.athlete-report-card{border-color:rgba(255,123,29,.22);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
-.report-short-info{margin:8px 0 0;color:#b9c7dc;}
-.athlete-report-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;align-items:center}
-.athlete-report-actions button{width:100%;height:56px;min-height:56px;padding:0 10px;text-align:center;justify-content:center;display:flex;align-items:center;line-height:1.1;margin-top:0}
-.athlete-report-output{margin:12px 0 0;max-height:430px;overflow:auto;-webkit-overflow-scrolling:touch;white-space:pre-wrap;border:1px solid rgba(145,168,210,.20);border-radius:18px;background:rgba(2,7,18,.56);padding:14px;color:#dbe6f8;font:13px/1.48 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
-.athlete-report-output::-webkit-scrollbar{width:6px}.athlete-report-output::-webkit-scrollbar-thumb{background:rgba(255,123,29,.45);border-radius:999px}.athlete-report-output::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
-@media(max-width:520px){.athlete-report-actions{grid-template-columns:1fr}.athlete-report-output{max-height:360px}}
-
-
-/* v4.1.1-ai-coach-pro-local — Tryb Basic / Advanced */
-.view-mode-card{border-color:rgba(255,123,29,.24);background:linear-gradient(145deg,rgba(13,22,45,.96),rgba(5,10,22,.98));}
-.view-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
-.view-mode-switch button{min-height:52px;border:1px solid rgba(145,168,210,.30);border-radius:16px;background:rgba(255,255,255,.04);color:#dbe6f8;font-weight:1000;font-size:16px;}
-.view-mode-switch button.active{border-color:rgba(255,123,29,.75);background:linear-gradient(135deg,rgba(255,123,29,.28),rgba(255,62,8,.16));box-shadow:0 0 22px rgba(255,90,22,.16), inset 0 0 0 1px rgba(255,123,29,.24);color:#fff;}
-body.view-basic .bottom-nav button[data-tab="trainings"],
-body.view-basic .bottom-nav button[data-tab="add"],
-body.view-basic .bottom-nav button[data-tab="history"]{display:none;}
-body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}
-body.view-basic .coach-actions button[data-goto="trainings"],
-body.view-basic .coach-actions button[data-goto="history"],
-body.view-basic .weekly-mini-card,
-body.view-basic .recent-minimal-card,
-body.view-basic .data-sources-card,
-body.view-basic .settings-card .settings-actions .danger{display:none!important;}
-body.view-basic #screen-dashboard .dashboard-pulse-grid{grid-template-columns:1fr;}
-body.view-basic #screen-dashboard .pulse-card[data-goto="history"],
-body.view-basic #screen-dashboard .pulse-card[data-goto="settings"]{display:none;}
-body.view-basic .ai-support-grid,
-body.view-basic .ai-memory-card{display:none;}
-body.view-basic .page-title p,
-body.view-basic .muted-small{line-height:1.38;}
-@media(max-width:520px){body.view-basic .bottom-nav{grid-template-columns:repeat(3,1fr);}}
-
-
-/* v4.1.1-ai-coach-pro-local — Triathlon / multisport segment details */
-.race-block{border:1px solid rgba(145,168,210,.22);background:rgba(255,255,255,.035);border-radius:18px;padding:14px;margin-top:10px}
-.race-block[hidden]{display:none!important}
-.race-block h3{margin:0;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;font-size:15px}
-.race-check{display:flex!important;align-items:center;gap:9px;margin:10px 0 12px!important;color:#fff;font-weight:900}
-.race-check input{width:20px;height:20px;accent-color:#ff6a18}
-.race-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-.race-segment{border:1px solid rgba(145,168,210,.20);border-radius:16px;padding:10px;background:rgba(2,7,18,.35)}
-.race-segment h4{margin:0 0 8px;color:#fff;font-size:15px}
-.race-block label{display:block;margin-top:8px}.race-block span{display:block;color:#c7d3e7;font-weight:900;margin-bottom:6px;font-size:12px}.race-block input{width:100%;min-height:44px;border:1px solid rgba(135,161,207,.35);background:#061427;color:#fff;border-radius:13px;padding:0 10px;font-weight:850;outline:none}.race-transitions{margin-top:10px}
-@media(max-width:720px){.race-grid{grid-template-columns:1fr}.race-segment{padding:12px}.race-block input{min-height:48px}}
-
-/* v4.1.1-ai-coach-pro-local — Garmin PRO read-only dashboard cards */
-.garmin-pro-card{
-  border-color:rgba(56,189,248,.24);
-  background:linear-gradient(145deg,rgba(7,22,43,.94),rgba(5,12,25,.98));
-}
-.garmin-pro-compact-actions{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:12px}
-.garmin-pro-compact-actions .sync-status{min-height:48px;display:grid;align-content:center}
-.ghost.slim{min-height:48px;padding:0 14px;white-space:nowrap}
-.garmin-pro-list{display:grid;gap:10px;margin-top:12px}
-.garmin-pro-item{
-  border:1px solid rgba(145,168,210,.18);
-  background:rgba(255,255,255,.035);
-  border-radius:18px;
-  padding:12px;
-}
-.garmin-pro-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.garmin-pro-top b{display:block;color:#fff;font-size:16px;line-height:1.25}
-.garmin-pro-top small{display:block;color:#9fb0c8;font-weight:850;margin-top:4px}
-.garmin-pro-top em{
-  flex:0 0 auto;
-  color:#bfefff;
-  font-style:normal;
-  font-size:11px;
-  font-weight:950;
-  border:1px solid rgba(56,189,248,.28);
-  background:rgba(56,189,248,.10);
-  border-radius:999px;
-  padding:5px 8px;
-}
-.garmin-pro-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
-.garmin-pro-metrics span{
-  border:1px solid rgba(145,168,210,.14);
-  border-radius:14px;
-  padding:8px;
-  color:#94a6bf;
-  font-size:11px;
-  font-weight:900;
-  background:rgba(255,255,255,.03);
-}
-.garmin-pro-metrics b{display:block;color:#fff;font-size:13px;margin-top:3px}
-.garmin-pro-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.garmin-pro-tags span{border:1px solid rgba(255,123,29,.28);background:rgba(255,123,29,.10);color:#ffd7c7;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:950}
-.garmin-pro-item p{margin:10px 0 0;color:#d3dfef;line-height:1.35;font-size:13px}
-.garmin-pro-summary{border-top:1px solid rgba(145,168,210,.14);padding-top:10px;color:#eaf4ff!important}
-.garmin-pro-panel .garmin-pro-list{margin-top:0}
-.garmin-pro-history-list{padding-bottom:8px}
-@media(max-width:430px){.garmin-pro-compact-actions{grid-template-columns:1fr}.garmin-pro-metrics{grid-template-columns:1fr 1fr}.garmin-pro-top{display:block}.garmin-pro-top em{display:inline-block;margin-top:8px}}
-@media(max-width:430px){.ai-coach-pro-grid{grid-template-columns:1fr}.ai-coach-pro-grid div:first-child{grid-column:auto}}
-
-/* v4.1.2-ai-pro-tabs-local — AI PRO race planning tabs */
-.ai-pro-title{
-  border-color:rgba(255,123,29,.26);
-  background:linear-gradient(145deg,rgba(13,24,45,.96),rgba(5,12,24,.98));
-}
-.ai-pro-mode-card,
-.ai-pro-panel{
-  border-color:rgba(255,123,29,.24);
-  background:linear-gradient(145deg,rgba(10,23,43,.96),rgba(4,11,22,.98));
-}
-.ai-pro-mode-grid{
+.mode-card{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:10px;
-  margin-top:14px;
 }
-.ai-pro-mode-grid button{
-  border:1px solid rgba(145,168,210,.24);
+.mode-btn{
+  border:1px solid rgba(151,176,214,.22);
   border-radius:18px;
   background:rgba(255,255,255,.04);
-  color:#dbe6f8;
+  color:var(--text);
+  min-height:150px;
   padding:15px;
-  min-height:138px;
   text-align:left;
   display:grid;
   align-content:start;
   gap:8px;
 }
-.ai-pro-mode-grid button.active{
-  border-color:rgba(255,123,29,.72);
-  background:linear-gradient(145deg,rgba(255,123,29,.18),rgba(255,255,255,.04));
-  box-shadow:0 16px 38px rgba(255,90,22,.16), inset 0 0 0 1px rgba(255,123,29,.18);
+.mode-btn.active{
+  border-color:rgba(255,106,24,.72);
+  background:linear-gradient(145deg,rgba(255,106,24,.18),rgba(255,255,255,.04));
+  box-shadow:0 18px 42px rgba(255,106,24,.16);
 }
-.ai-pro-mode-grid b{
-  color:#fff;
+.mode-btn b{
   font-size:17px;
-  line-height:1.22;
+  line-height:1.2;
 }
-.ai-pro-mode-grid span{
-  color:#c6d2e7;
+.mode-btn span{
+  color:#c8d5e9;
   font-size:13px;
-  line-height:1.42;
+  line-height:1.4;
   font-weight:750;
 }
-.ai-pro-plan-grid,
-.ai-pro-latest-grid{
+.ai-panel{
+  border-color:rgba(255,106,24,.25);
+}
+.settings-card h3{
+  margin:0;
+  font-size:18px;
+}
+.view-status-list{
+  display:block!important;
+}
+.view-status-list ul{
+  list-style:none;
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-  margin:14px 0;
+  gap:7px;
+  margin:8px 0 0;
+  padding:0;
 }
-.ai-pro-plan-grid div,
-.ai-pro-latest-grid div,
-.ai-pro-latest-card{
-  border:1px solid rgba(145,168,210,.18);
-  border-radius:16px;
-  background:rgba(255,255,255,.035);
-  padding:11px;
+.view-status-list li{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  border-top:1px solid rgba(151,176,214,.12);
+  padding-top:7px;
 }
-.ai-pro-plan-grid span,
-.ai-pro-latest-grid span{
-  display:block;
-  color:#9fb0c8;
-  font-size:11px;
-  font-weight:1000;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-  margin-bottom:5px;
+.view-status-list li span{
+  margin:0;
 }
-.ai-pro-plan-grid b,
-.ai-pro-latest-grid b{
-  color:#f3f7ff;
+.view-status-list li b{
   font-size:13px;
-  line-height:1.35;
 }
-.ai-pro-latest-card h3{
-  color:#fff;
-  font-size:19px;
-  margin:8px 0 4px;
+.status-panel{
+  margin-bottom:12px;
 }
+.status{
+  border:1px solid rgba(151,176,214,.22);
+  background:rgba(255,255,255,.04);
+  color:#dbe7f8;
+  border-radius:16px;
+  padding:12px;
+  font-weight:850;
+}
+.status.ok{border-color:rgba(86,224,143,.38);color:#c8ffd9}
+.status.warn{border-color:rgba(255,196,87,.38);color:#ffe2a0}
+.status.bad{border-color:rgba(255,107,107,.42);color:#ffc8c8}
+.bottom-nav{
+  position:fixed;
+  left:50%;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  width:min(calc(100% - 20px),500px);
+  height:76px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:4px;
+  padding:6px;
+  border:1px solid rgba(151,176,214,.25);
+  border-radius:22px;
+  background:rgba(6,18,35,.92);
+  backdrop-filter:blur(18px);
+  box-shadow:0 22px 60px rgba(0,0,0,.48);
+  z-index:20;
+}
+.bottom-nav button{
+  border:0;
+  border-radius:17px;
+  background:transparent;
+  color:#aab8ce;
+  display:grid;
+  place-items:center;
+  font-size:22px;
+  font-weight:1000;
+}
+.bottom-nav span{
+  display:block;
+  margin-top:2px;
+  font-size:11px;
+}
+.bottom-nav button.active{
+  color:var(--orange2);
+  background:rgba(255,106,24,.13);
+  box-shadow:inset 0 0 0 1px rgba(255,106,24,.48);
+}
+body.is-login .bottom-nav,
+body.is-auth-checking .bottom-nav{display:none!important}
 @media(max-width:430px){
-  .ai-pro-mode-grid,
-  .ai-pro-plan-grid,
-  .ai-pro-latest-grid{grid-template-columns:1fr}
-  .ai-pro-mode-grid button{min-height:auto}
+  .login-screen,.app-shell{padding-left:10px;padding-right:10px}
+  .connection-strip div{display:grid;gap:4px}
+  .connection-strip span{white-space:normal}
+  .hero-card h2{font-size:27px}
+  .metric-grid,.sport-week,.plan-grid,.mode-card{grid-template-columns:1fr}
+  .detail-metrics{grid-template-columns:1fr}
+  .facts-block li{grid-template-columns:1fr}
+  .mode-btn{min-height:auto}
+  .activity-metrics{grid-template-columns:1fr}
+  .bottom-nav{width:min(calc(100% - 14px),500px)}
+  .bottom-nav button{font-size:20px}
+  .bottom-nav span{font-size:10px}
 }
-
-/* v4.1.2-ai-pro-tabs-local — visible UI uses Garmin PRO only */
-.legacy-pro-hidden{display:none!important}
-.pro-only-nav{grid-template-columns:repeat(4,1fr)}
-#screen-settings .page-title .brand-pill,
-#screen-settings .view-mode-card,
-#screen-settings .profile-card,
-#screen-settings .data-sources-card{display:none!important}
-.bottom-nav button[data-tab="trainings"],
-.bottom-nav button[data-tab="add"],
-.bottom-nav button[data-tab="history"],
-.bottom-nav .legacy-add-nav,
-.bottom-nav .ai-main-nav{display:none!important}
-.bottom-nav button[data-tab="dashboard"]{order:1}
-.bottom-nav #openGarminProHistoryNav{display:grid;order:2}
-.bottom-nav button[data-tab="ai"]{display:grid;order:3}
-.bottom-nav button[data-tab="settings"]{order:4}
-
-/* v4 PRO CLEAN — manual workouts stay legacy, hidden from main navigation */
-.bottom-nav button[data-tab="add"],
-.bottom-nav .legacy-add-nav{display:none!important}
-.bottom-nav{grid-template-columns:repeat(4,1fr)}
-body.view-basic .bottom-nav{grid-template-columns:repeat(4,1fr)}

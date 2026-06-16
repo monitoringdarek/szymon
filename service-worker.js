@@ -1,11 +1,10 @@
-const CACHE_NAME = 'szymon-ai-coach-v412-ai-pro-tabs-local';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-507-analysis-precision';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=412-ai-pro-tabs-local',
-  './app.js?v=412-ai-pro-tabs-local',
-  './manifest.json',
-  './icon-180.png'
+  './styles.css?v=507-analysis-precision',
+  './app.js?v=507-analysis-precision',
+  './manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -14,7 +13,9 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+  );
   self.clients.claim();
 });
 
