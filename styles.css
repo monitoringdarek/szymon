@@ -811,3 +811,8 @@ body.is-auth-checking .bottom-nav{display:none!important}
   .bottom-nav .nav-icon{font-size:20px}
   .bottom-nav .nav-label{font-size:10px}
 }
+
+.threshold-section{
+  border-color:rgba(84,177,255,.32)!important;
+  background:rgba(84,177,255,.055)!important;
+}

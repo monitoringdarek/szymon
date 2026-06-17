@@ -1,4 +1,4 @@
-const VERSION = 'v5.0.11-metric-row-align-local';
+const VERSION = 'v5.1.1-athlete-thresholds-ai-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -10,6 +10,7 @@ const LATEST_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_latest_activity`;
 const CARDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_cards`;
 const LOAD_28D_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_training_load_28d`;
 const ACTIVITY_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_analysis_context`;
+const ATHLETE_THRESHOLDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_current_thresholds`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
@@ -22,6 +23,7 @@ let latest = null;
 let cards = [];
 let load28d = [];
 let activityContexts = [];
+let athleteThresholds = [];
 let activityContextStatus = 'idle';
 let lastReadAt = null;
 let selectedActivityKey = '';
@@ -30,7 +32,8 @@ let viewState = {
   weekly: 'idle',
   latest: 'idle',
   cards: 'idle',
-  load28d: 'idle'
+  load28d: 'idle',
+  thresholds: 'idle'
 };
 let aiMode = 'plan';
 let loginAttemptId = 0;
@@ -405,7 +408,7 @@ function extractSegmentLine(item, segment){
 }
 
 function analysisContext(){
-  return { readiness, weekly, load28d, activityContexts, activityContextStatus };
+  return { readiness, weekly, load28d, activityContexts, activityContextStatus, athleteThresholds };
 }
 
 function escapeHtml(value){
@@ -514,7 +517,8 @@ function viewLabel(key){
     latest: 'latest',
     cards: 'activity_cards',
     load28d: 'load_28d',
-    activityContext: 'activity_analysis_context'
+    activityContext: 'activity_analysis_context',
+    thresholds: 'athlete_current_thresholds'
   }[key] || key;
 }
 
@@ -613,7 +617,8 @@ function renderStatus(){
     weekly: 'tydzień',
     latest: 'ostatnia aktywność',
     cards: 'historia',
-    load28d: 'load 28d'
+    load28d: 'load 28d',
+    thresholds: 'progi Szymona'
   };
   const failed = Object.entries(viewState).filter(([, value]) => value === 'error').map(([key]) => labels[key]);
   const loading = Object.values(viewState).some(value => value === 'loading');
@@ -626,7 +631,7 @@ function renderStatus(){
     status.textContent = `Nie udało się pobrać: ${failed.join(', ')}.`;
     status.className = 'status bad';
   }else{
-    status.textContent = `Dane Garmin PRO gotowe: ${okCount}/5 widoków.`;
+    status.textContent = `Dane Garmin PRO gotowe: ${okCount}/${Object.keys(viewState).length} widoków.`;
     status.className = 'status ok';
   }
   renderConnectionStatus();
@@ -676,18 +681,20 @@ async function loadActivityAnalysisContexts(){
 
 async function loadAllData(){
   await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows] = await Promise.all([
+  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
     loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
-    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`)
+    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
+    loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`)
   ]);
   readiness = readinessRows[0] || null;
   weekly = weeklyRows[0] || null;
   latest = latestRows[0] || null;
   cards = cardRows;
   load28d = loadRows;
+  athleteThresholds = thresholdRows;
   activityContexts = await loadActivityAnalysisContexts();
   lastReadAt = new Date();
   renderAll();
@@ -1031,6 +1038,132 @@ function fmtMaybeNumber(value, suffix = ''){
   return `${fmtNumber(n)}${suffix}`;
 }
 
+function numericFromText(value){
+  if(value == null) return null;
+  const match = String(value).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+  if(!match) return null;
+  const n = Number(match[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function thresholdFor(sport, type){
+  const wantedSport = String(sport || '').toLowerCase();
+  const wantedType = String(type || '').toLowerCase();
+  return athleteThresholds.find(item =>
+    String(item.athlete_key || '') === 'szymon' &&
+    String(item.sport || '').toLowerCase() === wantedSport &&
+    String(item.threshold_type || '').toLowerCase() === wantedType
+  ) || null;
+}
+
+function currentBikeFtp(){
+  return thresholdFor('bike', 'ftp_bike_declared_old');
+}
+
+function currentBikeEftp(){
+  return thresholdFor('bike', 'eftp_bike_observed');
+}
+
+function currentBodyWeight(){
+  return thresholdFor('general', 'body_weight_estimated');
+}
+
+function thresholdValue(threshold){
+  const n = Number(threshold?.value_working);
+  return Number.isFinite(n) ? n : null;
+}
+
+function thresholdRangeText(threshold){
+  if(!threshold) return 'brak danych';
+  const min = threshold.value_min != null ? fmtNumber(threshold.value_min, threshold.unit === 'kg' ? 1 : 0) : 'brak';
+  const work = threshold.value_working != null ? fmtNumber(threshold.value_working, threshold.unit === 'kg' ? 1 : 0) : 'brak';
+  const max = threshold.value_max != null ? fmtNumber(threshold.value_max, threshold.unit === 'kg' ? 1 : 0) : 'brak';
+  const unit = threshold.unit || '';
+  return `${min}–${work}–${max} ${unit}`.trim();
+}
+
+function bikeNpWatts(record){
+  const fromRecord = numericFromText(record?.np_watts);
+  if(fromRecord != null) return fromRecord;
+  return numericFromText(extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]));
+}
+
+function avgPowerWatts(record){
+  const fromRecord = numericFromText(record?.avg_power);
+  if(fromRecord != null) return fromRecord;
+  return numericFromText(extractMetric(record, [/\bmoc\s*śr\.\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i, /\bavg power\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]));
+}
+
+function bikeThresholdInsight(record){
+  if(!record) return '';
+  const sport = String(record.sport_type || record.activity_type || '').toLowerCase();
+  const hasBikeActivity = hasSegment(record, 'bike') || sport.includes('bike') || sport.includes('cycl') || sport.includes('triathlon');
+  if(!hasBikeActivity) return '';
+  const np = bikeNpWatts(record);
+  const ftp = currentBikeFtp();
+  const eftp = currentBikeEftp();
+  const weight = currentBodyWeight();
+  const ftpW = thresholdValue(ftp);
+  const eftpW = thresholdValue(eftp);
+  const weightKg = thresholdValue(weight);
+  const parts = [];
+  if(ftpW != null) parts.push(`FTP robocze ${fmtNumber(ftpW)} W (${ftp.status || 'status brak'}, ${ftp.confidence || 'pewność brak'})`);
+  if(eftpW != null) parts.push(`eFTP obserwowane ${thresholdRangeText(eftp)} (${eftp.status || 'status brak'}, ${eftp.confidence || 'pewność brak'})`);
+  if(weightKg != null) parts.push(`masa robocza ${fmtNumber(weightKg, 1)} kg (${weight.status || 'status brak'})`);
+  if(np != null && ftpW != null) parts.push(`NP ${fmtNumber(np)} W = ${fmtNumber((np / ftpW) * 100)}% FTP ${fmtNumber(ftpW)} W`);
+  if(np != null && eftpW != null) parts.push(`NP ${fmtNumber(np)} W = ${fmtNumber((np / eftpW) * 100)}% eFTP ${fmtNumber(eftpW)} W`);
+  if(np != null && weightKg != null) parts.push(`NP/kg ${fmtNumber(np / weightKg, 2)} W/kg`);
+  if(!parts.length) return 'Profil progów Szymona: brak danych progowych dla roweru.';
+  return `Profil progów Szymona: ${parts.join('. ')}.`;
+}
+
+function activityDistanceKm(record){
+  const meters = numberOrNull(record?.distance_meters);
+  if(meters != null) return meters / 1000;
+  return numberOrNull(record?.distance_km);
+}
+
+function sumSegmentDistanceKm(record, type){
+  const segments = parseJsonArray(record?.segments).filter(segment => String(segment.segment_type || '').toLowerCase() === type);
+  const sum = segments.reduce((acc, segment) => acc + (numberOrNull(segment.distance_meters) || 0), 0);
+  return sum ? sum / 1000 : null;
+}
+
+function sumSegmentDurationSeconds(record, type){
+  const segments = parseJsonArray(record?.segments).filter(segment => String(segment.segment_type || '').toLowerCase() === type);
+  const sum = segments.reduce((acc, segment) => acc + (numberOrNull(segment.duration_seconds) || 0), 0);
+  return sum || null;
+}
+
+function bikeTotalLine(record){
+  const sport = String(record?.sport_type || record?.activity_type || '').toLowerCase();
+  const activityIsBike = sport.includes('bike') || sport.includes('cycl');
+  const distance = activityIsBike ? activityDistanceKm(record) : sumSegmentDistanceKm(record, 'bike');
+  const seconds = activityIsBike ? numberOrNull(record?.duration_seconds) : sumSegmentDurationSeconds(record, 'bike');
+  const np = bikeNpWatts(record);
+  const avgPower = avgPowerWatts(record);
+  const pieces = [];
+  if(distance != null) pieces.push(fmtKmDot(distance));
+  if(seconds != null) pieces.push(fmtSeconds(seconds));
+  if(np != null) pieces.push(`NP ${fmtNumber(np)} W`);
+  if(avgPower != null) pieces.push(`moc śr. ${fmtNumber(avgPower)} W`);
+  return pieces.length ? pieces.join(', ') : 'brak danych';
+}
+
+function thresholdRowsForFacts(record){
+  const insight = bikeThresholdInsight(record);
+  if(!insight) return [];
+  const ftp = currentBikeFtp();
+  const eftp = currentBikeEftp();
+  const weight = currentBodyWeight();
+  return [
+    ['Profil Szymona', insight],
+    ['FTP źródło', ftp ? `${ftp.source || 'brak danych'} · ${ftp.source_note || ''}`.trim() : 'brak danych'],
+    ['eFTP źródło', eftp ? `${eftp.source || 'brak danych'} · ${eftp.source_note || ''}`.trim() : 'brak danych'],
+    ['Waga źródło', weight ? `${weight.source || 'brak danych'} · ${weight.source_note || ''}`.trim() : 'brak danych']
+  ];
+}
+
 function contextActivityFacts(record){
   const npFromSummary = extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]);
   const ifFromSummary = extractMetric(record, [/\bIF\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i]);
@@ -1052,7 +1185,8 @@ function contextActivityFacts(record){
     ['Calories', record.calories != null ? fmtMaybeNumber(record.calories, ' kcal') : 'brak danych'],
     ['Training effect', record.training_effect_aerobic != null || record.training_effect_anaerobic != null ? `aerobic ${record.training_effect_aerobic != null ? fmtEffect(record.training_effect_aerobic) : 'brak danych'} / anaerobic ${record.training_effect_anaerobic != null ? fmtEffect(record.training_effect_anaerobic) : 'brak danych'}` : 'brak danych'],
     ['Moc avg/max', record.avg_power != null || record.max_power != null || avgPowerFromSummary ? `${record.avg_power != null ? fmtMaybeNumber(record.avg_power, ' W') : (avgPowerFromSummary || 'brak danych')} / ${record.max_power != null ? fmtMaybeNumber(record.max_power, ' W') : 'brak danych'}` : 'brak danych'],
-    ['NP / IF', firstData(record.np_watts, npFromSummary, null) || firstData(record.intensity_factor, record.bike_if_value, ifFromSummary, null) ? `${record.np_watts != null ? fmtMaybeNumber(record.np_watts, ' W') : (npFromSummary || 'brak danych')} / ${record.intensity_factor != null ? fmtIf(record.intensity_factor) : record.bike_if_value != null ? fmtIf(record.bike_if_value) : (ifFromSummary ? fmtIf(ifFromSummary) : 'brak danych')}` : 'brak danych'],
+    ['NP / IF Garmin', firstData(record.np_watts, npFromSummary, null) || firstData(record.intensity_factor, record.bike_if_value, ifFromSummary, null) ? `${record.np_watts != null ? fmtMaybeNumber(record.np_watts, ' W') : (npFromSummary || 'brak danych')} / ${record.intensity_factor != null ? fmtIf(record.intensity_factor) : record.bike_if_value != null ? fmtIf(record.bike_if_value) : (ifFromSummary ? fmtIf(ifFromSummary) : 'brak danych')}` : 'brak danych'],
+    ...thresholdRowsForFacts(record),
     ['EF', ef || 'brak danych'],
     ['Coach flags', coachFlags.length ? coachFlags.join(', ') : 'brak danych'],
     ['Load 7d / 28d przed aktywnością', record.load_7d_before_activity != null || record.load_28d_before_activity != null ? `${record.load_7d_before_activity != null ? fmtNumber(record.load_7d_before_activity) : 'brak danych'} / ${record.load_28d_before_activity != null ? fmtNumber(record.load_28d_before_activity) : 'brak danych'}` : 'brak danych']
@@ -1213,10 +1347,12 @@ function buildDynamicKalmarConclusion(record){
   const hrMax = numberOrNull(record.hr_max);
   const recoveryCost = afterReadinessCost(record);
   const runHr = runHrText(record);
+  const thresholdInsight = bikeThresholdInsight(record);
 
   if(isMulti){
     const parts = ['Wniosek pod Ironman Kalmar: ten start pokazuje układ pływanie–rower–bieg, więc najważniejsza jest kontrola kosztu między dyscyplinami.'];
-    if(hasBike && (bikeIf != null || np || record.bike_if_category)) parts.push(`Rower jest mocnym elementem, ale wymaga kontroli${bikeIf != null ? ` — IF ${fmtIf(bikeIf)}` : ''}${np ? `, NP ${np}` : ''}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    if(hasBike && (bikeIf != null || np || record.bike_if_category)) parts.push(`Rower jest mocnym elementem, ale wymaga kontroli${bikeIf != null ? ` — IF Garmin ${fmtIf(bikeIf)}` : ''}${np ? `, NP ${np}` : ''}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    if(thresholdInsight) parts.push(thresholdInsight);
     if(hasRun && runHr) parts.push(`Bieg był wykonywany wysoko tętniowo (${runHr}), więc koszt roweru trzeba pilnować przed dłuższymi dystansami.`);
     if(recoveryCost) parts.push(recoveryCost);
     if(!hasBike && !hasRun && load != null) parts.push(`Load ${fmtNumber(load)} pokazuje koszt całego startu, ale brakuje pełnych danych segmentów do głębszej oceny.`);
@@ -1225,7 +1361,8 @@ function buildDynamicKalmarConclusion(record){
 
   if(hasBike){
     const parts = ['Wniosek pod Ironman Kalmar: rower trzeba rozwijać jako stabilną, ekonomiczną pracę, a nie tylko pojedynczy mocny bodziec.'];
-    if(bikeIf != null || np || record.bike_if_category) parts.push(`Dostępne dane rowerowe: ${bikeIf != null ? `IF ${fmtIf(bikeIf)}` : 'IF brak danych'}${np ? `, NP ${np}` : ', NP brak danych'}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    if(bikeIf != null || np || record.bike_if_category) parts.push(`Dostępne dane rowerowe: ${bikeIf != null ? `IF Garmin ${fmtIf(bikeIf)}` : 'IF Garmin brak danych'}${np ? `, NP ${np}` : ', NP brak danych'}${record.bike_if_category ? `, kategoria ${record.bike_if_category}` : ''}.`);
+    if(thresholdInsight) parts.push(thresholdInsight);
     if(hrAvg != null || hrMax != null) parts.push(`HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pokazuje koszt intensywności.`);
     if(recoveryCost) parts.push(recoveryCost);
     return parts.join(' ');
@@ -1270,6 +1407,8 @@ function fullCoachAnalysis(record){
     sentences.push(`Sam bodziec był mocny: obciążenie ${load != null ? fmtNumber(load) : 'brak danych'} i HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pokazują koszt większy niż zwykły lekki trening.`);
   }
   if(hasBike && (bikeIf != null || record.bike_if_category)) sentences.push('Rower był mocnym elementem startu, więc w dłuższym triathlonie trzeba pilnować, żeby nie zabrał jakości biegu.');
+  const thresholdInsight = bikeThresholdInsight(record);
+  if(thresholdInsight) sentences.push(thresholdInsight);
   if(hasRun && runHrText(record)) sentences.push(`Bieg był wykonywany wysoko tętniowo (${runHrText(record)}), czyli organizm pracował już blisko górnego zakresu.`);
   if(after){
     sentences.push(`D+1 potwierdza koszt regeneracyjny: readiness ${after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}` : 'brak danych'}, Body Battery ${after.body_battery_end != null ? Math.round(Number(after.body_battery_end)) : 'brak danych'}.`);
@@ -1294,7 +1433,7 @@ function buildGoodPoints(record){
   const bike = segmentByType(record, 'bike');
   const run = segmentByType(record, 'run');
   if(swim) points.push(`Pływanie zostało wykonane konkretnie: ${swim.distance_meters != null ? fmtKmDot(Number(swim.distance_meters) / 1000) : 'brak danych'}, ${swim.duration_seconds != null ? fmtSeconds(swim.duration_seconds) : 'brak danych'}, HR ${swim.hr_avg != null ? Math.round(Number(swim.hr_avg)) : 'brak danych'}/${swim.hr_max != null ? Math.round(Number(swim.hr_max)) : 'brak danych'}.`);
-  if(bike) points.push(`Rower jest mocnym atutem: ${bike.distance_meters != null ? fmtKmDot(Number(bike.distance_meters) / 1000) : 'brak danych'}, IF ${record.bike_if_value != null ? fmtIf(record.bike_if_value) : 'brak danych'}, NP ${extractMetric(record, [/\bNP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]) || 'brak danych'}.`);
+  if(bike) points.push(`Rower jest mocnym atutem: ${bikeTotalLine(record)}. IF Garmin ${record.bike_if_value != null ? fmtIf(record.bike_if_value) : 'brak danych'}.`);
   if(run) points.push(`Bieg został dowieziony po rowerze: ${run.distance_meters != null ? fmtKmDot(Number(run.distance_meters) / 1000) : 'brak danych'}, ${run.duration_seconds != null ? fmtSeconds(run.duration_seconds) : 'brak danych'}, tempo ${run.pace_min_per_km != null ? fmtPace(run.pace_min_per_km) : 'brak danych'}.`);
   if(!points.length) points.push('Dane Garmin PRO pozwalają opisać aktywność, ale brak pełnych segmentów ogranicza ocenę szczegółową.');
   return points.slice(0, 4);
@@ -1338,7 +1477,8 @@ function buildFactBasedActivityAnalysis(activityContext){
       coachAnalysis: 'Brak aktywności Garmin PRO do analizy.',
       kalmar: 'brak danych',
       recovery: 'brak danych',
-      rawSummary: ''
+      rawSummary: '',
+      thresholdProfile: 'brak danych'
     };
   }
   if(!activityContext.hasFullContext){
@@ -1357,7 +1497,8 @@ function buildFactBasedActivityAnalysis(activityContext){
       coachAnalysis: `${basic.rating} ${basic.good} ${basic.caution}`,
       kalmar: basic.kalmar,
       recovery: basic.recovery,
-      rawSummary: activityContext.activity?.auto_summary || activityContext.activity?.segment_summary || ''
+      rawSummary: activityContext.activity?.auto_summary || activityContext.activity?.segment_summary || '',
+      thresholdProfile: 'Profil progów Szymona dostępny tylko przy pełnym kontekście aktywności.'
     };
   }
   const record = activityContext.contextRecord;
@@ -1375,7 +1516,8 @@ function buildFactBasedActivityAnalysis(activityContext){
     coachAnalysis: fullCoachAnalysis(record),
     kalmar: buildDynamicKalmarConclusion(record),
     recovery: fullRecoveryRecommendation(record),
-    rawSummary: record.auto_summary || ''
+    rawSummary: record.auto_summary || '',
+    thresholdProfile: bikeThresholdInsight(record) || 'Dla tej aktywności brak użytecznych progów Szymona.'
   };
 }
 
@@ -1417,6 +1559,7 @@ function renderActivityAiAnalysis(targetId, activity){
   const analysis = buildActivityAiAnalysis(activity);
   target.innerHTML = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
+    renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
     renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
     renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
@@ -1509,7 +1652,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=511-metric-row-align').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=511-athlete-thresholds-ai').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
