@@ -1,4 +1,4 @@
-const VERSION = 'v5.1.1-athlete-thresholds-ai-local';
+const VERSION = 'v5.1.3-power-intervals-ai-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -11,6 +11,7 @@ const CARDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_cards`;
 const LOAD_28D_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_training_load_28d`;
 const ACTIVITY_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_analysis_context`;
 const ATHLETE_THRESHOLDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_current_thresholds`;
+const POWER_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_power_intervals`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
@@ -24,6 +25,7 @@ let cards = [];
 let load28d = [];
 let activityContexts = [];
 let athleteThresholds = [];
+let activityPowerIntervals = [];
 let activityContextStatus = 'idle';
 let lastReadAt = null;
 let selectedActivityKey = '';
@@ -33,7 +35,8 @@ let viewState = {
   latest: 'idle',
   cards: 'idle',
   load28d: 'idle',
-  thresholds: 'idle'
+  thresholds: 'idle',
+  powerIntervals: 'idle'
 };
 let aiMode = 'plan';
 let loginAttemptId = 0;
@@ -518,7 +521,8 @@ function viewLabel(key){
     cards: 'activity_cards',
     load28d: 'load_28d',
     activityContext: 'activity_analysis_context',
-    thresholds: 'athlete_current_thresholds'
+    thresholds: 'athlete_current_thresholds',
+    powerIntervals: 'garmin_activity_power_intervals'
   }[key] || key;
 }
 
@@ -539,7 +543,7 @@ function anyViewError(){
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || load28d.length);
+  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length);
 }
 
 function garminOverallStatus(){
@@ -681,13 +685,14 @@ async function loadActivityAnalysisContexts(){
 
 async function loadAllData(){
   await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows] = await Promise.all([
+  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
     loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
     loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
-    loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`)
+    loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
+    loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`)
   ]);
   readiness = readinessRows[0] || null;
   weekly = weeklyRows[0] || null;
@@ -695,6 +700,7 @@ async function loadAllData(){
   cards = cardRows;
   load28d = loadRows;
   athleteThresholds = thresholdRows;
+  activityPowerIntervals = powerRows;
   activityContexts = await loadActivityAnalysisContexts();
   lastReadAt = new Date();
   renderAll();
@@ -1117,6 +1123,55 @@ function bikeThresholdInsight(record){
   return `Profil progów Szymona: ${parts.join('. ')}.`;
 }
 
+
+function activityGarminId(record){
+  return String(record?.garmin_activity_id || record?.activity_id || '').trim();
+}
+
+function powerIntervalsForActivity(record){
+  const gid = activityGarminId(record);
+  if(!gid) return [];
+  return activityPowerIntervals
+    .filter(item => String(item.garmin_activity_id || '').trim() === gid)
+    .sort((a, b) => Number(a.target_sec || 0) - Number(b.target_sec || 0));
+}
+
+function powerIntervalLabel(type, targetSec){
+  const t = String(type || '');
+  if(t === 'best_1m') return 'Najlepsze 1 min';
+  if(t === 'best_3m') return 'Najlepsze 3 min';
+  if(t === 'best_3m25') return 'Najlepsze 3:25';
+  if(t === 'best_5m') return 'Najlepsze 5 min';
+  if(t === 'best_20m') return 'Najlepsze 20 min';
+  const sec = Number(targetSec);
+  if(Number.isFinite(sec) && sec > 0) return `Najlepsze ${fmtDuration(sec)}`;
+  return t || 'Interwał';
+}
+
+function keyPowerInterval(rows){
+  return rows.find(item => item.interval_type === 'best_3m25')
+    || rows.find(item => item.interval_type === 'best_3m')
+    || rows.find(item => item.interval_type === 'best_5m')
+    || rows[0]
+    || null;
+}
+
+function powerIntervalInsight(record){
+  const rows = powerIntervalsForActivity(record);
+  if(!rows.length) return '';
+  const key = keyPowerInterval(rows);
+  if(!key) return '';
+  const label = powerIntervalLabel(key.interval_type, key.target_sec).replace('Najlepsze ', '');
+  const watts = key.avg_power_w != null ? `${fmtNumber(key.avg_power_w)} W` : 'brak danych';
+  const ftp = key.pct_ftp != null ? `${fmtNumber(key.pct_ftp)}% FTP` : '';
+  const eftp = key.pct_eftp != null ? `${fmtNumber(key.pct_eftp)}% eFTP` : '';
+  const wkg = key.w_per_kg != null ? `${fmtNumber(key.w_per_kg, 2)} W/kg` : '';
+  const hr = key.avg_hr != null ? `HR ${fmtNumber(key.avg_hr)}` : '';
+  const extras = [ftp, eftp, wkg, hr].filter(Boolean).join(', ');
+  return `Najmocniejszy odcinek z power curve: ${label} ${watts}${extras ? ` (${extras})` : ''}.`;
+}
+
+
 function activityDistanceKm(record){
   const meters = numberOrNull(record?.distance_meters);
   if(meters != null) return meters / 1000;
@@ -1478,7 +1533,9 @@ function buildFactBasedActivityAnalysis(activityContext){
       kalmar: 'brak danych',
       recovery: 'brak danych',
       rawSummary: '',
-      thresholdProfile: 'brak danych'
+      thresholdProfile: 'brak danych',
+      powerIntervals: [],
+      powerInsight: 'brak danych'
     };
   }
   if(!activityContext.hasFullContext){
@@ -1498,7 +1555,9 @@ function buildFactBasedActivityAnalysis(activityContext){
       kalmar: basic.kalmar,
       recovery: basic.recovery,
       rawSummary: activityContext.activity?.auto_summary || activityContext.activity?.segment_summary || '',
-      thresholdProfile: 'Profil progów Szymona dostępny tylko przy pełnym kontekście aktywności.'
+      thresholdProfile: bikeThresholdInsight(activityContext.activity) || 'Profil progów Szymona: brak danych dla tej aktywności.',
+      powerIntervals: powerIntervalsForActivity(activityContext.activity),
+      powerInsight: powerIntervalInsight(activityContext.activity) || 'Brak zapisanych interwałów mocy dla tej aktywności.'
     };
   }
   const record = activityContext.contextRecord;
@@ -1517,7 +1576,9 @@ function buildFactBasedActivityAnalysis(activityContext){
     kalmar: buildDynamicKalmarConclusion(record),
     recovery: fullRecoveryRecommendation(record),
     rawSummary: record.auto_summary || '',
-    thresholdProfile: bikeThresholdInsight(record) || 'Dla tej aktywności brak użytecznych progów Szymona.'
+    thresholdProfile: bikeThresholdInsight(record) || 'Dla tej aktywności brak użytecznych progów Szymona.',
+    powerIntervals: powerIntervalsForActivity(record),
+    powerInsight: powerIntervalInsight(record) || 'Brak zapisanych interwałów mocy dla tej aktywności.'
   };
 }
 
@@ -1553,6 +1614,27 @@ function renderRawSummary(text){
   return `<details class="analysis-details raw-summary"><summary>Podsumowanie Garmin</summary><p>${escapeHtml(text)}</p></details>`;
 }
 
+
+function renderPowerIntervals(rows, insight){
+  if(!rows || !rows.length){
+    return renderAnalysisBlock('Power curve / interwały mocy', insight || 'Brak zapisanych interwałów mocy dla tej aktywności.', 'power-section');
+  }
+  const cards = rows.map(row => {
+    const label = powerIntervalLabel(row.interval_type, row.target_sec);
+    const pieces = [
+      row.avg_power_w != null ? `<div><span>Moc śr.</span><b>${escapeHtml(fmtNumber(row.avg_power_w))} W</b></div>` : '',
+      row.max_power_w != null ? `<div><span>Max</span><b>${escapeHtml(fmtNumber(row.max_power_w))} W</b></div>` : '',
+      row.pct_ftp != null ? `<div><span>% FTP</span><b>${escapeHtml(fmtNumber(row.pct_ftp))}%</b></div>` : '',
+      row.pct_eftp != null ? `<div><span>% eFTP</span><b>${escapeHtml(fmtNumber(row.pct_eftp))}%</b></div>` : '',
+      row.w_per_kg != null ? `<div><span>W/kg</span><b>${escapeHtml(fmtNumber(row.w_per_kg, 2))}</b></div>` : '',
+      row.avg_hr != null ? `<div><span>HR</span><b>${escapeHtml(fmtNumber(row.avg_hr))}</b></div>` : ''
+    ].filter(Boolean).join('');
+    return `<article class="power-interval-card"><h4>${escapeHtml(label)}</h4>${pieces}</article>`;
+  }).join('');
+  return `<section class="analysis-section power-section"><span>Power curve / interwały mocy</span><p>${escapeHtml(insight || 'Interwały policzone z raw_details Garmin.')}</p><div class="power-interval-grid">${cards}</div></section>`;
+}
+
+
 function renderActivityAiAnalysis(targetId, activity){
   const target = $(targetId);
   if(!target) return;
@@ -1560,6 +1642,7 @@ function renderActivityAiAnalysis(targetId, activity){
   target.innerHTML = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
     renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
+    renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
     renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
     renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
