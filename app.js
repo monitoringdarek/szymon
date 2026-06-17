@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.3-safe-load-status-local';
+const VERSION = 'v5.2.4-cache-reset-status-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -708,6 +708,8 @@ async function loadAllData(){
   lastReadAt = new Date();
   renderConnectionStatus();
   renderStatus();
+  const readLabel = $('lastReadLabel');
+  if(readLabel) readLabel.textContent = `Ostatni odczyt: ${fmtClock(lastReadAt)}`;
 
   try{
     await refreshSession();
@@ -2108,9 +2110,9 @@ function bindEvents(){
 
 async function init(){
   bindEvents();
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=523-safe-load-status').catch(() => {});
-  }
+
+  // v5.2.4: nie rejestrujemy service workera, żeby nie trzymał starego app.js.
+  // Cache czyścimy z poziomu index.html przed załadowaniem aplikacji.
 
   if(loadSession()){
     showApp();
