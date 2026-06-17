@@ -1,4 +1,4 @@
-const VERSION = 'v5.1.5-clean-history-power-ui-local';
+const VERSION = 'v5.2.0-athlete-profile-context-ai-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -11,6 +11,7 @@ const CARDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_cards`;
 const LOAD_28D_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_training_load_28d`;
 const ACTIVITY_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_analysis_context`;
 const ATHLETE_THRESHOLDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_current_thresholds`;
+const ATHLETE_PROFILE_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_threshold_profile_context`;
 const POWER_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_power_intervals`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
@@ -26,6 +27,7 @@ let load28d = [];
 let activityContexts = [];
 let athleteThresholds = [];
 let activityPowerIntervals = [];
+let athleteProfileContext = [];
 let activityContextStatus = 'idle';
 let lastReadAt = null;
 let selectedActivityKey = '';
@@ -36,7 +38,8 @@ let viewState = {
   cards: 'idle',
   load28d: 'idle',
   thresholds: 'idle',
-  powerIntervals: 'idle'
+  powerIntervals: 'idle',
+  thresholdProfileContext: 'idle'
 };
 let aiMode = 'plan';
 let loginAttemptId = 0;
@@ -522,7 +525,8 @@ function viewLabel(key){
     load28d: 'load_28d',
     activityContext: 'activity_analysis_context',
     thresholds: 'athlete_current_thresholds',
-    powerIntervals: 'garmin_activity_power_intervals'
+    powerIntervals: 'garmin_activity_power_intervals',
+    thresholdProfileContext: 'athlete_threshold_profile_context'
   }[key] || key;
 }
 
@@ -543,7 +547,7 @@ function anyViewError(){
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length);
+  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || athleteProfileContext.length);
 }
 
 function garminOverallStatus(){
@@ -685,14 +689,15 @@ async function loadActivityAnalysisContexts(){
 
 async function loadAllData(){
   await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows] = await Promise.all([
+  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, profileRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
     loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
     loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
     loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
-    loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`)
+    loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
+    loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
   ]);
   readiness = readinessRows[0] || null;
   weekly = weeklyRows[0] || null;
@@ -701,6 +706,7 @@ async function loadAllData(){
   load28d = loadRows;
   athleteThresholds = thresholdRows;
   activityPowerIntervals = powerRows;
+  athleteProfileContext = profileRows;
   activityContexts = await loadActivityAnalysisContexts();
   lastReadAt = new Date();
   renderAll();
@@ -1099,6 +1105,68 @@ function avgPowerWatts(record){
   if(fromRecord != null) return fromRecord;
   return numericFromText(extractMetric(record, [/\bmoc\s*śr\.\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i, /\bavg power\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?\s*W?)/i]));
 }
+
+
+function sportGroupForRecord(record){
+  const sport = String(record?.sport_type || record?.activity_type || record?.event_name || '').toLowerCase();
+  if(hasSegment(record, 'swim') && hasSegment(record, 'bike') && hasSegment(record, 'run')) return 'triathlon';
+  if(hasSegment(record, 'bike') || sport.includes('bike') || sport.includes('cycl') || sport.includes('kolar')) return 'bike';
+  if(hasSegment(record, 'run') || sport.includes('run') || sport.includes('bieg')) return 'run';
+  if(hasSegment(record, 'swim') || sport.includes('swim') || sport.includes('pływ')) return 'swim';
+  return 'general';
+}
+
+function profileRowsForSportGroup(group){
+  const sports = group === 'triathlon' ? ['swim', 'bike', 'run', 'general'] : [group, 'general'];
+  return athleteProfileContext.filter(row => sports.includes(String(row.sport || '').toLowerCase()));
+}
+
+function profileValueText(row){
+  if(!row?.is_available) return 'brak danych';
+  const value = row.value_working != null ? fmtNumber(row.value_working, String(row.unit || '').includes('kg') ? 1 : 0) : 'brak';
+  return `${value} ${row.unit || ''}`.trim();
+}
+
+function thresholdProfileContextStatus(record){
+  const group = sportGroupForRecord(record);
+  const rows = profileRowsForSportGroup(group);
+  if(!rows.length){
+    return {
+      group,
+      title: 'Profil progów — status danych',
+      summary: 'Brak odczytu athlete_threshold_profile_context. AI ma analizować ostrożnie i jasno pisać „brak danych”.',
+      available: [],
+      missing: [],
+      rows: []
+    };
+  }
+
+  const available = rows
+    .filter(row => row.is_available)
+    .map(row => `${row.profile_label || row.threshold_type}: ${profileValueText(row)} (${row.status || 'status brak'}, ${row.confidence || 'pewność brak'})`);
+
+  const missing = rows
+    .filter(row => !row.is_available)
+    .map(row => `${row.profile_label || row.threshold_type}: brak danych`);
+
+  let summary;
+  if(group === 'bike'){
+    summary = available.some(text => text.includes('FTP')) || available.some(text => text.includes('eFTP'))
+      ? 'Rower ma użyteczne progi mocy FTP/eFTP i może być analizowany konkretnie na mocy oraz power curve. Brakujące HR progowe nie jest zgadywane.'
+      : 'Rower nie ma pełnych progów — AI ma analizować ostrożnie.';
+  }else if(group === 'run'){
+    summary = 'Brak progów biegowych Szymona. AI ma analizować bieg ostrożnie na podstawie tempa, HR, obciążenia i regeneracji.';
+  }else if(group === 'swim'){
+    summary = 'Brak CSS / progów pływackich Szymona. AI ma analizować pływanie ostrożnie na podstawie tempa /100 m, dystansu i kontekstu dnia.';
+  }else if(group === 'triathlon'){
+    summary = 'Triathlon ma mieszany profil: rower ma FTP/eFTP, ale run i swim nadal nie mają własnych progów. AI musi rozdzielać pewne dane od braków.';
+  }else{
+    summary = 'Profil ogólny ma ograniczone dane. AI ma używać dostępnej masy i jasno opisywać braki.';
+  }
+
+  return { group, title: 'Profil progów — status danych', summary, available, missing, rows };
+}
+
 
 function bikeThresholdInsight(record){
   if(!record) return '';
@@ -1577,7 +1645,8 @@ function buildFactBasedActivityAnalysis(activityContext){
       rawSummary: '',
       thresholdProfile: 'brak danych',
       powerIntervals: [],
-      powerInsight: 'brak danych'
+      powerInsight: 'brak danych',
+      profileContextStatus: thresholdProfileContextStatus(null)
     };
   }
   if(!activityContext.hasFullContext){
@@ -1599,7 +1668,8 @@ function buildFactBasedActivityAnalysis(activityContext){
       rawSummary: activityContext.activity?.auto_summary || activityContext.activity?.segment_summary || '',
       thresholdProfile: bikeThresholdInsight(activityContext.activity) || 'Profil progów Szymona: brak danych dla tej aktywności.',
       powerIntervals: powerIntervalsForActivity(activityContext.activity),
-      powerInsight: powerIntervalInsight(activityContext.activity) || 'Brak zapisanych interwałów mocy dla tej aktywności.'
+      powerInsight: powerIntervalInsight(activityContext.activity) || 'Brak zapisanych interwałów mocy dla tej aktywności.',
+      profileContextStatus: thresholdProfileContextStatus(activityContext.activity)
     };
   }
   const record = activityContext.contextRecord;
@@ -1620,7 +1690,8 @@ function buildFactBasedActivityAnalysis(activityContext){
     rawSummary: record.auto_summary || '',
     thresholdProfile: bikeThresholdInsight(record) || 'Dla tej aktywności brak użytecznych progów Szymona.',
     powerIntervals: powerIntervalsForActivity(record),
-    powerInsight: powerIntervalInsight(record) || 'Brak zapisanych interwałów mocy dla tej aktywności.'
+    powerInsight: powerIntervalInsight(record) || 'Brak zapisanych interwałów mocy dla tej aktywności.',
+    profileContextStatus: thresholdProfileContextStatus(record)
   };
 }
 
@@ -1654,6 +1725,38 @@ function renderTimeline(title, entries){
 function renderRawSummary(text){
   if(!text) return '';
   return `<details class="analysis-details raw-summary"><summary>Podsumowanie Garmin</summary><p>${escapeHtml(text)}</p></details>`;
+}
+
+
+
+function renderThresholdProfileContext(status){
+  if(!status) return '';
+  const availableList = status.available?.length
+    ? status.available.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+    : '<li>brak dostępnych progów dla tej dyscypliny</li>';
+  const missingList = status.missing?.length
+    ? status.missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+    : '<li>brak jawnie oznaczonych braków</li>';
+
+  return `
+    <section class="analysis-section profile-context-section">
+      <span>${escapeHtml(status.title || 'Profil progów — status danych')}</span>
+      <p>${escapeHtml(status.summary || 'brak danych')}</p>
+      <details class="profile-details">
+        <summary>Co AI ma, a czego nie ma?</summary>
+        <div class="profile-detail-grid">
+          <div>
+            <b>Dostępne</b>
+            <ul>${availableList}</ul>
+          </div>
+          <div>
+            <b>Braki</b>
+            <ul>${missingList}</ul>
+          </div>
+        </div>
+      </details>
+    </section>
+  `;
 }
 
 
@@ -1726,6 +1829,7 @@ function renderActivityAiAnalysis(targetId, activity){
   target.innerHTML = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
     renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
+    renderThresholdProfileContext(analysis.profileContextStatus),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
     renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
     renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),

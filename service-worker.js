@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-515-clean-history-power-ui';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-520-athlete-profile-context-ai';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=515-clean-history-power-ui',
-  './app.js?v=515-clean-history-power-ui',
+  './styles.css?v=520-athlete-profile-context-ai',
+  './app.js?v=520-athlete-profile-context-ai',
   './manifest.json'
 ];
 

@@ -992,3 +992,71 @@ body.is-auth-checking .bottom-nav{display:none!important}
 .power-details summary{
   min-height:42px;
 }
+
+
+/* v5.2.0 — profil progów: dostępne dane i braki dla AI */
+.profile-context-section{
+  border-color:rgba(121,220,150,.28)!important;
+  background:rgba(121,220,150,.045)!important;
+}
+.profile-context-section p{
+  font-size:14px;
+  line-height:1.5;
+}
+.profile-details{
+  margin-top:12px;
+  border:1px solid rgba(151,176,214,.16);
+  border-radius:16px;
+  background:rgba(0,0,0,.12);
+  overflow:hidden;
+}
+.profile-details summary{
+  cursor:pointer;
+  padding:13px 14px;
+  color:#dceaff;
+  font-weight:900;
+  list-style:none;
+}
+.profile-details summary::-webkit-details-marker{
+  display:none;
+}
+.profile-details summary::after{
+  content:'＋';
+  float:right;
+  color:#aab8ce;
+}
+.profile-details[open] summary::after{
+  content:'−';
+}
+.profile-detail-grid{
+  display:grid;
+  gap:10px;
+  padding:0 12px 12px;
+}
+.profile-detail-grid div{
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+  padding:12px;
+}
+.profile-detail-grid b{
+  display:block;
+  margin-bottom:8px;
+  color:#f4f8ff;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.profile-detail-grid ul{
+  margin:0;
+  padding-left:17px;
+  color:#cbd7ea;
+}
+.profile-detail-grid li{
+  margin:5px 0;
+  line-height:1.35;
+}
+@media(min-width:760px){
+  .profile-detail-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
