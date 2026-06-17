@@ -1373,3 +1373,5 @@ body.is-auth-checking .bottom-nav{display:none!important}
 @media(max-width:430px){
   .history-tools-row{grid-template-columns:1fr}
 }
+
+/* v5.3.2 — human coach analysis language */

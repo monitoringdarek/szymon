@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-531-threshold-action-error-hotfix';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-532-human-coach-analysis-language';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=531-threshold-action-error-hotfix',
-  './app.js?v=531-threshold-action-error-hotfix',
+  './styles.css?v=532-human-coach-analysis-language',
+  './app.js?v=532-human-coach-analysis-language',
   './manifest.json'
 ];
 

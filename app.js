@@ -1,4 +1,4 @@
-const VERSION = 'v5.3.1-threshold-action-error-hotfix-local';
+const VERSION = 'v5.3.2-human-coach-analysis-language-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1826,17 +1826,70 @@ function runHrText(record){
   return '';
 }
 
-function afterReadinessCost(record){
-  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
-  if(!after) return '';
-  const score = numberOrNull(after.training_readiness_score);
-  const level = String(after.training_readiness_level || '').toUpperCase();
-  const batteryEnd = numberOrNull(after.body_battery_end);
-  if(score != null && score <= 20) return `D+1 readiness ${Math.round(score)}/100 ${level || ''} pokazuje duży koszt regeneracyjny.`.trim();
-  if(batteryEnd != null && batteryEnd < 45) return `D+1 Body Battery ${Math.round(batteryEnd)} sugeruje wyraźny koszt regeneracyjny.`;
-  return '';
+
+function humanSleepText(minutes){
+  const n = Number(minutes);
+  if(!Number.isFinite(n)) return 'brak danych';
+  const total = Math.max(0, Math.round(n));
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  if(hours && mins) return `${hours} h ${mins} min`;
+  if(hours) return `${hours} h`;
+  return `${mins} min`;
 }
 
+function humanMetric(value, suffix = ''){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return 'brak danych';
+  return `${Math.round(n)}${suffix}`;
+}
+
+function workoutReadiness(record){
+  return metricForDate(parseJsonArray(record.daily_metrics_window), fmtDateIso(record.workout_date)) || null;
+}
+
+function recoveryDay(record){
+  return metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1)) || null;
+}
+
+function baselineDays(record){
+  return [-3, -2, -1]
+    .map(offset => metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, offset)))
+    .filter(Boolean);
+}
+
+function readinessHumanLevel(level){
+  const key = String(level || '').toUpperCase();
+  if(key === 'MODERATE') return 'umiarkowana gotowość';
+  if(key === 'POOR') return 'niska gotowość';
+  if(key === 'LOW') return 'niska gotowość';
+  if(key === 'HIGH') return 'dobra gotowość';
+  if(key === 'EXCELLENT') return 'bardzo dobra gotowość';
+  return level || '';
+}
+
+function controlledTrainingText(record){
+  const flags = asArray(record.coach_flags).join(' ').toLowerCase();
+  const hrMax = numberOrNull(record.hr_max);
+  if(flags.includes('anomaly') || flags.includes('anomalia')) return 'W danych widać sygnał, który trzeba sprawdzić — nie traktuję tego treningu jako idealnie czystego pomiaru.';
+  if(hrMax != null && hrMax >= 190) return 'Trening miał wysoki pik tętna, więc warto sprawdzić, czy to była realna intensywność, czy pojedynczy skok pomiaru.';
+  return 'Sam trening wyglądał na kontrolowany — nie widać sygnału, że Szymona poniosło albo że wysiłek wyszedł poza bezpieczne ramy.';
+}
+
+function afterReadinessCost(record){
+  const after = recoveryDay(record);
+  if(!after) return '';
+  const score = numberOrNull(after.training_readiness_score);
+  const level = readinessHumanLevel(after.training_readiness_level);
+  const batteryEnd = numberOrNull(after.body_battery_end);
+  const parts = [];
+  if(score != null) parts.push(`gotowość dzień po treningu: ${Math.round(score)}/100${level ? ` (${level})` : ''}`);
+  if(batteryEnd != null) parts.push(`Body Battery po dniu: ${Math.round(batteryEnd)}`);
+  if(!parts.length) return '';
+  if(score != null && score <= 20) return `Dane z kolejnej doby pokazują, że organizm mocno odczuł ten wysiłek: ${parts.join(', ')}.`;
+  if(batteryEnd != null && batteryEnd < 45) return `Dane z kolejnej doby sugerują wyraźny koszt regeneracji: ${parts.join(', ')}.`;
+  return `Dane z kolejnej doby są już dostępne: ${parts.join(', ')}.`;
+}
 function buildDynamicKalmarConclusion(record){
   if(!record) return 'Wniosek pod Ironman Kalmar: brak danych.';
   const sport = String(record.sport_type || record.activity_type || '').toLowerCase();
@@ -1895,43 +1948,79 @@ function fullCoachAnalysis(record){
   const load = numberOrNull(record.training_load);
   const hrAvg = numberOrNull(record.hr_avg);
   const hrMax = numberOrNull(record.hr_max);
-  const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
-  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
-  const activityDay = metricForDate(parseJsonArray(record.daily_metrics_window), fmtDateIso(record.workout_date));
-  const before = parseJsonArray(record.daily_metrics_window).filter(item => itemMatchesRelativeDay(item, 'before', record));
-  const moderateBefore = before.some(item => String(item.training_readiness_level || '').toUpperCase() === 'MODERATE');
-  const hasBike = hasSegment(record, 'bike');
-  const hasRun = hasSegment(record, 'run');
+  const after = recoveryDay(record);
+  const day = workoutReadiness(record);
+  const baseline = baselineDays(record);
+  const baselineStressValues = baseline.map(item => numberOrNull(item.avg_stress)).filter(value => value != null);
+  const avgBaselineStress = baselineStressValues.length ? Math.round(baselineStressValues.reduce((sum, value) => sum + value, 0) / baselineStressValues.length) : null;
+  const readinessScore = numberOrNull(day?.training_readiness_score);
+  const readinessLevel = readinessHumanLevel(day?.training_readiness_level);
+  const sleep = numberOrNull(day?.sleep_minutes);
+  const batteryStart = numberOrNull(day?.body_battery_start ?? day?.body_battery_end);
+  const stress = numberOrNull(day?.avg_stress);
+  const load7d = numberOrNull(record.load_7d_before_activity);
   const sentences = [];
-  if(moderateBefore || activityDay?.training_readiness_level){
-    sentences.push('Szymon wszedł w aktywność z gotowością umiarkowaną, ale sen w oknie startowym był krótki albo niepełny tam, gdzie mamy dane.');
+
+  sentences.push(`Zrobiłeś trening, który był dla organizmu konkretnym bodźcem — load ${load != null ? fmtNumber(load) : 'brak danych'}, HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'}.`);
+  sentences.push(controlledTrainingText(record));
+
+  if(readinessScore != null || sleep != null || batteryStart != null || stress != null || load7d != null){
+    const startParts = [];
+    if(readinessScore != null) startParts.push(`gotowość ${Math.round(readinessScore)}/100${readinessLevel ? ` — ${readinessLevel}` : ''}`);
+    if(sleep != null) startParts.push(`sen ${humanSleepText(sleep)}`);
+    if(batteryStart != null) startParts.push(`Body Battery ${Math.round(batteryStart)}`);
+    if(stress != null) startParts.push(`stress ${Math.round(stress)}`);
+    if(load7d != null) startParts.push(`load 7d ${Math.round(load7d)}`);
+    sentences.push(`Na starcie sytuacja wyglądała tak: ${startParts.join(', ')}.`);
   }else{
-    sentences.push('Wejście w aktywność: readiness przed startem brak danych.');
+    sentences.push('Nie mam pełnych danych z poranka przed treningiem, więc ocenę stanu startowego traktuję ostrożnie.');
   }
-  if(load != null || hrAvg != null || hrMax != null){
-    sentences.push(`Sam bodziec był mocny: obciążenie ${load != null ? fmtNumber(load) : 'brak danych'} i HR ${hrAvg != null ? Math.round(hrAvg) : 'brak danych'}/${hrMax != null ? Math.round(hrMax) : 'brak danych'} pokazują koszt większy niż zwykły lekki trening.`);
+
+  if(sleep != null && sleep < 360){
+    sentences.push(`Największy minus to krótki sen — ${humanSleepText(sleep)}. To zwykle obniża gotowość, nawet jeśli sam trening da się jeszcze zrobić poprawnie.`);
   }
-  if(hasBike && (bikeIf != null || record.bike_if_category)) sentences.push('Rower był mocnym elementem startu, więc w dłuższym triathlonie trzeba pilnować, żeby nie zabrał jakości biegu.');
-  const thresholdInsight = bikeThresholdInsight(record);
-  if(thresholdInsight) sentences.push(thresholdInsight);
-  if(hasRun && runHrText(record)) sentences.push(`Bieg był wykonywany wysoko tętniowo (${runHrText(record)}), czyli organizm pracował już blisko górnego zakresu.`);
+  if(batteryStart != null && batteryStart >= 60){
+    sentences.push(`Na plus działało to, że bateria organizmu była jeszcze całkiem dobra (${Math.round(batteryStart)}/100), więc mimo krótkiego snu nie startowałeś z pustego baku.`);
+  }
+  if(stress != null && stress <= 35){
+    sentences.push(`Niski stress (${Math.round(stress)}) sugeruje, że organizm w spoczynku nie był mocno podbity i to trochę amortyzowało krótszy sen.`);
+  }else if(avgBaselineStress != null){
+    sentences.push(`Średni stress z ostatnich dni przed treningiem wynosił około ${avgBaselineStress}, więc traktuję go jako tło do oceny zmęczenia.`);
+  }
+  if(load7d != null && load7d >= 500){
+    sentences.push(`Trzeba też pamiętać o tygodniowym zmęczeniu: load 7d ${Math.round(load7d)} oznacza, że ten trening dołożył się do już solidnego mikrocyklu.`);
+  }
+
   if(after){
-    sentences.push(`D+1 potwierdza koszt regeneracyjny: readiness ${after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}` : 'brak danych'}, Body Battery ${after.body_battery_end != null ? Math.round(Number(after.body_battery_end)) : 'brak danych'}.`);
+    const afterReadiness = numberOrNull(after.training_readiness_score);
+    const afterLevel = readinessHumanLevel(after.training_readiness_level);
+    const afterBattery = numberOrNull(after.body_battery_end ?? after.body_battery_start);
+    const afterStress = numberOrNull(after.avg_stress);
+    const afterParts = [];
+    if(afterReadiness != null) afterParts.push(`gotowość ${Math.round(afterReadiness)}/100${afterLevel ? ` — ${afterLevel}` : ''}`);
+    if(afterBattery != null) afterParts.push(`Body Battery ${Math.round(afterBattery)}`);
+    if(afterStress != null) afterParts.push(`stress ${Math.round(afterStress)}`);
+    sentences.push(`Dane z kolejnej doby są już dostępne: ${afterParts.join(', ') || 'brak kluczowych wartości'}. Na ich podstawie można oceniać, ile ten trening faktycznie kosztował organizm.`);
   }else{
-    sentences.push('Koszt po aktywności: D+1 brak danych.');
+    sentences.push('Na dziś mogę uczciwie ocenić bodziec i stan startowy, ale pełnego kosztu regeneracji jeszcze nie oceniam. Do tego potrzebuję danych z kolejnej nocy: snu, tętna spoczynkowego, HRV, stress i Body Battery.');
   }
+
   return sentences.join(' ');
 }
-
 function fullRecoveryRecommendation(record){
-  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
-  const poorAfter = after && (Number(after.training_readiness_score) <= 20 || String(after.training_readiness_level || '').toUpperCase() === 'POOR');
-  if(poorAfter){
-    return 'Po tej aktywności priorytetem jest regeneracja, sen, nawodnienie i bardzo lekki ruch. Do mocniejszego bodźca wracaj dopiero po odbiciu readiness i Body Battery, nie dzień po takim starcie.';
+  const after = recoveryDay(record);
+  if(!after){
+    return 'Na teraz nie podejmowałbym decyzji o mocnym kolejnym bodźcu wyłącznie po tej sesji. Poczekaj na dane z kolejnej nocy i dopiero wtedy oceń, czy organizm wrócił do normy.';
   }
-  return 'Po tej aktywności wybierz lekki trening lub technikę i kontroluj obciążenie. Mocniejszy bodziec dopiero, gdy readiness, sen i Body Battery potwierdzą regenerację.';
+  const score = numberOrNull(after.training_readiness_score);
+  const level = String(after.training_readiness_level || '').toUpperCase();
+  const batteryEnd = numberOrNull(after.body_battery_end);
+  const poorAfter = (score != null && score <= 20) || level === 'POOR' || (batteryEnd != null && batteryEnd < 35);
+  if(poorAfter){
+    return 'Dane z kolejnej doby pokazują wyraźny koszt, więc priorytetem jest sen, nawodnienie, spokojny ruch i regeneracja. Mocniejszy trening dopiero po odbiciu gotowości i Body Battery.';
+  }
+  return 'Jeśli samopoczucie jest dobre, można wrócić do lekkiego treningu lub techniki, ale mocniejszy bodziec nadal warto oprzeć na gotowości, śnie, Body Battery i skumulowanym obciążeniu.';
 }
-
 function buildGoodPoints(record){
   const points = [];
   const swim = segmentByType(record, 'swim');
@@ -1953,19 +2042,22 @@ function buildRiskPoints(record){
   if(load != null && load >= 250) points.push(`Load ${fmtNumber(load)} to mocny bodziec i wymaga ostrożnej regeneracji.`);
   if(bikeIf != null && bikeIf >= 0.9) points.push(`Rower był intensywny: IF ${fmtIf(bikeIf)}. Przy dłuższym dystansie taki koszt trzeba mocno kontrolować.`);
   if(runHr) points.push(`Bieg był na wysokim tętnie (${runHr}), więc nie był to lekki dobieg bez kosztu.`);
-  if(after?.training_readiness_score != null && Number(after.training_readiness_score) <= 20) points.push(`D+1 readiness ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''} pokazuje bardzo duży koszt po aktywności.`);
+  if(after?.training_readiness_score != null && Number(after.training_readiness_score) <= 20) points.push(`Gotowość dzień po treningu ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''} pokazuje bardzo duży koszt po aktywności.`);
   if(!points.length) points.push('Brak wyraźnych czerwonych flag w dostępnych danych, ale analiza jest ograniczona do tego, co zwraca Garmin PRO.');
   return points.slice(0, 4);
 }
 
 function buildHeadline(record){
-  const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
+  const after = recoveryDay(record);
   const load = record.training_load != null ? fmtNumber(record.training_load) : 'brak danych';
   const hr = record.hr_avg != null || record.hr_max != null ? `${record.hr_avg != null ? Math.round(Number(record.hr_avg)) : 'brak danych'}/${record.hr_max != null ? Math.round(Number(record.hr_max)) : 'brak danych'}` : 'brak danych';
-  const afterText = after?.training_readiness_score != null ? ` Dzień później readiness spadło do ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''}, więc koszt regeneracyjny był wyraźny.` : ' Brak danych D+1 ogranicza ocenę kosztu regeneracji.';
-  return `To była aktywność o dużym koszcie: load ${load}, HR ${hr}. Analiza jest zakotwiczona w dacie ${fmtDateIso(record.workout_date) || 'brak danych'} i porównuje start z kontekstem D-3 → D+1.${afterText}`;
+  const date = fmtDate(record.workout_date) || fmtDateIso(record.workout_date) || 'brak danych';
+  if(after){
+    const score = after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100${after.training_readiness_level ? ` — ${readinessHumanLevel(after.training_readiness_level)}` : ''}` : 'brak danych';
+    return `To był konkretny bodziec dla organizmu: load ${load}, HR ${hr}. Analiza dotyczy treningu z ${date}. Dane z kolejnej doby są już dostępne, więc można sprawdzić, jak organizm odpowiedział po wysiłku — gotowość dzień później: ${score}.`;
+  }
+  return `To był konkretny bodziec dla organizmu: load ${load}, HR ${hr}. Analiza dotyczy treningu z ${date}. Na dziś widzę, jaki wysiłek dostał organizm i w jakim stanie Szymon startował, ale pełny koszt regeneracji będzie jasny dopiero po danych z kolejnej nocy.`;
 }
-
 function buildFactBasedActivityAnalysis(activityContext){
   if(!activityContext?.activity){
     return {
@@ -2020,7 +2112,7 @@ function buildFactBasedActivityAnalysis(activityContext){
   return {
     hasFullContext: true,
     facts: contextActivityFacts(record),
-    mode: 'Analiza PRO — pełny kontekst D-3 → D+1',
+    mode: 'Analiza PRO — bodziec, stan startowy i odpowiedź organizmu',
     headline: buildHeadline(record),
     good: buildGoodPoints(record),
     risks: buildRiskPoints(record),
