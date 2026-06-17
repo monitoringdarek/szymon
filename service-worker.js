@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-528-threshold-decisions-swim';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-529-threshold-decisions-panel-fix';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=528-threshold-decisions-swim',
-  './app.js?v=528-threshold-decisions-swim',
+  './styles.css?v=529-threshold-decisions-panel-fix',
+  './app.js?v=529-threshold-decisions-panel-fix',
   './manifest.json'
 ];
 

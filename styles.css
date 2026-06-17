@@ -1194,7 +1194,7 @@ body.is-auth-checking .bottom-nav{display:none!important}
   margin:0;
 }
 
-/* v5.2.7 — decyzje progów: pending -> akceptuj/odrzuć */
+/* v5.2.9 — panel decyzji progów: pending -> akceptuj/odrzuć */
 .threshold-suggestions-panel{
   border-color:rgba(255,196,87,.30);
   background:linear-gradient(145deg,rgba(255,196,87,.075),rgba(7,24,44,.96));
