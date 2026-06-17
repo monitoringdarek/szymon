@@ -1,14 +1,34 @@
-// v5.2.5-unique-app-file-cache-bypass-local
-// Service worker celowo wyłączony. Ta wersja ma ominąć stare app.js przez app-v525.js.
-self.addEventListener('install', event => self.skipWaiting());
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-520-athlete-profile-context-ai';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css?v=520-athlete-profile-context-ai',
+  './app.js?v=520-athlete-profile-context-ai',
+  './manifest.json'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+  self.skipWaiting();
+});
+
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => String(key).includes('szymon-ai-coach')).map(key => caches.delete(key))
-    ))
+    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
   );
   self.clients.claim();
 });
+
 self.addEventListener('fetch', event => {
-  return;
+  if(event.request.method !== 'GET') return;
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      const fresh = fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => cached);
+      return cached || fresh;
+    })
+  );
 });

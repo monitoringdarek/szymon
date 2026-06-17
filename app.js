@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.4-cache-reset-status-local';
+const VERSION = 'v5.2.0-athlete-profile-context-ai-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -13,7 +13,6 @@ const ACTIVITY_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_a
 const ATHLETE_THRESHOLDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_current_thresholds`;
 const ATHLETE_PROFILE_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_threshold_profile_context`;
 const POWER_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_power_intervals`;
-const RUN_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_run_intervals`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
@@ -28,7 +27,6 @@ let load28d = [];
 let activityContexts = [];
 let athleteThresholds = [];
 let activityPowerIntervals = [];
-let activityRunIntervals = [];
 let athleteProfileContext = [];
 let activityContextStatus = 'idle';
 let lastReadAt = null;
@@ -41,8 +39,7 @@ let viewState = {
   load28d: 'idle',
   thresholds: 'idle',
   powerIntervals: 'idle',
-  thresholdProfileContext: 'idle',
-  runIntervals: 'idle'
+  thresholdProfileContext: 'idle'
 };
 let aiMode = 'plan';
 let loginAttemptId = 0;
@@ -529,8 +526,7 @@ function viewLabel(key){
     activityContext: 'activity_analysis_context',
     thresholds: 'athlete_current_thresholds',
     powerIntervals: 'garmin_activity_power_intervals',
-    thresholdProfileContext: 'athlete_threshold_profile_context',
-    runIntervals: 'garmin_activity_run_intervals'
+    thresholdProfileContext: 'athlete_threshold_profile_context'
   }[key] || key;
 }
 
@@ -542,35 +538,22 @@ function viewStatusText(value){
   return 'brak danych';
 }
 
-function coreViewKeys(){
-  return ['readiness', 'weekly', 'latest', 'cards', 'load28d'];
-}
-
-function optionalViewKeys(){
-  return ['thresholds', 'powerIntervals', 'runIntervals', 'thresholdProfileContext'];
-}
-
 function allViewsOk(){
-  return coreViewKeys().every(key => viewState[key] === 'ok');
+  return Object.values(viewState).every(value => value === 'ok');
 }
 
 function anyViewError(){
-  return coreViewKeys().some(key => viewState[key] === 'error');
+  return Object.values(viewState).some(value => value === 'error');
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || load28d.length);
-}
-
-function anyOptionalData(){
-  return Boolean(athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length);
+  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || athleteProfileContext.length);
 }
 
 function garminOverallStatus(){
   if(anyViewError()) return 'problem';
-  if(anyUsefulData()) return 'dane OK';
-  if(coreViewKeys().some(key => viewState[key] === 'loading')) return 'ładowanie';
-  if(optionalViewKeys().some(key => viewState[key] === 'loading')) return 'ładowanie';
+  if(allViewsOk() && anyUsefulData()) return 'dane OK';
+  if(Object.values(viewState).some(value => value === 'loading')) return 'ładowanie';
   return 'brak danych';
 }
 
@@ -705,44 +688,26 @@ async function loadActivityAnalysisContexts(){
 }
 
 async function loadAllData(){
-  lastReadAt = new Date();
-  renderConnectionStatus();
-  renderStatus();
-  const readLabel = $('lastReadLabel');
-  if(readLabel) readLabel.textContent = `Ostatni odczyt: ${fmtClock(lastReadAt)}`;
-
-  try{
-    await refreshSession();
-  }catch(err){
-    console.warn('Nie udało się odświeżyć sesji — próbuję odczytu z aktualnym stanem sesji.', err);
-  }
-
-  const readinessRows = await loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`);
-  const weeklyRows = await loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`);
-  const latestRows = await loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`);
-  const cardRows = await loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`);
-  const loadRows = await loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`);
-
+  await refreshSession();
+  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, profileRows] = await Promise.all([
+    loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
+    loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
+    loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
+    loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
+    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
+    loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
+    loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
+    loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
+  ]);
   readiness = readinessRows[0] || null;
   weekly = weeklyRows[0] || null;
   latest = latestRows[0] || null;
-  cards = cardRows || [];
-  load28d = loadRows || [];
-
-  renderAll();
-
-  // Dodatkowe dane AI są opcjonalne. Nie mogą blokować podstawowego statusu Garmin PRO.
-  const thresholdRows = await loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`);
-  const powerRows = await loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`);
-  const runRows = await loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`);
-  const profileRows = await loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`);
-
-  athleteThresholds = thresholdRows || [];
-  activityPowerIntervals = powerRows || [];
-  activityRunIntervals = runRows || [];
-  athleteProfileContext = profileRows || [];
+  cards = cardRows;
+  load28d = loadRows;
+  athleteThresholds = thresholdRows;
+  activityPowerIntervals = powerRows;
+  athleteProfileContext = profileRows;
   activityContexts = await loadActivityAnalysisContexts();
-
   lastReadAt = new Date();
   renderAll();
 }
@@ -1317,87 +1282,6 @@ function powerIntervalInsight(record){
 }
 
 
-
-function runIntervalsForActivity(record){
-  const gid = activityGarminId(record);
-  if(!gid) return [];
-  return activityRunIntervals
-    .filter(item => String(item.garmin_activity_id || '').trim() === gid)
-    .sort((a, b) => Number(a.target_m || 0) - Number(b.target_m || 0));
-}
-
-function runIntervalLabel(type, targetM){
-  const t = String(type || '');
-  if(t === 'best_1k') return 'Najlepszy 1 km';
-  if(t === 'best_3k') return 'Najlepsze 3 km';
-  if(t === 'best_5k') return 'Najlepsze 5 km';
-  if(t === 'best_10k') return 'Najlepsze 10 km';
-  const m = Number(targetM);
-  if(Number.isFinite(m) && m > 0) return `Najlepsze ${fmtNumber(m / 1000, 1)} km`;
-  return t || 'Odcinek biegu';
-}
-
-function paceTextFromSec(sec){
-  const n = Number(sec);
-  if(!Number.isFinite(n) || n <= 0) return 'brak danych';
-  const rounded = Math.round(n);
-  const min = Math.floor(rounded / 60);
-  const s = String(rounded % 60).padStart(2, '0');
-  return `${min}:${s}/km`;
-}
-
-function keyRunInterval(rows){
-  return rows.find(item => item.interval_type === 'best_10k')
-    || rows.find(item => item.interval_type === 'best_5k')
-    || rows.find(item => item.interval_type === 'best_3k')
-    || rows.find(item => item.interval_type === 'best_1k')
-    || rows[0]
-    || null;
-}
-
-function runCoachTexts(row){
-  if(!row){
-    return {
-      signal: 'brak danych',
-      interpretation: 'Brak zapisanych odcinków biegu dla tej aktywności.',
-      meaning: 'Bez danych run curve AI nie ocenia jakości odcinków biegowych.'
-    };
-  }
-  const label = runIntervalLabel(row.interval_type, row.target_m).replace('Najlepszy ', '').replace('Najlepsze ', '');
-  const pace = paceTextFromSec(row.pace_sec_per_km);
-  const hr = row.avg_hr != null ? `HR ${fmtNumber(row.avg_hr)}` : 'HR brak';
-  const power = row.avg_power_w != null ? `moc ${fmtNumber(row.avg_power_w)} W` : '';
-  const cadence = row.avg_cadence != null ? `kadencja ${fmtNumber(row.avg_cadence)}` : '';
-  const pieces = [hr, power, cadence].filter(Boolean).join(', ');
-
-  let interpretation;
-  const target = Number(row.target_m || 0);
-  if(target >= 10000){
-    interpretation = 'To jest mocny sygnał wytrzymałości biegowej: tempo utrzymane długo, bez opierania wniosku na pojedynczym szybkim kilometrze.';
-  }else if(target >= 5000){
-    interpretation = 'To jest jakościowy odcinek biegowy. Pomaga ocenić utrzymanie tempa, ale nie jest jeszcze progiem zawodnika.';
-  }else if(target >= 3000){
-    interpretation = 'To pokazuje szybszy fragment biegu, dobry do oceny dynamiki i reakcji tętna.';
-  }else{
-    interpretation = 'To pokazuje najlepszy krótki odcinek, ale nie wystarcza do wyznaczenia progu biegowego.';
-  }
-
-  return {
-    signal: `${label} — ${pace}${pieces ? ` — ${pieces}` : ''}`,
-    interpretation,
-    meaning: 'To są fakty z Garmin raw_details. AI może ich używać do analizy biegu, ale nie powinno z nich jeszcze robić progów RUN.'
-  };
-}
-
-function runIntervalInsight(record){
-  const rows = runIntervalsForActivity(record);
-  if(!rows.length) return '';
-  const key = keyRunInterval(rows);
-  const texts = runCoachTexts(key);
-  return `Najmocniejszy sygnał biegowy: ${texts.signal}. ${texts.interpretation} ${texts.meaning}`;
-}
-
-
 function activityDistanceKm(record){
   const meters = numberOrNull(record?.distance_meters);
   if(meters != null) return meters / 1000;
@@ -1762,9 +1646,7 @@ function buildFactBasedActivityAnalysis(activityContext){
       thresholdProfile: 'brak danych',
       powerIntervals: [],
       powerInsight: 'brak danych',
-      profileContextStatus: thresholdProfileContextStatus(null),
-      runIntervals: [],
-      runInsight: 'brak danych'
+      profileContextStatus: thresholdProfileContextStatus(null)
     };
   }
   if(!activityContext.hasFullContext){
@@ -1787,9 +1669,7 @@ function buildFactBasedActivityAnalysis(activityContext){
       thresholdProfile: bikeThresholdInsight(activityContext.activity) || 'Profil progów Szymona: brak danych dla tej aktywności.',
       powerIntervals: powerIntervalsForActivity(activityContext.activity),
       powerInsight: powerIntervalInsight(activityContext.activity) || 'Brak zapisanych interwałów mocy dla tej aktywności.',
-      profileContextStatus: thresholdProfileContextStatus(activityContext.activity),
-      runIntervals: runIntervalsForActivity(activityContext.activity),
-      runInsight: runIntervalInsight(activityContext.activity) || 'Brak zapisanych odcinków biegu dla tej aktywności.'
+      profileContextStatus: thresholdProfileContextStatus(activityContext.activity)
     };
   }
   const record = activityContext.contextRecord;
@@ -1811,9 +1691,7 @@ function buildFactBasedActivityAnalysis(activityContext){
     thresholdProfile: bikeThresholdInsight(record) || 'Dla tej aktywności brak użytecznych progów Szymona.',
     powerIntervals: powerIntervalsForActivity(record),
     powerInsight: powerIntervalInsight(record) || 'Brak zapisanych interwałów mocy dla tej aktywności.',
-    profileContextStatus: thresholdProfileContextStatus(record),
-    runIntervals: runIntervalsForActivity(record),
-    runInsight: runIntervalInsight(record) || 'Brak zapisanych odcinków biegu dla tej aktywności.'
+    profileContextStatus: thresholdProfileContextStatus(record)
   };
 }
 
@@ -1875,71 +1753,6 @@ function renderThresholdProfileContext(status){
             <b>Braki</b>
             <ul>${missingList}</ul>
           </div>
-        </div>
-      </details>
-    </section>
-  `;
-}
-
-
-
-function renderRunIntervals(rows, insight){
-  if(!rows || !rows.length) return '';
-
-  const key = keyRunInterval(rows);
-  const texts = runCoachTexts(key);
-
-  const detailRows = rows.map(row => {
-    const cells = [
-      `<td>${escapeHtml(runIntervalLabel(row.interval_type, row.target_m).replace('Najlepszy ', '').replace('Najlepsze ', ''))}</td>`,
-      `<td>${escapeHtml(paceTextFromSec(row.pace_sec_per_km))}</td>`,
-      `<td>${row.moving_time_sec != null ? `${escapeHtml(fmtNumber(row.moving_time_sec))} s` : 'brak'}</td>`,
-      `<td>${row.avg_hr != null ? escapeHtml(fmtNumber(row.avg_hr)) : 'brak'}</td>`,
-      `<td>${row.max_hr != null ? escapeHtml(fmtNumber(row.max_hr)) : 'brak'}</td>`,
-      `<td>${row.avg_power_w != null ? `${escapeHtml(fmtNumber(row.avg_power_w))} W` : 'brak'}</td>`,
-      `<td>${row.avg_cadence != null ? escapeHtml(fmtNumber(row.avg_cadence)) : 'brak'}</td>`
-    ].join('');
-    return `<tr>${cells}</tr>`;
-  }).join('');
-
-  return `
-    <section class="analysis-section run-coach-section">
-      <span>Run curve — wniosek trenerski</span>
-
-      <div class="run-coach-card">
-        <div class="run-coach-part">
-          <b>Najmocniejszy sygnał</b>
-          <p>${escapeHtml(texts.signal)}</p>
-        </div>
-
-        <div class="run-coach-part">
-          <b>Interpretacja</b>
-          <p>${escapeHtml(texts.interpretation)}</p>
-        </div>
-
-        <div class="run-coach-part">
-          <b>Znaczenie</b>
-          <p>${escapeHtml(texts.meaning)}</p>
-        </div>
-      </div>
-
-      <details class="run-details">
-        <summary>Więcej szczegółów biegu</summary>
-        <div class="run-table-wrap">
-          <table class="run-table">
-            <thead>
-              <tr>
-                <th>Odcinek</th>
-                <th>Tempo</th>
-                <th>Czas</th>
-                <th>HR śr.</th>
-                <th>HR max</th>
-                <th>Moc</th>
-                <th>Kad.</th>
-              </tr>
-            </thead>
-            <tbody>${detailRows}</tbody>
-          </table>
         </div>
       </details>
     </section>
@@ -2016,7 +1829,6 @@ function renderActivityAiAnalysis(targetId, activity){
   target.innerHTML = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
     renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
-    renderRunIntervals(analysis.runIntervals, analysis.runInsight),
     renderThresholdProfileContext(analysis.profileContextStatus),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
     renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
@@ -2110,11 +1922,10 @@ function bindEvents(){
 
 async function init(){
   bindEvents();
-
-  // v5.2.4: nie rejestrujemy service workera, żeby nie trzymał starego app.js.
-  // Cache czyścimy z poziomu index.html przed załadowaniem aplikacji.
-
-  if(loadSession()){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('service-worker.js?v=511-athlete-thresholds-ai').catch(() => {});
+  }
+  if(loadSession() && await refreshSession()){
     showApp();
     await loadAllData();
   }else{

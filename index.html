@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07182c">
-  <title>Szymon AI Coach PRO • v5.2.5-unique-app-file-cache-bypass-local</title>
+  <title>Szymon AI Coach PRO • v5.2.0-athlete-profile-context-ai-local</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=525-unique-app-file-cache-bypass">
+  <link rel="stylesheet" href="styles.css?v=520-athlete-profile-context-ai">
 </head>
 <body class="is-auth-checking">
   <section id="loginScreen" class="login-screen" hidden>
@@ -172,7 +172,7 @@
         </section>
         <section class="card settings-card">
           <h3>Status aplikacji</h3>
-          <div><span>Wersja</span><b>v5.2.5-unique-app-file-cache-bypass-local</b></div>
+          <div><span>Wersja</span><b>v5.2.0-athlete-profile-context-ai-local</b></div>
           <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
           <div><span>Sesja</span><b id="sessionStatus">brak sesji</b></div>
           <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -195,40 +195,6 @@
     </nav>
   </div>
 
-  <script>
-    // v5.2.5: wymuszamy ominięcie starego app.js przez nową nazwę pliku app-v525.js
-    // oraz czyścimy stare cache/service workery projektu.
-    (function(){
-      try{
-        var key = 'szymon_v525_cache_reset_done';
-        var shouldReload = false;
-        if('serviceWorker' in navigator){
-          navigator.serviceWorker.getRegistrations()
-            .then(function(regs){
-              if(regs && regs.length){ shouldReload = !sessionStorage.getItem(key); }
-              return Promise.all(regs.map(function(reg){ return reg.unregister(); }));
-            })
-            .then(function(){
-              if(window.caches){
-                return caches.keys().then(function(keys){
-                  return Promise.all(keys
-                    .filter(function(name){ return String(name).indexOf('szymon-ai-coach') !== -1; })
-                    .map(function(name){ return caches.delete(name); }));
-                });
-              }
-            })
-            .then(function(){
-              if(shouldReload){
-                sessionStorage.setItem(key, '1');
-                location.reload();
-              }
-            })
-            .catch(function(){});
-        }
-      }catch(e){}
-    })();
-  </script>
-
-<script src="app-v525.js?v=525-unique-app-file-cache-bypass"></script>
+  <script src="app.js?v=520-athlete-profile-context-ai"></script>
 </body>
 </html>
