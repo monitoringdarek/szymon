@@ -1,5 +1,5 @@
-// v5.2.4-cache-reset-status-local
-// Service worker celowo wyłączony w tej wersji, żeby przeglądarka nie trzymała starego app.js.
+// v5.2.5-unique-app-file-cache-bypass-local
+// Service worker celowo wyłączony. Ta wersja ma ominąć stare app.js przez app-v525.js.
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => {
   event.waitUntil(
