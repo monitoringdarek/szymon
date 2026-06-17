@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.2-run-curve-status-fix-local';
+const VERSION = 'v5.2.3-safe-load-status-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -705,36 +705,44 @@ async function loadActivityAnalysisContexts(){
 }
 
 async function loadAllData(){
+  lastReadAt = new Date();
+  renderConnectionStatus();
+  renderStatus();
+
   try{
     await refreshSession();
-    const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows] = await Promise.all([
-      loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
-      loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
-      loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
-      loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
-      loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
-      loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
-      loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
-      loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`),
-      loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
-    ]);
-
-    readiness = readinessRows[0] || null;
-    weekly = weeklyRows[0] || null;
-    latest = latestRows[0] || null;
-    cards = cardRows || [];
-    load28d = loadRows || [];
-    athleteThresholds = thresholdRows || [];
-    activityPowerIntervals = powerRows || [];
-    activityRunIntervals = runRows || [];
-    athleteProfileContext = profileRows || [];
-    activityContexts = await loadActivityAnalysisContexts();
   }catch(err){
-    console.error('Nie udało się odczytać danych Garmin PRO', err);
-  }finally{
-    lastReadAt = new Date();
-    renderAll();
+    console.warn('Nie udało się odświeżyć sesji — próbuję odczytu z aktualnym stanem sesji.', err);
   }
+
+  const readinessRows = await loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`);
+  const weeklyRows = await loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`);
+  const latestRows = await loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`);
+  const cardRows = await loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`);
+  const loadRows = await loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`);
+
+  readiness = readinessRows[0] || null;
+  weekly = weeklyRows[0] || null;
+  latest = latestRows[0] || null;
+  cards = cardRows || [];
+  load28d = loadRows || [];
+
+  renderAll();
+
+  // Dodatkowe dane AI są opcjonalne. Nie mogą blokować podstawowego statusu Garmin PRO.
+  const thresholdRows = await loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`);
+  const powerRows = await loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`);
+  const runRows = await loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`);
+  const profileRows = await loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`);
+
+  athleteThresholds = thresholdRows || [];
+  activityPowerIntervals = powerRows || [];
+  activityRunIntervals = runRows || [];
+  athleteProfileContext = profileRows || [];
+  activityContexts = await loadActivityAnalysisContexts();
+
+  lastReadAt = new Date();
+  renderAll();
 }
 
 function selectedActivity(){
@@ -2101,9 +2109,10 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=522-run-curve-status-fix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=523-safe-load-status').catch(() => {});
   }
-  if(loadSession() && await refreshSession()){
+
+  if(loadSession()){
     showApp();
     await loadAllData();
   }else{
