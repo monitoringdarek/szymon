@@ -1,4 +1,4 @@
-const VERSION = 'v5.3.0-compact-settings-thresholds-history-filter-local';
+const VERSION = 'v5.3.1-threshold-action-error-hotfix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -35,6 +35,9 @@ let activityRunIntervals = [];
 let athleteProfileContext = [];
 let athleteThresholdSuggestions = [];
 let thresholdActionBusy = false;
+let thresholdActionBusyId = '';
+let thresholdActionBusyDecision = '';
+let thresholdActionFeedback = null;
 let thresholdPanelOpen = false;
 let historySearchTerm = '';
 let historySportFilter = 'all';
@@ -671,14 +674,22 @@ function renderThresholdSuggestions(){
 
   if(!rows.length){
     listEl.innerHTML = '<div class="muted-card">Brak propozycji do decyzji. Automat nadal obserwuje dane.</div>';
-    statusEl.textContent = 'Brak aktywnych propozycji. Confirmed progi nie są nadpisywane automatycznie.';
-    statusEl.className = 'status ok';
+    if(thresholdActionFeedback){
+      statusEl.textContent = thresholdActionFeedback.text;
+      statusEl.className = `status ${thresholdActionFeedback.type}`;
+    }else{
+      statusEl.textContent = 'Brak aktywnych propozycji. Confirmed progi nie są nadpisywane automatycznie.';
+      statusEl.className = 'status ok';
+    }
     return;
   }
 
   listEl.innerHTML = rows.map(row => {
     const confidence = row.confidence || 'brak';
     const reason = row.reason || row.coach_comment || 'brak uzasadnienia';
+    const isBusyCard = thresholdActionBusy && String(thresholdActionBusyId) === String(row.id);
+    const approveLabel = isBusyCard && thresholdActionBusyDecision === 'approve' ? 'Przetwarzam…' : 'Akceptuj';
+    const rejectLabel = isBusyCard && thresholdActionBusyDecision === 'reject' ? 'Przetwarzam…' : 'Odrzuć';
     return `
       <article class="threshold-suggestion-card" data-suggestion-id="${escapeHtml(row.id)}">
         <div class="threshold-suggestion-top">
@@ -691,15 +702,20 @@ function renderThresholdSuggestions(){
         <div class="threshold-suggestion-value">${escapeHtml(thresholdSuggestionValue(row))}</div>
         <p class="threshold-suggestion-reason">${escapeHtml(reason)}</p>
         <div class="threshold-suggestion-actions">
-          <button class="primary-btn threshold-approve-btn" type="button" data-action="approve" ${thresholdActionBusy ? 'disabled' : ''}>Akceptuj</button>
-          <button class="secondary-btn threshold-reject-btn" type="button" data-action="reject" ${thresholdActionBusy ? 'disabled' : ''}>Odrzuć</button>
+          <button class="primary-btn threshold-approve-btn" type="button" data-action="approve" ${thresholdActionBusy ? 'disabled' : ''}>${approveLabel}</button>
+          <button class="secondary-btn threshold-reject-btn" type="button" data-action="reject" ${thresholdActionBusy ? 'disabled' : ''}>${rejectLabel}</button>
         </div>
       </article>
     `;
   }).join('');
 
-  statusEl.textContent = 'Propozycje czekają na decyzję. Akceptacja wpisze próg do profilu, odrzucenie tylko zamknie propozycję.';
-  statusEl.className = 'status warn';
+  if(thresholdActionFeedback){
+    statusEl.textContent = thresholdActionFeedback.text;
+    statusEl.className = `status ${thresholdActionFeedback.type}`;
+  }else{
+    statusEl.textContent = 'Propozycje czekają na decyzję. Akceptacja wpisze próg do profilu, odrzucenie tylko zamknie propozycję.';
+    statusEl.className = 'status warn';
+  }
 }
 
 async function decideThresholdSuggestion(id, decision){
@@ -714,6 +730,12 @@ async function decideThresholdSuggestion(id, decision){
   if(!window.confirm(message)) return;
 
   thresholdActionBusy = true;
+  thresholdActionBusyId = String(id);
+  thresholdActionBusyDecision = decision;
+  thresholdActionFeedback = {
+    type: 'info',
+    text: isApprove ? 'Przetwarzam akceptację propozycji progu…' : 'Przetwarzam odrzucenie propozycji progu…'
+  };
   renderThresholdSuggestions();
   try{
     await apiPost(isApprove ? APPROVE_THRESHOLD_RPC : REJECT_THRESHOLD_RPC, {
@@ -721,21 +743,21 @@ async function decideThresholdSuggestion(id, decision){
       p_decided_by: 'szymon_app',
       p_decision_note: isApprove ? 'Zaakceptowano w aplikacji Szymon AI Coach PRO.' : 'Odrzucono w aplikacji Szymon AI Coach PRO.'
     });
-    const status = $('thresholdSuggestionStatus');
-    if(status){
-      status.textContent = isApprove ? 'Zaakceptowano propozycję i odświeżam progi.' : 'Odrzucono propozycję i odświeżam listę.';
-      status.className = 'status ok';
-    }
+    thresholdActionFeedback = {
+      type: 'ok',
+      text: isApprove ? 'Zaakceptowano propozycję i odświeżono progi.' : 'Odrzucono propozycję i odświeżono listę.'
+    };
     await loadAllData();
   }catch(err){
-    const status = $('thresholdSuggestionStatus');
-    if(status){
-      status.textContent = `Nie udało się wykonać decyzji: ${String(err?.message || err).slice(0, 180)}`;
-      status.className = 'status bad';
-    }
+    thresholdActionFeedback = {
+      type: 'bad',
+      text: `Nie udało się wykonać decyzji: ${String(err?.message || err).slice(0, 220)}`
+    };
     console.warn('Błąd decyzji progu', err);
   }finally{
     thresholdActionBusy = false;
+    thresholdActionBusyId = '';
+    thresholdActionBusyDecision = '';
     renderThresholdSuggestions();
   }
 }
@@ -2375,7 +2397,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=530-compact-settings-thresholds-history-filter').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=531-threshold-action-error-hotfix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
