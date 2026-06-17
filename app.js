@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.0-athlete-profile-context-ai-local';
+const VERSION = 'v5.2.0.1-profile-context-null-fix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1108,6 +1108,7 @@ function avgPowerWatts(record){
 
 
 function sportGroupForRecord(record){
+  if(!record) return 'general';
   const sport = String(record?.sport_type || record?.activity_type || record?.event_name || '').toLowerCase();
   if(hasSegment(record, 'swim') && hasSegment(record, 'bike') && hasSegment(record, 'run')) return 'triathlon';
   if(hasSegment(record, 'bike') || sport.includes('bike') || sport.includes('cycl') || sport.includes('kolar')) return 'bike';
@@ -1128,7 +1129,7 @@ function profileValueText(row){
 }
 
 function thresholdProfileContextStatus(record){
-  const group = sportGroupForRecord(record);
+  const group = record ? sportGroupForRecord(record) : 'general';
   const rows = profileRowsForSportGroup(group);
   if(!rows.length){
     return {
@@ -1466,7 +1467,7 @@ function recoveryAfterText(record){
 }
 
 function segmentTypes(record){
-  return parseJsonArray(record.segments).map(segment => String(segment.segment_type || '').toLowerCase());
+  return parseJsonArray(record?.segments).map(segment => String(segment.segment_type || '').toLowerCase());
 }
 
 function hasSegment(record, type){
@@ -1474,7 +1475,7 @@ function hasSegment(record, type){
 }
 
 function segmentByType(record, type){
-  return parseJsonArray(record.segments).find(segment => String(segment.segment_type || '').toLowerCase() === type) || null;
+  return parseJsonArray(record?.segments).find(segment => String(segment.segment_type || '').toLowerCase() === type) || null;
 }
 
 function runHrText(record){
