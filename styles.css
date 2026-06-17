@@ -967,3 +967,28 @@ body.is-auth-checking .bottom-nav{display:none!important}
 .power-table td:last-child{
   border-radius:0 12px 12px 0;
 }
+
+
+/* v5.1.5 — Historia PRO: najpierw wniosek, mniej cyfr na ekranie */
+.power-coach-section{
+  order:-1;
+}
+.threshold-section{
+  opacity:.92;
+}
+.threshold-section p{
+  font-size:14px!important;
+  line-height:1.45!important;
+}
+.power-coach-part:first-child{
+  border-color:rgba(255,160,74,.36);
+  background:rgba(255,160,74,.08);
+}
+.power-coach-part:first-child p{
+  font-size:16px;
+  font-weight:900;
+  color:#ffffff;
+}
+.power-details summary{
+  min-height:42px;
+}

@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-514-readable-power-curve-ai';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-515-clean-history-power-ui';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=514-readable-power-curve-ai',
-  './app.js?v=514-readable-power-curve-ai',
+  './styles.css?v=515-clean-history-power-ui',
+  './app.js?v=515-clean-history-power-ui',
   './manifest.json'
 ];
 

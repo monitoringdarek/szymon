@@ -1,4 +1,4 @@
-const VERSION = 'v5.1.4-readable-power-curve-ai-local';
+const VERSION = 'v5.1.5-clean-history-power-ui-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1105,22 +1105,19 @@ function bikeThresholdInsight(record){
   const sport = String(record.sport_type || record.activity_type || '').toLowerCase();
   const hasBikeActivity = hasSegment(record, 'bike') || sport.includes('bike') || sport.includes('cycl') || sport.includes('triathlon');
   if(!hasBikeActivity) return '';
-  const np = bikeNpWatts(record);
-  const ftp = currentBikeFtp();
-  const eftp = currentBikeEftp();
-  const weight = currentBodyWeight();
-  const ftpW = thresholdValue(ftp);
-  const eftpW = thresholdValue(eftp);
-  const weightKg = thresholdValue(weight);
+
+  const ftpW = thresholdValue(currentBikeFtp());
+  const eftpW = thresholdValue(currentBikeEftp());
+  const weightKg = thresholdValue(currentBodyWeight());
+
   const parts = [];
-  if(ftpW != null) parts.push(`FTP robocze ${fmtNumber(ftpW)} W (${ftp.status || 'status brak'}, ${ftp.confidence || 'pewność brak'})`);
-  if(eftpW != null) parts.push(`eFTP obserwowane ${thresholdRangeText(eftp)} (${eftp.status || 'status brak'}, ${eftp.confidence || 'pewność brak'})`);
-  if(weightKg != null) parts.push(`masa robocza ${fmtNumber(weightKg, 1)} kg (${weight.status || 'status brak'})`);
-  if(np != null && ftpW != null) parts.push(`NP ${fmtNumber(np)} W = ${fmtNumber((np / ftpW) * 100)}% FTP ${fmtNumber(ftpW)} W`);
-  if(np != null && eftpW != null) parts.push(`NP ${fmtNumber(np)} W = ${fmtNumber((np / eftpW) * 100)}% eFTP ${fmtNumber(eftpW)} W`);
-  if(np != null && weightKg != null) parts.push(`NP/kg ${fmtNumber(np / weightKg, 2)} W/kg`);
+  if(ftpW != null) parts.push(`FTP ${fmtNumber(ftpW)} W`);
+  if(eftpW != null) parts.push(`eFTP ${fmtNumber(eftpW)} W`);
+  if(weightKg != null) parts.push(`masa ${fmtNumber(weightKg, 1)} kg`);
+
   if(!parts.length) return 'Profil progów Szymona: brak danych progowych dla roweru.';
-  return `Profil progów Szymona: ${parts.join('. ')}.`;
+
+  return `Progi użyte do analizy: ${parts.join(' · ')}. Szczegółowe przeliczenia są w sekcji Power curve.`;
 }
 
 
@@ -1700,7 +1697,7 @@ function renderPowerIntervals(rows, insight){
       </div>
 
       <details class="power-details">
-        <summary>Więcej szczegółów</summary>
+        <summary>Więcej szczegółów mocy</summary>
         <div class="power-table-wrap">
           <table class="power-table">
             <thead>
@@ -1728,9 +1725,9 @@ function renderActivityAiAnalysis(targetId, activity){
   const analysis = buildActivityAiAnalysis(activity);
   target.innerHTML = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
-    renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
     renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
+    renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
     renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
     renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
     renderSegmentCards(analysis.segmentCards),
