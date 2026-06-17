@@ -1273,3 +1273,103 @@ body.is-auth-checking .bottom-nav{display:none!important}
     grid-template-columns:1fr;
   }
 }
+
+/* v5.3.0 — compact settings thresholds + filtered history */
+.slim-control-card{
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:18px;
+}
+.history-tools{
+  border-color:rgba(57,200,255,.18);
+  background:linear-gradient(145deg,rgba(10,26,48,.88),rgba(5,14,28,.96));
+}
+.history-tools-row{
+  display:grid;
+  grid-template-columns:1.45fr .9fr;
+  gap:8px;
+  align-items:end;
+}
+.compact-field{
+  gap:5px;
+  font-size:12px;
+}
+.compact-field span{
+  color:var(--muted);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-weight:950;
+}
+.compact-field input,
+.compact-field select{
+  min-height:42px;
+  border:1px solid rgba(157,181,219,.24);
+  border-radius:14px;
+  background:#061327;
+  color:var(--text);
+  padding:0 11px;
+  outline:none;
+}
+.compact-field select{
+  appearance:none;
+}
+.compact-field input:focus,
+.compact-field select:focus{
+  border-color:rgba(57,200,255,.62);
+  box-shadow:0 0 0 3px rgba(57,200,255,.11);
+}
+.compact-toggle-btn{
+  width:100%;
+  min-height:42px;
+  margin-top:9px;
+  border-radius:14px;
+  font-size:13px;
+}
+.compact-history-list .activity-card{
+  padding:11px;
+  border-radius:16px;
+}
+.compact-history-list .activity-top h3{
+  font-size:16px;
+}
+.compact-history-list .activity-summary{
+  display:none;
+}
+.compact-history-list .activity-metrics{
+  margin-top:9px;
+}
+.compact-history-list .activity-metrics b{
+  padding:8px;
+  font-size:12px;
+}
+.compact-section-head{
+  margin-bottom:8px;
+}
+.compact-section-head h2{
+  font-size:20px;
+}
+.compact-help{
+  font-size:13px;
+  margin-bottom:10px!important;
+}
+.threshold-settings-card{
+  border-color:rgba(255,196,87,.26);
+}
+.threshold-suggestion-collapsible{
+  margin-top:12px;
+}
+.threshold-suggestion-collapsible .threshold-suggestion-list{
+  margin-top:0;
+}
+.threshold-settings-card #thresholdSuggestionCount{
+  border:1px solid rgba(255,196,87,.28);
+  border-radius:999px;
+  padding:6px 10px;
+  color:#ffe2a0;
+  background:rgba(255,196,87,.06);
+  white-space:nowrap;
+}
+@media(max-width:430px){
+  .history-tools-row{grid-template-columns:1fr}
+}

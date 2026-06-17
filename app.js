@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.9-threshold-decisions-panel-fix-local';
+const VERSION = 'v5.3.0-compact-settings-thresholds-history-filter-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -35,6 +35,10 @@ let activityRunIntervals = [];
 let athleteProfileContext = [];
 let athleteThresholdSuggestions = [];
 let thresholdActionBusy = false;
+let thresholdPanelOpen = false;
+let historySearchTerm = '';
+let historySportFilter = 'all';
+let historyShowAll = false;
 let activityContextStatus = 'idle';
 let lastReadAt = null;
 let selectedActivityKey = '';
@@ -762,13 +766,53 @@ function renderDashboard(){
   $('weekRun').textContent = `${fmtKm(weekly?.run_distance_km)} / ${fmtMin(weekly?.run_duration_min)}`;
   $('weekLoad').textContent = weekly?.total_training_load != null ? fmtNumber(weekly.total_training_load) : 'brak danych';
   renderActivityInto('latestActivity', latest);
-  renderThresholdSuggestions();
+}
+
+
+function historySportKey(item){
+  const raw = `${item?.sport_type || ''} ${item?.activity_type || ''} ${item?.event_name || ''}`.toLowerCase();
+  if(raw.includes('triathlon') || raw.includes('multi_sport') || raw.includes('multisport')) return 'triathlon';
+  if(raw.includes('swim') || raw.includes('pły') || raw.includes('ply')) return 'swim';
+  if(raw.includes('bike') || raw.includes('cycling') || raw.includes('rower')) return 'bike';
+  if(raw.includes('run') || raw.includes('bieg')) return 'run';
+  return 'other';
+}
+
+function historySearchBlob(item){
+  return [
+    item?.event_name,
+    item?.activity_name,
+    item?.sport_type,
+    item?.activity_type,
+    item?.workout_date,
+    fmtDate(item?.workout_date),
+    item?.auto_summary,
+    item?.segment_summary
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function filteredHistoryCards(){
+  const term = String(historySearchTerm || '').trim().toLowerCase();
+  return (Array.isArray(cards) ? cards : []).filter(item => {
+    const sportOk = historySportFilter === 'all' || historySportKey(item) === historySportFilter;
+    const termOk = !term || historySearchBlob(item).includes(term);
+    return sportOk && termOk;
+  });
 }
 
 function renderHistory(){
-  $('historyStatus').textContent = cards.length ? `Aktywności Garmin PRO: ${cards.length}` : 'Brak danych Garmin PRO.';
-  $('historyStatus').className = `status ${cards.length ? 'ok' : 'warn'}`;
-  $('activityList').innerHTML = cards.length ? cards.map(historyActivityHtml).join('') : '<div class="muted-card">Brak danych Garmin PRO.</div>';
+  const allCount = Array.isArray(cards) ? cards.length : 0;
+  const filtered = filteredHistoryCards();
+  const hasActiveFilter = Boolean(String(historySearchTerm || '').trim()) || historySportFilter !== 'all';
+  const visible = historyShowAll || hasActiveFilter ? filtered : filtered.slice(0, 6);
+  $('historyStatus').textContent = allCount ? `Aktywności Garmin PRO: ${visible.length}/${filtered.length} pokazane · razem ${allCount}` : 'Brak danych Garmin PRO.';
+  $('historyStatus').className = `status ${allCount ? 'ok' : 'warn'}`;
+  const moreBtn = $('historyShowMoreBtn');
+  if(moreBtn){
+    moreBtn.hidden = hasActiveFilter || filtered.length <= 6;
+    moreBtn.textContent = historyShowAll ? 'Ukryj starsze aktywności' : `Pokaż więcej aktywności (${filtered.length - 6})`;
+  }
+  $('activityList').innerHTML = visible.length ? visible.map(historyActivityHtml).join('') : '<div class="muted-card">Brak aktywności dla wybranego filtra.</div>';
   renderActivityDetails();
 }
 
@@ -794,6 +838,15 @@ function renderSettings(){
   const statusEntries = [...Object.entries(viewState), ['activityContext', activityContextStatus]];
   $('viewStatusList').innerHTML = statusEntries.map(([key, value]) => `<li><span>${escapeHtml(viewLabel(key))}</span><b>${escapeHtml(viewStatusText(value))}</b></li>`).join('');
   $('userStatus').textContent = user?.email || 'brak danych';
+  const panel = $('thresholdSuggestionPanel');
+  const toggle = $('toggleThresholdSuggestionsBtn');
+  if(panel) panel.hidden = !thresholdPanelOpen;
+  if(toggle){
+    toggle.setAttribute('aria-expanded', thresholdPanelOpen ? 'true' : 'false');
+    const count = Array.isArray(athleteThresholdSuggestions) ? athleteThresholdSuggestions.length : 0;
+    toggle.textContent = thresholdPanelOpen ? 'Zwiń propozycje progów' : (count ? `Sprawdź progi (${count})` : 'Sprawdź progi');
+  }
+  renderThresholdSuggestions();
 }
 
 function renderStatus(){
@@ -2262,6 +2315,29 @@ function bindEvents(){
   $('logoutBtn').addEventListener('click', signOut);
   $('refreshBtn').addEventListener('click', loadAllData);
   $('backToHistoryBtn').addEventListener('click', closeActivityDetails);
+  const historySearch = $('historySearchInput');
+  if(historySearch){
+    historySearch.addEventListener('input', event => {
+      historySearchTerm = event.target.value || '';
+      historyShowAll = false;
+      renderHistory();
+    });
+  }
+  const historyFilter = $('historySportFilter');
+  if(historyFilter){
+    historyFilter.addEventListener('change', event => {
+      historySportFilter = event.target.value || 'all';
+      historyShowAll = false;
+      renderHistory();
+    });
+  }
+  const historyMoreBtn = $('historyShowMoreBtn');
+  if(historyMoreBtn){
+    historyMoreBtn.addEventListener('click', () => {
+      historyShowAll = !historyShowAll;
+      renderHistory();
+    });
+  }
   $('activityList').addEventListener('click', event => {
     const card = event.target.closest('[data-activity-key]');
     if(card) openActivityDetails(card.dataset.activityKey);
@@ -2274,6 +2350,17 @@ function bindEvents(){
       openActivityDetails(card.dataset.activityKey);
     }
   });
+  const toggleThresholdBtn = $('toggleThresholdSuggestionsBtn');
+  if(toggleThresholdBtn){
+    toggleThresholdBtn.addEventListener('click', () => {
+      thresholdPanelOpen = !thresholdPanelOpen;
+      renderSettings();
+      if(thresholdPanelOpen){
+        const panel = $('thresholdSuggestionPanel');
+        if(panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  }
   const suggestionList = $('thresholdSuggestionList');
   if(suggestionList){
     suggestionList.addEventListener('click', handleThresholdSuggestionClick);
@@ -2288,7 +2375,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=529-threshold-decisions-panel-fix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=530-compact-settings-thresholds-history-filter').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
