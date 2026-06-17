@@ -1157,3 +1157,39 @@ body.is-auth-checking .bottom-nav{display:none!important}
 .run-table td:last-child{
   border-radius:0 12px 12px 0;
 }
+
+
+/* v5.2.1.2 — krótszy widok analizy: reszta pod jednym przyciskiem */
+.analysis-full-details{
+  margin-top:12px;
+  border:1px solid rgba(151,176,214,.18);
+  border-radius:18px;
+  background:rgba(0,0,0,.14);
+  overflow:hidden;
+}
+.analysis-full-details > summary{
+  cursor:pointer;
+  padding:15px 16px;
+  color:#f4f8ff;
+  font-weight:900;
+  list-style:none;
+}
+.analysis-full-details > summary::-webkit-details-marker{
+  display:none;
+}
+.analysis-full-details > summary::after{
+  content:'＋';
+  float:right;
+  color:#aab8ce;
+}
+.analysis-full-details[open] > summary::after{
+  content:'−';
+}
+.analysis-full-details-body{
+  display:grid;
+  gap:12px;
+  padding:0 10px 12px;
+}
+.analysis-full-details-body .analysis-section{
+  margin:0;
+}
