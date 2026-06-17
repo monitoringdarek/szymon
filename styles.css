@@ -878,3 +878,92 @@ body.is-auth-checking .bottom-nav{display:none!important}
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* v5.1.4 — czytelny wniosek trenerski z power curve */
+.power-coach-section{
+  border-color:rgba(84,177,255,.32)!important;
+  background:linear-gradient(180deg, rgba(84,177,255,.075), rgba(84,177,255,.035))!important;
+}
+.power-coach-card{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.power-coach-part{
+  border:1px solid rgba(151,176,214,.15);
+  border-radius:16px;
+  background:rgba(0,0,0,.14);
+  padding:13px 14px;
+}
+.power-coach-part b{
+  display:block;
+  margin-bottom:6px;
+  color:#dceaff;
+  font-size:12px;
+  line-height:1.1;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.power-coach-part p{
+  margin:0;
+  color:#f7fbff;
+  font-size:15px;
+  line-height:1.45;
+}
+.power-details{
+  margin-top:12px;
+  border:1px solid rgba(151,176,214,.16);
+  border-radius:16px;
+  background:rgba(0,0,0,.12);
+  overflow:hidden;
+}
+.power-details summary{
+  cursor:pointer;
+  padding:13px 14px;
+  color:#dceaff;
+  font-weight:900;
+  list-style:none;
+}
+.power-details summary::-webkit-details-marker{
+  display:none;
+}
+.power-details summary::after{
+  content:'＋';
+  float:right;
+  color:#aab8ce;
+}
+.power-details[open] summary::after{
+  content:'−';
+}
+.power-table-wrap{
+  overflow-x:auto;
+  padding:0 10px 12px;
+}
+.power-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 7px;
+  min-width:560px;
+}
+.power-table th{
+  padding:0 10px 4px;
+  color:#93a4bc;
+  font-size:11px;
+  text-align:left;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.power-table td{
+  padding:10px;
+  background:rgba(255,255,255,.04);
+  color:#f4f8ff;
+  font-size:13px;
+}
+.power-table td:first-child{
+  border-radius:12px 0 0 12px;
+  font-weight:900;
+}
+.power-table td:last-child{
+  border-radius:0 12px 12px 0;
+}

@@ -1,4 +1,4 @@
-const VERSION = 'v5.1.3-power-intervals-ai-local';
+const VERSION = 'v5.1.4-readable-power-curve-ai-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1156,19 +1156,64 @@ function keyPowerInterval(rows){
     || null;
 }
 
+function powerSignalType(row){
+  const pct = Number(row?.pct_ftp);
+  const sec = Number(row?.target_sec);
+  if(Number.isFinite(sec) && sec >= 900) return 'próg / FTP';
+  if(Number.isFinite(pct) && pct >= 130) return 'VO2 Max';
+  if(Number.isFinite(pct) && pct >= 110) return 'praca powyżej progu';
+  if(Number.isFinite(pct) && pct >= 95) return 'okolice progu';
+  return 'kontrolowany bodziec tlenowy';
+}
+
+function powerCoachTexts(row){
+  if(!row){
+    return {
+      signal: 'brak danych',
+      interpretation: 'Brak zapisanych interwałów mocy dla tej aktywności.',
+      meaning: 'Bez danych mocy AI nie ocenia power curve.'
+    };
+  }
+
+  const label = powerIntervalLabel(row.interval_type, row.target_sec).replace('Najlepsze ', '');
+  const watts = row.avg_power_w != null ? `${fmtNumber(row.avg_power_w)} W` : 'brak danych';
+  const pctFtp = row.pct_ftp != null ? `${fmtNumber(row.pct_ftp)}% FTP` : 'brak % FTP';
+  const ftp = row.ftp_w != null ? fmtNumber(row.ftp_w) : 'brak';
+  const eftp = row.eftp_w != null ? fmtNumber(row.eftp_w) : 'brak';
+  const signalType = powerSignalType(row);
+
+  let interpretation;
+  if(signalType === 'VO2 Max'){
+    interpretation = `To był mocny bodziec VO2 Max. Szymon jechał wyraźnie powyżej starego FTP ${ftp} W${row.eftp_w != null ? ` i także powyżej obserwowanego eFTP ${eftp} W` : ''}.`;
+  }else if(signalType === 'praca powyżej progu'){
+    interpretation = 'To była praca powyżej progu. Nie jest to spokojny rower — odcinek pokazuje realny bodziec jakościowy.';
+  }else if(signalType === 'próg / FTP'){
+    interpretation = 'To jest sygnał progu/FTP. Odcinek 20 minut pomaga ocenić, czy aktualne FTP/eFTP nadal pasuje do zawodnika.';
+  }else if(signalType === 'okolice progu'){
+    interpretation = 'To była praca blisko progu. Dobry sygnał kontroli tempa, ale bez tak dużego kosztu jak VO2 Max.';
+  }else{
+    interpretation = 'To wygląda na kontrolowany bodziec tlenowy. Power curve nie pokazuje bardzo mocnego odcinka ponad progiem.';
+  }
+
+  const meaning = signalType === 'VO2 Max'
+    ? 'Forma rowerowa idzie w górę, ale taki bodziec ma koszt regeneracyjny.'
+    : signalType === 'próg / FTP'
+      ? 'Ten odcinek jest ważny do oceny FTP/eFTP i tempa pod dłuższy wysiłek.'
+      : 'To pomaga ocenić jakość roweru bez zalewania ekranu wszystkimi liczbami.';
+
+  return {
+    signal: `${label} — ${watts} — ${pctFtp}`,
+    interpretation,
+    meaning
+  };
+}
+
 function powerIntervalInsight(record){
   const rows = powerIntervalsForActivity(record);
   if(!rows.length) return '';
   const key = keyPowerInterval(rows);
-  if(!key) return '';
-  const label = powerIntervalLabel(key.interval_type, key.target_sec).replace('Najlepsze ', '');
-  const watts = key.avg_power_w != null ? `${fmtNumber(key.avg_power_w)} W` : 'brak danych';
-  const ftp = key.pct_ftp != null ? `${fmtNumber(key.pct_ftp)}% FTP` : '';
-  const eftp = key.pct_eftp != null ? `${fmtNumber(key.pct_eftp)}% eFTP` : '';
-  const wkg = key.w_per_kg != null ? `${fmtNumber(key.w_per_kg, 2)} W/kg` : '';
-  const hr = key.avg_hr != null ? `HR ${fmtNumber(key.avg_hr)}` : '';
-  const extras = [ftp, eftp, wkg, hr].filter(Boolean).join(', ');
-  return `Najmocniejszy odcinek z power curve: ${label} ${watts}${extras ? ` (${extras})` : ''}.`;
+  const texts = powerCoachTexts(key);
+  return `Najmocniejszy sygnał: ${texts.signal}. ${texts.interpretation} Znaczenie: ${texts.meaning}`;
 }
 
 
@@ -1616,22 +1661,64 @@ function renderRawSummary(text){
 
 
 function renderPowerIntervals(rows, insight){
-  if(!rows || !rows.length){
-    return renderAnalysisBlock('Power curve / interwały mocy', insight || 'Brak zapisanych interwałów mocy dla tej aktywności.', 'power-section');
-  }
-  const cards = rows.map(row => {
-    const label = powerIntervalLabel(row.interval_type, row.target_sec);
-    const pieces = [
-      row.avg_power_w != null ? `<div><span>Moc śr.</span><b>${escapeHtml(fmtNumber(row.avg_power_w))} W</b></div>` : '',
-      row.max_power_w != null ? `<div><span>Max</span><b>${escapeHtml(fmtNumber(row.max_power_w))} W</b></div>` : '',
-      row.pct_ftp != null ? `<div><span>% FTP</span><b>${escapeHtml(fmtNumber(row.pct_ftp))}%</b></div>` : '',
-      row.pct_eftp != null ? `<div><span>% eFTP</span><b>${escapeHtml(fmtNumber(row.pct_eftp))}%</b></div>` : '',
-      row.w_per_kg != null ? `<div><span>W/kg</span><b>${escapeHtml(fmtNumber(row.w_per_kg, 2))}</b></div>` : '',
-      row.avg_hr != null ? `<div><span>HR</span><b>${escapeHtml(fmtNumber(row.avg_hr))}</b></div>` : ''
-    ].filter(Boolean).join('');
-    return `<article class="power-interval-card"><h4>${escapeHtml(label)}</h4>${pieces}</article>`;
+  if(!rows || !rows.length) return '';
+
+  const key = keyPowerInterval(rows);
+  const texts = powerCoachTexts(key);
+
+  const detailRows = rows.map(row => {
+    const cells = [
+      `<td>${escapeHtml(powerIntervalLabel(row.interval_type, row.target_sec).replace('Najlepsze ', ''))}</td>`,
+      `<td>${row.avg_power_w != null ? `${escapeHtml(fmtNumber(row.avg_power_w))} W` : 'brak'}</td>`,
+      `<td>${row.pct_ftp != null ? `${escapeHtml(fmtNumber(row.pct_ftp))}%` : 'brak'}</td>`,
+      `<td>${row.pct_eftp != null ? `${escapeHtml(fmtNumber(row.pct_eftp))}%` : 'brak'}</td>`,
+      `<td>${row.w_per_kg != null ? escapeHtml(fmtNumber(row.w_per_kg, 2)) : 'brak'}</td>`,
+      `<td>${row.avg_hr != null ? escapeHtml(fmtNumber(row.avg_hr)) : 'brak'}</td>`
+    ].join('');
+    return `<tr>${cells}</tr>`;
   }).join('');
-  return `<section class="analysis-section power-section"><span>Power curve / interwały mocy</span><p>${escapeHtml(insight || 'Interwały policzone z raw_details Garmin.')}</p><div class="power-interval-grid">${cards}</div></section>`;
+
+  return `
+    <section class="analysis-section power-coach-section">
+      <span>Power curve — wniosek trenerski</span>
+
+      <div class="power-coach-card">
+        <div class="power-coach-part">
+          <b>Najmocniejszy sygnał</b>
+          <p>${escapeHtml(texts.signal)}</p>
+        </div>
+
+        <div class="power-coach-part">
+          <b>Interpretacja</b>
+          <p>${escapeHtml(texts.interpretation)}</p>
+        </div>
+
+        <div class="power-coach-part">
+          <b>Znaczenie</b>
+          <p>${escapeHtml(texts.meaning)}</p>
+        </div>
+      </div>
+
+      <details class="power-details">
+        <summary>Więcej szczegółów</summary>
+        <div class="power-table-wrap">
+          <table class="power-table">
+            <thead>
+              <tr>
+                <th>Odcinek</th>
+                <th>Moc</th>
+                <th>FTP</th>
+                <th>eFTP</th>
+                <th>W/kg</th>
+                <th>HR</th>
+              </tr>
+            </thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  `;
 }
 
 
