@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.1-run-curve-ai-local';
+const VERSION = 'v5.2.2-run-curve-status-fix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -542,22 +542,35 @@ function viewStatusText(value){
   return 'brak danych';
 }
 
+function coreViewKeys(){
+  return ['readiness', 'weekly', 'latest', 'cards', 'load28d'];
+}
+
+function optionalViewKeys(){
+  return ['thresholds', 'powerIntervals', 'runIntervals', 'thresholdProfileContext'];
+}
+
 function allViewsOk(){
-  return Object.values(viewState).every(value => value === 'ok');
+  return coreViewKeys().every(key => viewState[key] === 'ok');
 }
 
 function anyViewError(){
-  return Object.values(viewState).some(value => value === 'error');
+  return coreViewKeys().some(key => viewState[key] === 'error');
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length);
+  return Boolean(readiness || weekly || latest || cards.length || load28d.length);
+}
+
+function anyOptionalData(){
+  return Boolean(athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length);
 }
 
 function garminOverallStatus(){
   if(anyViewError()) return 'problem';
-  if(allViewsOk() && anyUsefulData()) return 'dane OK';
-  if(Object.values(viewState).some(value => value === 'loading')) return 'ładowanie';
+  if(anyUsefulData()) return 'dane OK';
+  if(coreViewKeys().some(key => viewState[key] === 'loading')) return 'ładowanie';
+  if(optionalViewKeys().some(key => viewState[key] === 'loading')) return 'ładowanie';
   return 'brak danych';
 }
 
@@ -692,30 +705,36 @@ async function loadActivityAnalysisContexts(){
 }
 
 async function loadAllData(){
-  await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows] = await Promise.all([
-    loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
-    loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
-    loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
-    loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
-    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
-    loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
-    loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
-    loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`),
-    loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
-  ]);
-  readiness = readinessRows[0] || null;
-  weekly = weeklyRows[0] || null;
-  latest = latestRows[0] || null;
-  cards = cardRows;
-  load28d = loadRows;
-  athleteThresholds = thresholdRows;
-  activityPowerIntervals = powerRows;
-  activityRunIntervals = runRows;
-  athleteProfileContext = profileRows;
-  activityContexts = await loadActivityAnalysisContexts();
-  lastReadAt = new Date();
-  renderAll();
+  try{
+    await refreshSession();
+    const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows] = await Promise.all([
+      loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
+      loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
+      loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
+      loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
+      loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
+      loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
+      loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
+      loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`),
+      loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
+    ]);
+
+    readiness = readinessRows[0] || null;
+    weekly = weeklyRows[0] || null;
+    latest = latestRows[0] || null;
+    cards = cardRows || [];
+    load28d = loadRows || [];
+    athleteThresholds = thresholdRows || [];
+    activityPowerIntervals = powerRows || [];
+    activityRunIntervals = runRows || [];
+    athleteProfileContext = profileRows || [];
+    activityContexts = await loadActivityAnalysisContexts();
+  }catch(err){
+    console.error('Nie udało się odczytać danych Garmin PRO', err);
+  }finally{
+    lastReadAt = new Date();
+    renderAll();
+  }
 }
 
 function selectedActivity(){
@@ -2082,7 +2101,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=511-athlete-thresholds-ai').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=522-run-curve-status-fix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
