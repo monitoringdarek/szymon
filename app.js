@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.7-threshold-decisions-local';
+const VERSION = 'v5.2.8-threshold-decisions-swim-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -2288,7 +2288,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=527-threshold-decisions').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=528-threshold-decisions-swim').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
