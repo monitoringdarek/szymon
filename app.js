@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.1.1-run-curve-from-stable-local';
+const VERSION = 'v5.2.1.2-compact-analysis-details-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1982,14 +1982,10 @@ function renderPowerIntervals(rows, insight){
 }
 
 
-function renderActivityAiAnalysis(targetId, activity){
-  const target = $(targetId);
-  if(!target) return;
-  const analysis = buildActivityAiAnalysis(activity);
-  target.innerHTML = [
+
+function renderFullAnalysisDetails(analysis){
+  const content = [
     renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
-    renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
-    renderRunIntervals(analysis.runIntervals, analysis.runInsight),
     renderThresholdProfileContext(analysis.profileContextStatus),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
     renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
@@ -2004,6 +2000,34 @@ function renderActivityAiAnalysis(targetId, activity){
     renderAnalysisBlock('Zalecenie', analysis.recovery, 'recommendation-section'),
     renderFactsBlock(analysis.facts),
     renderRawSummary(analysis.rawSummary)
+  ].filter(Boolean).join('');
+
+  return `
+    <details class="analysis-full-details">
+      <summary>Więcej szczegółów analizy AI</summary>
+      <div class="analysis-full-details-body">${content}</div>
+    </details>
+  `;
+}
+
+
+function renderActivityAiAnalysis(targetId, activity){
+  const target = $(targetId);
+  if(!target) return;
+  const analysis = buildActivityAiAnalysis(activity);
+
+  const topCards = [
+    renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
+    renderRunIntervals(analysis.runIntervals, analysis.runInsight)
+  ].filter(Boolean);
+
+  const visibleSummary = topCards.length
+    ? topCards.join('')
+    : renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section');
+
+  target.innerHTML = [
+    visibleSummary,
+    renderFullAnalysisDetails(analysis)
   ].join('');
 }
 
