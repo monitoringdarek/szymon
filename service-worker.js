@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-5201-profile-context-null-fix';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-5211-run-curve-from-stable';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=5201-profile-context-null-fix',
-  './app.js?v=5201-profile-context-null-fix',
+  './styles.css?v=5211-run-curve-from-stable',
+  './app.js?v=5211-run-curve-from-stable',
   './manifest.json'
 ];
 
