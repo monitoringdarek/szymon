@@ -1,4 +1,4 @@
-const VERSION = 'v5.2.1.2-compact-analysis-details-local';
+const VERSION = 'v5.2.7-threshold-decisions-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -14,6 +14,9 @@ const ATHLETE_THRESHOLDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_current_thr
 const ATHLETE_PROFILE_CONTEXT_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_threshold_profile_context`;
 const POWER_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_power_intervals`;
 const RUN_INTERVALS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_run_intervals`;
+const THRESHOLD_SUGGESTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/athlete_threshold_suggestions_context`;
+const APPROVE_THRESHOLD_RPC = `${SUPABASE_URL}/rest/v1/rpc/approve_threshold_suggestion`;
+const REJECT_THRESHOLD_RPC = `${SUPABASE_URL}/rest/v1/rpc/reject_threshold_suggestion`;
 const AUTH_TOKEN_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 const AUTH_REFRESH_ENDPOINT = `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`;
 const AUTH_LOGOUT_ENDPOINT = `${SUPABASE_URL}/auth/v1/logout`;
@@ -30,6 +33,8 @@ let athleteThresholds = [];
 let activityPowerIntervals = [];
 let activityRunIntervals = [];
 let athleteProfileContext = [];
+let athleteThresholdSuggestions = [];
+let thresholdActionBusy = false;
 let activityContextStatus = 'idle';
 let lastReadAt = null;
 let selectedActivityKey = '';
@@ -42,7 +47,8 @@ let viewState = {
   thresholds: 'idle',
   powerIntervals: 'idle',
   thresholdProfileContext: 'idle',
-  runIntervals: 'idle'
+  runIntervals: 'idle',
+  thresholdSuggestions: 'idle'
 };
 let aiMode = 'plan';
 let loginAttemptId = 0;
@@ -71,6 +77,22 @@ async function apiGet(url){
   const response = await fetch(url, { method: 'GET', headers: authHeaders() });
   if(!response.ok) throw new Error(`GET ${response.status}`);
   return response.json();
+}
+
+async function apiPost(url, payload = {}){
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  const text = await response.text();
+  if(!response.ok) throw new Error(text || `POST ${response.status}`);
+  if(!text) return null;
+  try{
+    return JSON.parse(text);
+  }catch{
+    return text;
+  }
 }
 
 function saveSession(nextSession){
@@ -417,7 +439,7 @@ function extractSegmentLine(item, segment){
 }
 
 function analysisContext(){
-  return { readiness, weekly, load28d, activityContexts, activityContextStatus, athleteThresholds };
+  return { readiness, weekly, load28d, activityContexts, activityContextStatus, athleteThresholds, athleteThresholdSuggestions };
 }
 
 function escapeHtml(value){
@@ -530,7 +552,8 @@ function viewLabel(key){
     thresholds: 'athlete_current_thresholds',
     powerIntervals: 'garmin_activity_power_intervals',
     thresholdProfileContext: 'athlete_threshold_profile_context',
-    runIntervals: 'garmin_activity_run_intervals'
+    runIntervals: 'garmin_activity_run_intervals',
+    thresholdSuggestions: 'threshold_suggestions'
   }[key] || key;
 }
 
@@ -551,7 +574,7 @@ function anyViewError(){
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length);
+  return Boolean(readiness || weekly || latest || cards.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length || athleteThresholdSuggestions.length);
 }
 
 function garminOverallStatus(){
@@ -572,6 +595,155 @@ function renderConnectionStatus(){
   if(readLabel) readLabel.textContent = `Ostatni odczyt: ${lastReadAt ? fmtClock(lastReadAt) : 'brak danych'}`;
 }
 
+
+function thresholdSuggestionTitle(row){
+  const type = String(row?.threshold_type || '');
+  const map = {
+    bike_threshold_hr_bpm: 'Rower — HR progowe',
+    eftp_bike_observed: 'Rower — eFTP',
+    ftp_bike_declared_old: 'Rower — FTP',
+    run_threshold_pace_sec_per_km: 'Bieg — tempo progowe',
+    run_threshold_hr_bpm: 'Bieg — HR progowe',
+    swim_css_sec_per_100m: 'Pływanie — CSS',
+    swim_threshold_pace_sec_per_100m: 'Pływanie — tempo progowe',
+    swim_race_pace_sec_per_100m: 'Pływanie — tempo startowe',
+    body_weight_estimated: 'Profil — masa ciała',
+    hr_max_observed_bpm: 'Profil — HR max',
+    resting_hr_observed_bpm: 'Profil — resting HR'
+  };
+  return map[type] || `${String(row?.sport || 'profil').toUpperCase()} — ${type || 'próg'}`;
+}
+
+function thresholdSuggestionValue(row){
+  if(!row) return 'brak danych';
+  const unit = String(row.unit || '').trim();
+  const working = row.suggested_value_working;
+  const min = row.suggested_value_min;
+  const max = row.suggested_value_max;
+  if(unit === 'sec/km'){
+    const main = paceTextFromSec(working);
+    const range = min != null || max != null ? `zakres ${paceTextFromSec(min)} – ${paceTextFromSec(max)}` : '';
+    return [main, range].filter(Boolean).join(' · ');
+  }
+  if(unit === 'sec/100m'){
+    const fmt = value => {
+      const n = Number(value);
+      if(!Number.isFinite(n)) return 'brak danych';
+      const rounded = Math.round(n);
+      return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, '0')}/100m`;
+    };
+    const main = fmt(working);
+    const range = min != null || max != null ? `zakres ${fmt(min)} – ${fmt(max)}` : '';
+    return [main, range].filter(Boolean).join(' · ');
+  }
+  const digits = unit === 'kg' ? 1 : 0;
+  const main = `${fmtNumber(working, digits)} ${unit}`.trim();
+  const range = min != null || max != null ? `zakres ${fmtNumber(min, digits)} – ${fmtNumber(max, digits)} ${unit}`.trim() : '';
+  return [main, range].filter(Boolean).join(' · ');
+}
+
+function renderThresholdSuggestions(){
+  const countEl = $('thresholdSuggestionCount');
+  const listEl = $('thresholdSuggestionList');
+  const statusEl = $('thresholdSuggestionStatus');
+  if(!countEl || !listEl || !statusEl) return;
+
+  const rows = Array.isArray(athleteThresholdSuggestions) ? athleteThresholdSuggestions : [];
+  countEl.textContent = rows.length ? `${rows.length} pending` : 'brak pending';
+
+  if(viewState.thresholdSuggestions === 'loading'){
+    listEl.innerHTML = '<div class="muted-card">Pobieram propozycje progów...</div>';
+    statusEl.textContent = 'Ładowanie propozycji progów.';
+    statusEl.className = 'status info';
+    return;
+  }
+
+  if(viewState.thresholdSuggestions === 'error'){
+    listEl.innerHTML = '<div class="muted-card">Nie udało się pobrać propozycji progów.</div>';
+    statusEl.textContent = 'Błąd odczytu athlete_threshold_suggestions_context.';
+    statusEl.className = 'status bad';
+    return;
+  }
+
+  if(!rows.length){
+    listEl.innerHTML = '<div class="muted-card">Brak propozycji do decyzji. Automat nadal obserwuje dane.</div>';
+    statusEl.textContent = 'Brak aktywnych propozycji. Confirmed progi nie są nadpisywane automatycznie.';
+    statusEl.className = 'status ok';
+    return;
+  }
+
+  listEl.innerHTML = rows.map(row => {
+    const confidence = row.confidence || 'brak';
+    const reason = row.reason || row.coach_comment || 'brak uzasadnienia';
+    return `
+      <article class="threshold-suggestion-card" data-suggestion-id="${escapeHtml(row.id)}">
+        <div class="threshold-suggestion-top">
+          <div>
+            <h3>${escapeHtml(thresholdSuggestionTitle(row))}</h3>
+            <p>${escapeHtml(row.ai_decision_note || 'Propozycja czeka na akceptację.')}</p>
+          </div>
+          <span>${escapeHtml(confidence)}</span>
+        </div>
+        <div class="threshold-suggestion-value">${escapeHtml(thresholdSuggestionValue(row))}</div>
+        <p class="threshold-suggestion-reason">${escapeHtml(reason)}</p>
+        <div class="threshold-suggestion-actions">
+          <button class="primary-btn threshold-approve-btn" type="button" data-action="approve" ${thresholdActionBusy ? 'disabled' : ''}>Akceptuj</button>
+          <button class="secondary-btn threshold-reject-btn" type="button" data-action="reject" ${thresholdActionBusy ? 'disabled' : ''}>Odrzuć</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  statusEl.textContent = 'Propozycje czekają na decyzję. Akceptacja wpisze próg do profilu, odrzucenie tylko zamknie propozycję.';
+  statusEl.className = 'status warn';
+}
+
+async function decideThresholdSuggestion(id, decision){
+  const suggestion = athleteThresholdSuggestions.find(item => String(item.id) === String(id));
+  if(!suggestion || thresholdActionBusy) return;
+  const isApprove = decision === 'approve';
+  const title = thresholdSuggestionTitle(suggestion);
+  const value = thresholdSuggestionValue(suggestion);
+  const message = isApprove
+    ? `Zaakceptować propozycję progu?\n\n${title}\n${value}\n\nPo akceptacji próg zostanie wpisany do profilu.`
+    : `Odrzucić propozycję progu?\n\n${title}\n${value}\n\nPropozycja zostanie oznaczona jako rejected.`;
+  if(!window.confirm(message)) return;
+
+  thresholdActionBusy = true;
+  renderThresholdSuggestions();
+  try{
+    await apiPost(isApprove ? APPROVE_THRESHOLD_RPC : REJECT_THRESHOLD_RPC, {
+      p_suggestion_id: id,
+      p_decided_by: 'szymon_app',
+      p_decision_note: isApprove ? 'Zaakceptowano w aplikacji Szymon AI Coach PRO.' : 'Odrzucono w aplikacji Szymon AI Coach PRO.'
+    });
+    const status = $('thresholdSuggestionStatus');
+    if(status){
+      status.textContent = isApprove ? 'Zaakceptowano propozycję i odświeżam progi.' : 'Odrzucono propozycję i odświeżam listę.';
+      status.className = 'status ok';
+    }
+    await loadAllData();
+  }catch(err){
+    const status = $('thresholdSuggestionStatus');
+    if(status){
+      status.textContent = `Nie udało się wykonać decyzji: ${String(err?.message || err).slice(0, 180)}`;
+      status.className = 'status bad';
+    }
+    console.warn('Błąd decyzji progu', err);
+  }finally{
+    thresholdActionBusy = false;
+    renderThresholdSuggestions();
+  }
+}
+
+function handleThresholdSuggestionClick(event){
+  const button = event.target.closest('[data-action]');
+  if(!button) return;
+  const card = event.target.closest('[data-suggestion-id]');
+  if(!card) return;
+  decideThresholdSuggestion(card.dataset.suggestionId, button.dataset.action);
+}
+
 function renderDashboard(){
   const decision = readinessDecision();
   $('todayDecision').textContent = decision.decision;
@@ -590,6 +762,7 @@ function renderDashboard(){
   $('weekRun').textContent = `${fmtKm(weekly?.run_distance_km)} / ${fmtMin(weekly?.run_duration_min)}`;
   $('weekLoad').textContent = weekly?.total_training_load != null ? fmtNumber(weekly.total_training_load) : 'brak danych';
   renderActivityInto('latestActivity', latest);
+  renderThresholdSuggestions();
 }
 
 function renderHistory(){
@@ -630,7 +803,8 @@ function renderStatus(){
     latest: 'ostatnia aktywność',
     cards: 'historia',
     load28d: 'load 28d',
-    thresholds: 'progi Szymona'
+    thresholds: 'progi Szymona',
+    thresholdSuggestions: 'propozycje progów'
   };
   const failed = Object.entries(viewState).filter(([, value]) => value === 'error').map(([key]) => labels[key]);
   const loading = Object.values(viewState).some(value => value === 'loading');
@@ -693,7 +867,7 @@ async function loadActivityAnalysisContexts(){
 
 async function loadAllData(){
   await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows] = await Promise.all([
+  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows, suggestionRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
@@ -702,7 +876,8 @@ async function loadAllData(){
     loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
     loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
     loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`),
-    loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`)
+    loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`),
+    loadOne('thresholdSuggestions', `${THRESHOLD_SUGGESTIONS_ENDPOINT}?select=*&athlete_key=eq.szymon&suggestion_status=eq.pending&order=created_at.desc`)
   ]);
   readiness = readinessRows[0] || null;
   weekly = weeklyRows[0] || null;
@@ -713,6 +888,7 @@ async function loadAllData(){
   activityPowerIntervals = powerRows;
   activityRunIntervals = runRows;
   athleteProfileContext = profileRows;
+  athleteThresholdSuggestions = suggestionRows;
   activityContexts = await loadActivityAnalysisContexts();
   lastReadAt = new Date();
   renderAll();
@@ -2098,6 +2274,10 @@ function bindEvents(){
       openActivityDetails(card.dataset.activityKey);
     }
   });
+  const suggestionList = $('thresholdSuggestionList');
+  if(suggestionList){
+    suggestionList.addEventListener('click', handleThresholdSuggestionClick);
+  }
   $$('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
   $$('[data-mode]').forEach(btn => btn.addEventListener('click', () => {
     aiMode = btn.dataset.mode === 'analysis' ? 'analysis' : 'plan';
@@ -2108,7 +2288,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=511-athlete-thresholds-ai').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=527-threshold-decisions').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

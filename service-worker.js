@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-5212-compact-analysis-details';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-527-threshold-decisions';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=5212-compact-analysis-details',
-  './app.js?v=5212-compact-analysis-details',
+  './styles.css?v=527-threshold-decisions',
+  './app.js?v=527-threshold-decisions',
   './manifest.json'
 ];
 

@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07182c">
-  <title>Szymon AI Coach PRO • v5.2.1.2-compact-analysis-details-local</title>
+  <title>Szymon AI Coach PRO • v5.2.7-threshold-decisions-local</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=5212-compact-analysis-details">
+  <link rel="stylesheet" href="styles.css?v=527-threshold-decisions">
 </head>
 <body class="is-auth-checking">
   <section id="loginScreen" class="login-screen" hidden>
@@ -57,6 +57,20 @@
             <b>Reguły PRO</b>
           </div>
           <p id="coachToday">Brak danych Garmin PRO do decyzji.</p>
+        </section>
+
+        <section class="card threshold-suggestions-panel">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Progi Szymona</span>
+              <h2>Propozycje do decyzji</h2>
+            </div>
+            <span id="thresholdSuggestionCount">brak danych</span>
+          </div>
+          <div id="thresholdSuggestionList" class="threshold-suggestion-list">
+            <div class="muted-card">Czekam na propozycje progów.</div>
+          </div>
+          <div id="thresholdSuggestionStatus" class="status info">Automat tworzy propozycje, ale nie nadpisuje confirmed bez zgody.</div>
         </section>
 
         <section class="card">
@@ -172,7 +186,7 @@
         </section>
         <section class="card settings-card">
           <h3>Status aplikacji</h3>
-          <div><span>Wersja</span><b>v5.2.1.2-compact-analysis-details-local</b></div>
+          <div><span>Wersja</span><b>v5.2.7-threshold-decisions-local</b></div>
           <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
           <div><span>Sesja</span><b id="sessionStatus">brak sesji</b></div>
           <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -195,6 +209,6 @@
     </nav>
   </div>
 
-  <script src="app.js?v=5212-compact-analysis-details"></script>
+  <script src="app.js?v=527-threshold-decisions"></script>
 </body>
 </html>

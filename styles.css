@@ -1193,3 +1193,83 @@ body.is-auth-checking .bottom-nav{display:none!important}
 .analysis-full-details-body .analysis-section{
   margin:0;
 }
+
+/* v5.2.7 — decyzje progów: pending -> akceptuj/odrzuć */
+.threshold-suggestions-panel{
+  border-color:rgba(255,196,87,.30);
+  background:linear-gradient(145deg,rgba(255,196,87,.075),rgba(7,24,44,.96));
+}
+.threshold-suggestions-panel .section-head h2{
+  margin:4px 0 0;
+  font-size:21px;
+}
+.threshold-suggestion-list{
+  display:grid;
+  gap:10px;
+  margin-bottom:10px;
+}
+.threshold-suggestion-card{
+  border:1px solid rgba(151,176,214,.18);
+  border-radius:18px;
+  background:rgba(0,0,0,.16);
+  padding:13px;
+}
+.threshold-suggestion-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.threshold-suggestion-top h3{
+  margin:0 0 5px;
+  font-size:17px;
+}
+.threshold-suggestion-top p,
+.threshold-suggestion-reason{
+  margin:0;
+  color:#c8d5e9;
+  font-size:13px;
+  line-height:1.4;
+}
+.threshold-suggestion-top span{
+  flex:0 0 auto;
+  border:1px solid rgba(255,196,87,.32);
+  border-radius:999px;
+  padding:5px 9px;
+  color:#ffe2a0;
+  font-size:11px;
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.threshold-suggestion-value{
+  margin:11px 0 8px;
+  border:1px solid rgba(255,196,87,.22);
+  border-radius:14px;
+  background:rgba(255,196,87,.07);
+  padding:11px;
+  color:#fff;
+  font-size:17px;
+  font-weight:1000;
+}
+.threshold-suggestion-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+.threshold-suggestion-actions button{
+  min-height:46px;
+}
+.threshold-suggestion-actions button:disabled{
+  opacity:.55;
+  cursor:wait;
+}
+.threshold-reject-btn{
+  color:#ffd4d4;
+}
+@media(max-width:380px){
+  .threshold-suggestion-actions{
+    grid-template-columns:1fr;
+  }
+}
