@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-533-real-human-coach-analysis';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-534-human-language-everywhere';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=533-real-human-coach-analysis',
-  './app.js?v=533-real-human-coach-analysis',
+  './styles.css?v=534-human-language-everywhere',
+  './app.js?v=534-human-language-everywhere',
   './manifest.json'
 ];
 

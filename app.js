@@ -1,4 +1,4 @@
-const VERSION = 'v5.3.3-real-human-coach-analysis-local';
+const VERSION = 'v5.3.4-human-language-everywhere-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -430,6 +430,103 @@ function extractMetric(item, patterns){
   return '';
 }
 
+
+function hasTextAny(text, patterns){
+  const source = String(text || '').toLowerCase();
+  return patterns.some(pattern => source.includes(pattern));
+}
+
+function humanLoadMeaning(load){
+  const n = numberOrNull(load);
+  if(n == null) return '';
+  if(n >= 250) return 'To nie była lekka jednostka — obciążenie pokazuje duży koszt dla organizmu.';
+  if(n >= 120) return 'To był solidny bodziec, który warto uwzględnić w regeneracji.';
+  if(n >= 50) return 'To był umiarkowany bodziec: coś dołożył, ale bez przesadnej demolki.';
+  return 'Obciążenie wygląda raczej spokojnie, więc sama jednostka nie powinna mocno rozbić organizmu.';
+}
+
+function humanHrMeaning(hrAvg, hrMax){
+  const avg = numberOrNull(hrAvg);
+  const max = numberOrNull(hrMax);
+  if(avg == null && max == null) return '';
+  if(avg != null && avg >= 165) return 'Tętno było wysoko przez większość aktywności, więc organizm pracował mocno, a nie tylko „odhaczał” trening.';
+  if(max != null && max >= 180) return 'W końcówkach lub mocniejszych fragmentach serce weszło bardzo wysoko, więc koszt wysiłku był realny.';
+  if(avg != null && avg >= 140) return 'Tętno pokazuje konkretną pracę, ale bez sygnału skrajnego przeciążenia.';
+  return 'Tętno wygląda spokojnie — bardziej jak kontrolowana praca niż walka o przetrwanie.';
+}
+
+function humanActivitySummary(item){
+  if(!item) return 'Brak danych do opisania tej aktywności.';
+  const text = activityText(item).toLowerCase();
+  const sport = String(item?.sport_type || item?.activity_type || '').toLowerCase();
+  const load = numberOrNull(item?.training_load);
+  const hrAvg = numberOrNull(item?.hr_avg);
+  const hrMax = numberOrNull(item?.hr_max);
+  const ifValue = numberOrNull(item?.bike_if_value ?? item?.intensity_factor ?? extractMetric(item, [/\bIF\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i]));
+  const hasSwim = hasTextAny(text, ['pływanie', 'swim']) || sport.includes('swim');
+  const hasBike = hasTextAny(text, ['rower', 'bike']) || sport.includes('bike') || sport.includes('cycl');
+  const hasRun = hasTextAny(text, ['bieg', 'run']) || sport.includes('run');
+  const isTri = Boolean(item?.is_multisport) || sport.includes('triathlon') || sport.includes('multi') || (hasSwim && hasBike && hasRun);
+  const parts = [];
+
+  if(isTri){
+    if(load != null && load >= 250){
+      parts.push('To był krótki, ale bardzo intensywny start triathlonowy. Nie wygląda jak spokojna jednostka treningowa — organizm dostał konkretny wycisk.');
+    }else{
+      parts.push('To był start triathlonowy, więc koszt nie wynika z jednej dyscypliny, tylko z przejścia przez pływanie, rower i bieg jedno po drugim.');
+    }
+    if(hasSwim) parts.push('Pływanie było krótkie, ale od razu wprowadziło organizm na wyższe obroty.');
+    if(hasBike){
+      if(ifValue != null && ifValue >= 0.9) parts.push('Rower był pojechany agresywnie — tu nie było oszczędzania nóg przed biegiem.');
+      else parts.push('Rower był ważnym elementem kosztu całego startu.');
+    }
+    if(hasRun) parts.push('Bieg został utrzymany żwawo mimo zmęczenia po wcześniejszych częściach.');
+  }else if(hasBike){
+    parts.push(ifValue != null && ifValue >= 0.9
+      ? 'To był mocno dociśnięty rower. Intensywność była wysoka, więc taki trening trzeba liczyć jako realny koszt, nie luźne kręcenie.'
+      : 'To był rower do budowania pracy i kontroli intensywności. Najważniejsze jest, czy moc była stabilna i czy tętno nie uciekało za wysoko.');
+  }else if(hasRun){
+    parts.push('To był bieg, który trzeba oceniać nie tylko po tempie, ale też po tętnie i po tym, jak organizm odbije kolejnej nocy.');
+  }else if(hasSwim){
+    parts.push('To było pływanie do oceny przez rytm, spokój i ekonomię ruchu — liczby są ważne, ale najważniejsze jest, czy woda nie zabrała zbyt dużo energii.');
+  }else{
+    parts.push('To była aktywność, którą trzeba oceniać przez koszt dla organizmu, a nie tylko przez dystans i czas.');
+  }
+
+  const loadText = humanLoadMeaning(load);
+  const hrText = humanHrMeaning(hrAvg, hrMax);
+  if(loadText) parts.push(loadText);
+  if(hrText) parts.push(hrText);
+  return parts.join(' ');
+}
+
+function humanSegmentNarrative(item){
+  const text = activityText(item).toLowerCase();
+  const hasSwim = hasTextAny(text, ['pływanie', 'swim']);
+  const hasBike = hasTextAny(text, ['rower', 'bike']);
+  const hasRun = hasTextAny(text, ['bieg', 'run']);
+  const parts = [];
+  if(hasSwim) parts.push('Pływanie potraktuj jako wejście w wysiłek — ważne, żeby nie zabrało zbyt dużo energii na dalszą część.');
+  if(hasBike) parts.push('Rower pokazuje główny koszt mechaniczny i energetyczny: jeśli jest pojechany mocno, później bieg od razu robi się droższy.');
+  if(hasRun) parts.push('Bieg mówi najwięcej o tym, ile zostało w baku po wcześniejszej pracy. Utrzymanie tempa przy wysokim tętnie to dobry sygnał, ale też koszt.');
+  return parts.join(' ') || 'Nie mam pełnego podziału segmentów, więc opis traktuję ostrożnie.';
+}
+
+function humanCluesNarrative(item){
+  const clues = extractPowerClues(item);
+  const text = activityText(item).toLowerCase();
+  const ifValue = numberOrNull(extractMetric(item, [/\bIF\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i]));
+  const parts = [];
+  if(ifValue != null){
+    if(ifValue >= 0.9) parts.push('Intensywność roweru była wysoka — to sygnał, że nogi mogły dostać mocno przed dalszą częścią.');
+    else if(ifValue >= 0.75) parts.push('Intensywność roweru była konkretna, ale wygląda bardziej na kontrolowaną pracę niż pełne przepalenie.');
+    else parts.push('Intensywność roweru wygląda spokojniej, więc koszt powinien być łatwiejszy do opanowania.');
+  }
+  if(hasTextAny(text, ['tempo 4:', 'pace 4:'])) parts.push('Tempo biegu było żwawe — to nie jest opis spokojnego rozbiegania, tylko mocniejszej pracy.');
+  if(!parts.length && clues.length) parts.push('Dane o mocy, tempie i intensywności zostawiam w szczegółach; najważniejsze jest to, czy wysiłek był kontrolowany i jaki koszt zostawił.');
+  return parts.join(' ');
+}
+
 function extractSegmentLine(item, segment){
   const source = String(item?.auto_summary || '').replace(/\s+/g, ' ').trim();
   if(!source) return '';
@@ -572,7 +669,7 @@ function activityHtml(item){
   const duration = fmtMin(item.duration_min);
   const hr = [item.hr_avg ? `avg ${Math.round(Number(item.hr_avg))}` : '', item.hr_max ? `max ${Math.round(Number(item.hr_max))}` : ''].filter(Boolean).join(' / ');
   const load = Number.isFinite(Number(item.training_load)) ? Math.round(Number(item.training_load)).toLocaleString('pl-PL') : 'brak danych';
-  const summary = item.auto_summary || item.segment_summary || '';
+  const summary = humanActivitySummary(item);
   return `
     <article class="activity-card">
       <div class="activity-top">
@@ -1130,7 +1227,7 @@ function factRowsFromFacts(facts){
     ['Training effect aerobic/anaerobic', facts.aerobicEffect || facts.anaerobicEffect ? `${facts.aerobicEffect || 'brak danych'} / ${facts.anaerobicEffect || 'brak danych'}` : 'brak danych'],
     ['EF', facts.ef || 'brak danych'],
     ['Segmenty', facts.segmentSummary],
-    ['Auto summary', facts.autoSummary],
+    ['Surowy opis Garmin', facts.autoSummary],
     ['Readiness', facts.readinessScore != null ? `${Math.round(facts.readinessScore)}/100 (${facts.readinessLevel})` : 'brak danych'],
     ['Sen', facts.sleep != null ? fmtMin(facts.sleep) : 'brak danych'],
     ['Body Battery', facts.batteryStart != null || facts.batteryEnd != null ? `${facts.batteryStart != null ? Math.round(facts.batteryStart) : 'brak danych'} → ${facts.batteryEnd != null ? Math.round(facts.batteryEnd) : 'brak danych'}` : 'brak danych'],
@@ -1812,7 +1909,11 @@ function buildSegmentCards(record){
 function buildSegmentsText(record){
   const cards = buildSegmentCards(record);
   if(!cards.length) return 'brak danych';
-  return cards.map(card => `${card.title}: ${card.lines.map(([label, value]) => `${label} ${value}`).join(', ')}`).join('. ');
+  const names = cards.map(card => card.title.toLowerCase()).join(', ');
+  if(names.includes('pływanie') && names.includes('rower') && names.includes('bieg')){
+    return 'To była aktywność złożona: najpierw wejście w wysiłek w wodzie, potem główny koszt na rowerze i na końcu sprawdzian, ile zostało w nogach na biegu.';
+  }
+  return 'Segmenty pokazują nie tylko kolejność aktywności, ale też rozkład kosztu: gdzie organizm pracował spokojnie, a gdzie trzeba było mocniej zapłacić za tempo lub moc.';
 }
 
 function metricForDate(items, date){
@@ -1845,11 +1946,11 @@ function timelineCardForOffset(record, offset){
   const entry = dailyDataForOffset(record, offset);
   const daily = entry.daily;
   const rows = [
-    ['Readiness', daily?.training_readiness_score != null ? `${Math.round(Number(daily.training_readiness_score))}/100 ${daily.training_readiness_level || ''}`.trim() : 'brak danych'],
+    ['Gotowość', daily?.training_readiness_score != null ? `${Math.round(Number(daily.training_readiness_score))}/100 ${daily.training_readiness_level || ''}`.trim() : 'brak danych'],
     ['Sen', daily?.sleep_minutes != null ? `${Math.round(Number(daily.sleep_minutes))} min` : 'brak danych'],
-    ['Body Battery', daily?.body_battery_start != null || daily?.body_battery_end != null ? `${daily.body_battery_start != null ? Math.round(Number(daily.body_battery_start)) : 'brak danych'} → ${daily.body_battery_end != null ? Math.round(Number(daily.body_battery_end)) : 'brak danych'}` : 'brak danych'],
-    ['Stress', daily?.avg_stress != null ? Math.round(Number(daily.avg_stress)) : 'brak danych'],
-    ['Resting HR', daily?.resting_hr != null ? Math.round(Number(daily.resting_hr)) : 'brak danych'],
+    ['Paliwo w baku', daily?.body_battery_start != null || daily?.body_battery_end != null ? `${daily.body_battery_start != null ? Math.round(Number(daily.body_battery_start)) : 'brak danych'} → ${daily.body_battery_end != null ? Math.round(Number(daily.body_battery_end)) : 'brak danych'}` : 'brak danych'],
+    ['Spokój organizmu', daily?.avg_stress != null ? Math.round(Number(daily.avg_stress)) : 'brak danych'],
+    ['Tętno spoczynkowe', daily?.resting_hr != null ? Math.round(Number(daily.resting_hr)) : 'brak danych'],
     ['Dziennik', journalLine(entry.journal)]
   ];
   return { ...entry, rows };
@@ -2069,10 +2170,11 @@ function buildGoodPoints(record){
   const swim = segmentByType(record, 'swim');
   const bike = segmentByType(record, 'bike');
   const run = segmentByType(record, 'run');
-  if(swim) points.push(`Pływanie zostało wykonane konkretnie: ${swim.distance_meters != null ? fmtKmDot(Number(swim.distance_meters) / 1000) : 'brak danych'}, ${swim.duration_seconds != null ? fmtSeconds(swim.duration_seconds) : 'brak danych'}, HR ${swim.hr_avg != null ? Math.round(Number(swim.hr_avg)) : 'brak danych'}/${swim.hr_max != null ? Math.round(Number(swim.hr_max)) : 'brak danych'}.`);
-  if(bike) points.push(`Rower jest mocnym atutem: ${bikeTotalLine(record)}. IF Garmin ${record.bike_if_value != null ? fmtIf(record.bike_if_value) : 'brak danych'}.`);
-  if(run) points.push(`Bieg został dowieziony po rowerze: ${run.distance_meters != null ? fmtKmDot(Number(run.distance_meters) / 1000) : 'brak danych'}, ${run.duration_seconds != null ? fmtSeconds(run.duration_seconds) : 'brak danych'}, tempo ${run.pace_min_per_km != null ? fmtPace(run.pace_min_per_km) : 'brak danych'}.`);
-  if(!points.length) points.push('Dane Garmin PRO pozwalają opisać aktywność, ale brak pełnych segmentów ogranicza ocenę szczegółową.');
+  const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
+  if(swim) points.push('Pływanie dało wejście w wysiłek i dobrze pokazało, jak szybko organizm potrafi wejść na obroty.');
+  if(bike) points.push(bikeIf != null && bikeIf >= 0.9 ? 'Rower był mocno dociśnięty — to dobry sygnał mocy, ale też element, który najmocniej podnosi koszt całego startu.' : 'Rower został wykonany jako kontrolowana praca, czyli dokładnie ten element, który trzeba budować pod dłuższy dystans.');
+  if(run) points.push('Bieg po wcześniejszej pracy jest wartościowy, bo pokazuje, co zostaje w nogach, gdy organizm jest już zmęczony.');
+  if(!points.length) points.push('Największy plus: aktywność została zapisana na tyle dobrze, że można oceniać nie tylko wynik, ale też koszt dla organizmu.');
   return points.slice(0, 4);
 }
 
@@ -2082,11 +2184,12 @@ function buildRiskPoints(record){
   const bikeIf = numberOrNull(record.bike_if_value ?? record.intensity_factor);
   const runHr = runHrText(record);
   const after = metricForDate(parseJsonArray(record.daily_metrics_window), addDaysIso(record.workout_date, 1));
-  if(load != null && load >= 250) points.push(`Load ${fmtNumber(load)} to mocny bodziec i wymaga ostrożnej regeneracji.`);
-  if(bikeIf != null && bikeIf >= 0.9) points.push(`Rower był intensywny: IF ${fmtIf(bikeIf)}. Przy dłuższym dystansie taki koszt trzeba mocno kontrolować.`);
-  if(runHr) points.push(`Bieg był na wysokim tętnie (${runHr}), więc nie był to lekki dobieg bez kosztu.`);
-  if(after?.training_readiness_score != null && Number(after.training_readiness_score) <= 20) points.push(`Gotowość dzień po treningu ${Math.round(Number(after.training_readiness_score))}/100 ${after.training_readiness_level || ''} pokazuje bardzo duży koszt po aktywności.`);
-  if(!points.length) points.push('Brak wyraźnych czerwonych flag w dostępnych danych, ale analiza jest ograniczona do tego, co zwraca Garmin PRO.');
+  if(load != null && load >= 250) points.push('To był duży koszt dla organizmu. Po takiej jednostce nie dokładamy kolejnego mocnego bodźca tylko dlatego, że „jest w planie”.');
+  else if(load != null && load >= 100) points.push('To był solidny bodziec — nie dramat, ale coś, co trzeba doliczyć do zmęczenia z tygodnia.');
+  if(bikeIf != null && bikeIf >= 0.9) points.push('Rower był mocny. Przy triathlonie to ważne, bo zbyt agresywny rower może później zabrać jakość biegu.');
+  if(runHr) points.push('Bieg był wysoko tętniowo, więc nie traktuję go jak lekkiego dobiegnięcia do mety bez kosztu.');
+  if(after?.training_readiness_score != null && Number(after.training_readiness_score) <= 20) points.push('Dane z kolejnej doby pokazują, że organizm mocno zapłacił za ten wysiłek — tu priorytetem jest regeneracja.');
+  if(!points.length) points.push('Nie widzę dużej czerwonej flagi, ale decyzję o kolejnym treningu trzeba oprzeć na śnie, gotowości i samopoczuciu następnego dnia.');
   return points.slice(0, 4);
 }
 
@@ -2106,7 +2209,7 @@ function buildFactBasedActivityAnalysis(activityContext){
     return {
       hasFullContext: false,
       facts: [['Aktywność', 'brak danych']],
-      mode: 'Analiza podstawowa — ograniczona do dostępnych danych',
+      mode: 'Analiza ostrożna — mam mniej danych, więc nie udaję pełnej pewności',
       headline: 'Brak aktywności Garmin PRO do analizy.',
       good: ['brak danych'],
       risks: ['brak danych'],
@@ -2131,7 +2234,7 @@ function buildFactBasedActivityAnalysis(activityContext){
     return {
       hasFullContext: false,
       facts: basic.facts,
-      mode: 'Analiza podstawowa — ograniczona do dostępnych danych',
+      mode: 'Analiza ostrożna — mam mniej danych, więc nie udaję pełnej pewności',
       headline: `${basic.rating} ${basic.caution}`,
       good: [basic.good],
       risks: [basic.caution],
@@ -2155,7 +2258,7 @@ function buildFactBasedActivityAnalysis(activityContext){
   return {
     hasFullContext: true,
     facts: contextActivityFacts(record),
-    mode: 'Analiza PRO — bodziec, stan startowy i odpowiedź organizmu',
+    mode: 'Patrzę jak trener: najpierw bodziec, potem stan organizmu i odpowiedź po kolejnej nocy',
     headline: buildHeadline(record),
     good: buildGoodPoints(record),
     risks: buildRiskPoints(record),
@@ -2181,7 +2284,7 @@ function buildActivityAiAnalysis(activity){
 }
 
 function renderFactsBlock(rows){
-  return `<details class="facts-block analysis-details"><summary>Surowe fakty Garmin PRO</summary><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></details>`;
+  return `<details class="facts-block analysis-details"><summary>Techniczne dane Garmin PRO</summary><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></details>`;
 }
 
 function renderAnalysisBlock(title, text, className = ''){
@@ -2205,7 +2308,7 @@ function renderTimeline(title, entries){
 
 function renderRawSummary(text){
   if(!text) return '';
-  return `<details class="analysis-details raw-summary"><summary>Podsumowanie Garmin</summary><p>${escapeHtml(text)}</p></details>`;
+  return `<details class="analysis-details raw-summary"><summary>Surowy opis Garmin — do kontroli</summary><p>${escapeHtml(text)}</p></details>`;
 }
 
 
@@ -2371,16 +2474,16 @@ function renderPowerIntervals(rows, insight){
 
 function renderFullAnalysisDetails(analysis){
   const content = [
-    renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
+    renderAnalysisBlock('Jak patrzę na ten trening', analysis.mode, 'mode-section'),
     renderThresholdProfileContext(analysis.profileContextStatus),
     renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
-    renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
+    renderAnalysisBlock('Jakich progów używam w tle', analysis.thresholdProfile, 'threshold-section'),
     renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
     renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
     renderSegmentCards(analysis.segmentCards),
-    renderTimeline('Kontekst przed aktywnością', analysis.contextBefore),
-    renderTimeline('Dzień aktywności', analysis.activityDay),
-    renderTimeline('Regeneracja po aktywności', analysis.recoveryContext),
+    renderTimeline('Jak wyglądał organizm przed treningiem', analysis.contextBefore),
+    renderTimeline('Dzień treningu', analysis.activityDay),
+    renderTimeline('Odpowiedź organizmu po treningu', analysis.recoveryContext),
     renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis, 'coach-section'),
     renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar, 'kalmar-section'),
     renderAnalysisBlock('Zalecenie', analysis.recovery, 'recommendation-section'),
@@ -2434,11 +2537,12 @@ function renderActivityDetails(){
   $('detailDuration').textContent = fmtMin(activity.duration_min);
   $('detailHr').textContent = activity.hr_avg || activity.hr_max ? `${activity.hr_avg ? Math.round(Number(activity.hr_avg)) : 'brak'} / ${activity.hr_max ? Math.round(Number(activity.hr_max)) : 'brak'}` : 'brak danych';
   $('detailLoad').textContent = activity.training_load != null ? fmtNumber(activity.training_load) : 'brak danych';
-  const clues = extractPowerClues(activity);
+  const segmentNarrative = humanSegmentNarrative(activity);
+  const effortNarrative = humanCluesNarrative(activity);
   const summaryParts = [
-    activity.auto_summary ? `<p><b>Auto summary:</b> ${escapeHtml(activity.auto_summary)}</p>` : '',
-    activity.segment_summary ? `<p><b>Segmenty:</b> ${escapeHtml(activity.segment_summary)}</p>` : '',
-    clues.length ? `<p><b>IF / NP / moc / tempo:</b> ${escapeHtml(clues.join(', '))}</p>` : '<p><b>IF / NP / moc / tempo:</b> Brak danych do oceny tego parametru.</p>'
+    `<p><b>Opis trenerski:</b> ${escapeHtml(humanActivitySummary(activity))}</p>`,
+    segmentNarrative ? `<p><b>Co mówią części aktywności:</b> ${escapeHtml(segmentNarrative)}</p>` : '',
+    effortNarrative ? `<p><b>Intensywność:</b> ${escapeHtml(effortNarrative)}</p>` : ''
   ].filter(Boolean);
   $('detailSummary').innerHTML = summaryParts.join('');
   renderActivityAiAnalysis('activityAiAnalysis', activity);
