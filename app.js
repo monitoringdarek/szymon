@@ -1,4 +1,4 @@
-const VERSION = 'v5.4.1-iphone-pro-visual-restart-local';
+const VERSION = 'v5.4.2-iphone-pro-visual-fix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -1003,6 +1003,8 @@ function proRecoveryStatus(pro){
     || after.avg_stress != null
     || after.resting_hr != null
     || after.training_readiness_score != null
+    || after.hrv_status != null
+    || after.hrv_avg != null
   ));
 
   if(hasRecoveryData){
@@ -1011,19 +1013,31 @@ function proRecoveryStatus(pro){
     const stress = after.avg_stress != null ? Math.round(Number(after.avg_stress)) : 'brak danych';
     const rhr = after.resting_hr != null ? Math.round(Number(after.resting_hr)) : 'brak danych';
     const readinessScore = after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100` : 'brak danych';
+    const hrv = after.hrv_status || (after.hrv_avg != null ? `${fmtNumber(after.hrv_avg)} ms` : 'brak danych');
+    const readinessN = Number(after.training_readiness_score);
+    const sleepN = Number(after.sleep_minutes);
+    const stressN = Number(after.avg_stress);
+    let title = 'Po tej nocy można już uczciwie ocenić koszt regeneracji po treningu.';
+    if(Number.isFinite(readinessN) && readinessN <= 35){
+      title = 'Noc po treningu pokazuje wyraźny koszt dla organizmu — regenerację trzeba potraktować ostrożnie.';
+    }else if(Number.isFinite(sleepN) && sleepN < 360){
+      title = 'Dane z kolejnej nocy są już dostępne, ale krótki sen ogranicza pewność regeneracji.';
+    }else if(Number.isFinite(stressN) && stressN <= 30){
+      title = 'Dane z kolejnej nocy są spokojne — organizm nie wygląda na mocno rozbity po tym bodźcu.';
+    }
     return {
       status: 'Odpowiedź gotowa',
-      title: 'Mamy dane z kolejnej doby, więc można uczciwie ocenić koszt regeneracji po tym treningu.',
-      text: `Sen ${sleep} • Body Battery ${battery} • Stress ${stress} • RHR ${rhr} • Readiness ${readinessScore}.`
+      title,
+      text: `Sen ${sleep} • Body Battery ${battery} • Stress ${stress} • RHR ${rhr} • Readiness ${readinessScore} • HRV ${hrv}.`
     };
   }
 
   return {
     status: 'Czeka na dane',
-    title: 'Pełna ocena kosztu regeneracji pojawi się po synchronizacji kolejnej nocy.',
+    title: 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.',
     text: tomorrow
-      ? `Aplikacja czeka konkretnie na: sen, Body Battery, stress i tętno spoczynkowe z ${fmtDate(tomorrow)}.`
-      : 'Aplikacja czeka konkretnie na: sen, Body Battery, stress i tętno spoczynkowe z kolejnej doby.'
+      ? `Szukam D+1 dla ${fmtDate(tomorrow)}: sen brak danych • Body Battery brak danych • stress brak danych • tętno spoczynkowe brak danych • readiness brak danych.`
+      : 'Szukam D+1: sen brak danych • Body Battery brak danych • stress brak danych • tętno spoczynkowe brak danych • readiness brak danych.'
   };
 }
 
@@ -2267,6 +2281,50 @@ function dailyDataForOffset(record, offset){
   return { label, date, daily, journal };
 }
 
+function nightResponseAfterActivity(record){
+  if(!record) return 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.';
+  const activityDate = fmtDateIso(record.workout_date || record.started_at);
+  const nextDate = addDaysIso(activityDate, 1);
+  const after = metricForDate(parseJsonArray(record.daily_metrics_window), nextDate);
+  if(!after){
+    return 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.';
+  }
+
+  const hasAny = after.sleep_minutes != null
+    || after.body_battery_end != null
+    || after.body_battery_start != null
+    || after.avg_stress != null
+    || after.resting_hr != null
+    || after.training_readiness_score != null
+    || after.hrv_status != null
+    || after.hrv_avg != null;
+
+  if(!hasAny){
+    return 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.';
+  }
+
+  const sleep = after.sleep_minutes != null ? fmtMin(after.sleep_minutes) : 'brak danych';
+  const battery = after.body_battery_end ?? after.body_battery_start ?? 'brak danych';
+  const stress = after.avg_stress != null ? Math.round(Number(after.avg_stress)) : 'brak danych';
+  const rhr = after.resting_hr != null ? Math.round(Number(after.resting_hr)) : 'brak danych';
+  const readiness = after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100${after.training_readiness_level ? ` (${after.training_readiness_level})` : ''}` : 'brak danych';
+  const hrv = after.hrv_status || (after.hrv_avg != null ? `${fmtNumber(after.hrv_avg)} ms` : 'brak danych');
+  const readinessN = Number(after.training_readiness_score);
+  const sleepN = Number(after.sleep_minutes);
+  const stressN = Number(after.avg_stress);
+
+  let coach = 'Po tej nocy można już lepiej ocenić, ile ten trening kosztował organizm.';
+  if(Number.isFinite(readinessN) && readinessN <= 35){
+    coach = 'Po kolejnej nocy widać, że trening zostawił wyraźny koszt — organizm nie jest jeszcze gotowy na mocny bodziec.';
+  }else if(Number.isFinite(sleepN) && sleepN < 360){
+    coach = 'Po kolejnej nocy obraz regeneracji jest niepełny, bo sen był krótki i mógł ograniczyć odbudowę.';
+  }else if(Number.isFinite(stressN) && stressN <= 30){
+    coach = 'Po kolejnej nocy organizm wygląda spokojnie — nie ma sygnału mocnego rozbicia w dostępnych danych.';
+  }
+
+  return `${coach} Dane D+1: sen ${sleep}, Body Battery ${battery}, stress ${stress}, tętno spoczynkowe ${rhr}, readiness ${readiness}, HRV ${hrv}.`;
+}
+
 function timelineCardForOffset(record, offset){
   const entry = dailyDataForOffset(record, offset);
   const daily = entry.daily;
@@ -2467,6 +2525,7 @@ function buildFactBasedActivityAnalysis(activityContext){
       contextBefore: [],
       activityDay: [],
       recoveryContext: [],
+      nightResponse: 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.',
       coachAnalysis: 'Brak aktywności Garmin PRO do analizy.',
       kalmar: 'brak danych',
       recovery: 'brak danych',
@@ -2492,6 +2551,7 @@ function buildFactBasedActivityAnalysis(activityContext){
       contextBefore: [],
       activityDay: [],
       recoveryContext: [],
+      nightResponse: nightResponseAfterActivity(activityContext.activity),
       coachAnalysis: `${basic.rating} ${basic.good} ${basic.caution}`,
       kalmar: basic.kalmar,
       recovery: basic.recovery,
@@ -2516,6 +2576,7 @@ function buildFactBasedActivityAnalysis(activityContext){
     contextBefore: contextBeforeText(record),
     activityDay: activityDayText(record),
     recoveryContext: recoveryAfterText(record),
+    nightResponse: nightResponseAfterActivity(record),
     coachAnalysis: fullCoachAnalysis(record),
     kalmar: buildDynamicKalmarConclusion(record),
     recovery: fullRecoveryRecommendation(record),
@@ -2560,6 +2621,7 @@ function mergeRealAiIntoAnalysis(baseAnalysis, aiResult){
     risks: Array.isArray(aiResult.risks) && aiResult.risks.length ? aiResult.risks : baseAnalysis.risks,
     kalmar: aiResult.kalmar || baseAnalysis.kalmar,
     recovery: aiResult.recovery || baseAnalysis.recovery,
+    nightResponse: aiResult.nightResponse || baseAnalysis.nightResponse,
     dataGaps: Array.isArray(aiResult.dataGaps) ? aiResult.dataGaps : [],
     isRealAi: true
   };
@@ -2769,6 +2831,7 @@ function renderFullAnalysisDetails(analysis){
     renderSegmentCards(analysis.segmentCards),
     renderTimeline('Kontekst przed aktywnością', analysis.contextBefore),
     renderTimeline('Dzień aktywności', analysis.activityDay),
+    renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section'),
     renderTimeline('Regeneracja po aktywności', analysis.recoveryContext),
     renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis, 'coach-section'),
     renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar, 'kalmar-section'),
@@ -2816,9 +2879,11 @@ function renderAiAnalysisInto(target, analysis, status){
       ? '<div class="ai-status-badge ai-ok">Analiza wygenerowana przez AI</div>'
       : '<div class="ai-status-badge ai-fallback">Analiza podstawowa (AI niedostępne) — pokazuję dane faktograficzne</div>';
 
+  const nightSummary = renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section night-response-visible');
   target.innerHTML = [
     statusBadge,
     visibleSummary,
+    nightSummary,
     renderFullAnalysisDetails(analysis)
   ].join('');
 }
@@ -2927,7 +2992,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=531-threshold-action-error-hotfix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-iphone-pro-visual-fix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

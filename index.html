@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07182c">
-  <title>Szymon AI Coach PRO • v5.4.1-iPhone-PRO-Visual-Restart</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=541-iphone-pro-visual">
+  <meta name="theme-color" content="#061426">
+  <title>Szymon AI Coach PRO • v5.4.2 iPhone Visual Fix</title>
+  <link rel="manifest" href="manifest.json?v=542">
+  <link rel="stylesheet" href="styles.css?v=542-iphone-pro-visual-fix">
 </head>
-<body class="is-auth-checking">
+<body class="is-auth-checking visual-fix-v542">
   <section id="loginScreen" class="login-screen" hidden>
     <form id="loginForm" class="login-card">
       <span class="eyebrow">Garmin PRO Only</span>
@@ -22,12 +22,16 @@
   </section>
 
   <div id="appShell" class="app-shell" hidden>
-    <header class="topbar">
-      <div>
+    <header class="topbar pro-topbar-v542">
+      <div class="topbar-title">
         <span class="eyebrow">Road to IRONMAN Kalmar 2026</span>
         <h1>Szymon AI Coach PRO</h1>
+        <small class="topbar-subtitle">iPhone PRO Visual Fix</small>
       </div>
-      <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
+      <div class="topbar-actions">
+        <span class="app-version-pill" data-app-version>v5.4.2</span>
+        <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
+      </div>
     </header>
 
     <main>
@@ -39,11 +43,14 @@
           </div>
         </section>
 
-        <section class="hero-card">
-          <span class="eyebrow">Co dziś zrobić?</span>
+        <section class="hero-card dashboard-hero-v542">
+          <div class="hero-kicker-row">
+            <span class="eyebrow">Co dziś zrobić?</span>
+            <span class="coach-mode-pill">PRO Coach</span>
+          </div>
           <h2 id="todayDecision">Czekam na dane Garmin PRO.</h2>
           <p id="todayReason">Po pobraniu readiness pokażę krótką decyzję trenerską.</p>
-          <div class="metric-grid">
+          <div class="metric-grid pro-metric-strip">
             <div><span>Readiness</span><b id="readinessScore">brak danych</b></div>
             <div><span>Sen</span><b id="sleepValue">brak danych</b></div>
             <div><span>Body Battery</span><b id="batteryValue">brak danych</b></div>
@@ -51,7 +58,7 @@
           </div>
         </section>
 
-        <section class="card coach-card">
+        <section class="card coach-card today-coach-v542">
           <div class="section-head">
             <span class="eyebrow">AI Coach Today</span>
             <b>Reguły PRO</b>
@@ -59,7 +66,7 @@
           <p id="coachToday">Brak danych Garmin PRO do decyzji.</p>
         </section>
 
-        <section class="card">
+        <section class="card week-card-v542">
           <div class="section-head">
             <h2>Tydzień Garmin PRO</h2>
             <span id="weekRange">brak danych</span>
@@ -72,174 +79,120 @@
           </div>
         </section>
 
-        <section class="card">
-          <div class="section-head">
-            <h2>Ostatnia aktywność</h2>
-            <span>Garmin PRO</span>
-          </div>
+        <section class="card latest-card-v542">
+          <div class="section-head"><h2>Ostatnia aktywność</h2><span>Garmin PRO</span></div>
           <article id="latestActivity" class="activity-card muted-card">Brak danych.</article>
         </section>
 
-        <section class="status-panel">
-          <div id="dataStatus" class="status info">Gotowe do pobrania danych.</div>
-        </section>
+        <section class="status-panel"><div id="dataStatus" class="status info">Gotowe do pobrania danych.</div></section>
       </section>
 
       <section id="screen-analysis" class="screen">
+        <div class="screen-title-card">
+          <span class="eyebrow">Analiza PRO</span>
+          <h2>Trening, koszt i odpowiedź po nocy</h2>
+          <p>Najważniejsze rzeczy są na wierzchu, a szczegóły zostają rozwijane dopiero po kliknięciu.</p>
+        </div>
         <div id="proAnalysisMain" class="pro-analysis-host"></div>
       </section>
 
       <section id="screen-history" class="screen">
         <div id="historyListView">
-          <section class="page-title">
+          <section class="screen-title-card">
             <span class="eyebrow">Historia PRO</span>
             <h2>Aktywności Garmin</h2>
+            <p>Dotknij aktywności, żeby zobaczyć analizę trenerską i sekcję „Odpowiedź po nocy”.</p>
           </section>
-          <div id="historyStatus" class="status info">Czekam na dane.</div>
-          <section class="history-tools card slim-control-card" aria-label="Filtry historii">
-            <div class="history-tools-row">
-              <label class="compact-field">
-                <span>Szukaj</span>
-                <input id="historySearchInput" type="search" placeholder="nazwa, data, sport...">
-              </label>
-              <label class="compact-field compact-select-field">
-                <span>Sport</span>
-                <select id="historySportFilter">
-                  <option value="all">Wszystkie</option>
-                  <option value="swim">Pływanie</option>
-                  <option value="bike">Rower</option>
-                  <option value="run">Bieg</option>
-                  <option value="triathlon">Triathlon</option>
-                </select>
-              </label>
-            </div>
-            <button id="historyShowMoreBtn" class="secondary-btn compact-toggle-btn" type="button">Pokaż więcej aktywności</button>
-          </section>
-          <section id="activityList" class="activity-list compact-history-list"></section>
+          <div class="history-toolbar">
+            <input id="historySearchInput" type="search" placeholder="Szukaj aktywności">
+            <select id="historySportFilter" aria-label="Filtr sportu">
+              <option value="all">Wszystkie</option>
+              <option value="swim">Pływanie</option>
+              <option value="bike">Rower</option>
+              <option value="run">Bieg</option>
+              <option value="triathlon">Triathlon</option>
+            </select>
+          </div>
+          <div id="historyStatus" class="status info">Historia Garmin PRO gotowa do odczytu.</div>
+          <div id="activityList" class="activity-list"></div>
+          <button id="historyShowMoreBtn" class="secondary-btn" type="button" hidden>Pokaż więcej</button>
         </div>
 
-        <section id="activityDetailView" class="activity-detail-view" hidden>
+        <div id="activityDetailView" hidden>
           <button id="backToHistoryBtn" class="secondary-btn back-btn" type="button">Wróć do historii</button>
-          <article class="card activity-detail-card">
-            <span class="eyebrow">Szczegół aktywności</span>
-            <h2 id="detailActivityName">Aktywność Garmin PRO</h2>
+          <section class="card activity-detail-card legacy-detail-fallback" hidden>
+            <span class="eyebrow">Szczegóły</span>
+            <h2 id="detailActivityName">Aktywność</h2>
             <p id="detailActivityMeta">brak danych</p>
-            <div class="detail-metrics">
+            <div class="metric-grid">
               <div><span>Dystans</span><b id="detailDistance">brak danych</b></div>
               <div><span>Czas</span><b id="detailDuration">brak danych</b></div>
-              <div><span>HR avg/max</span><b id="detailHr">brak danych</b></div>
+              <div><span>HR</span><b id="detailHr">brak danych</b></div>
               <div><span>Load</span><b id="detailLoad">brak danych</b></div>
             </div>
-            <div id="detailSummary" class="detail-summary"></div>
-          </article>
-
-          <section class="card activity-ai-card">
-            <span class="eyebrow">Analiza AI PRO</span>
-            <h2>Komentarz trenerski</h2>
-            <div id="activityAiAnalysis" class="activity-ai-analysis"></div>
+            <p id="detailSummary">brak danych</p>
+            <div id="activityAiAnalysis"></div>
           </section>
-        </section>
+        </div>
       </section>
 
       <section id="screen-ai" class="screen">
-        <section class="page-title">
+        <section class="screen-title-card ai-title-v542">
           <span class="eyebrow">AI PRO</span>
-          <h2>Plan i analiza startu</h2>
+          <h2>Plan przed startem / analiza po treningu</h2>
+          <p>AI korzysta z Garmin PRO i jasno pokazuje braki danych.</p>
         </section>
-
-        <section class="card mode-card">
-          <button class="mode-btn active" type="button" data-mode="plan" aria-pressed="true">
-            <b>Przed startem — Plan startu</b>
-            <span>Wpisz założenia startu. AI PRO oceni gotowość na podstawie Garmin PRO, regeneracji i obciążenia.</span>
-          </button>
-          <button class="mode-btn" type="button" data-mode="analysis" aria-pressed="false">
-            <b>Po zawodach — Analiza wykonania</b>
-            <span>Po starcie AI PRO przeanalizuje pobraną aktywność Garmin, segmenty, obciążenie i regenerację oraz porówna wykonanie z planem.</span>
-          </button>
-        </section>
-
+        <div class="mode-switch">
+          <button class="active" data-mode="plan" type="button">Przed startem</button>
+          <button data-mode="analysis" type="button">Po aktywności</button>
+        </div>
         <section id="planPanel" class="card ai-panel">
-          <div class="section-head">
-            <h2>Plan startu</h2>
-            <span>szkielet</span>
-          </div>
-          <p class="muted">Ten etap niczego nie zapisuje. Pola są przygotowane pod kolejny krok.</p>
-          <div class="plan-grid">
-            <div><span>Nazwa zawodów</span><b>brak danych</b></div>
-            <div><span>Data startu</span><b>brak danych</b></div>
-            <div><span>Typ startu</span><b>brak danych</b></div>
-            <div><span>Cel</span><b>brak danych</b></div>
-            <div><span>Plan pływania</span><b>brak danych</b></div>
-            <div><span>Plan roweru</span><b>brak danych</b></div>
-            <div><span>Plan biegu</span><b>brak danych</b></div>
-            <div><span>Odżywianie</span><b>brak danych</b></div>
-            <div><span>Ryzyka / uwagi</span><b>brak danych</b></div>
-          </div>
+          <h2>Przed startem — Plan startu</h2>
+          <p>Tu zostaje miejsce na założenia startu i ocenę gotowości na danych Garmin PRO.</p>
         </section>
-
         <section id="analysisPanel" class="card ai-panel" hidden>
-          <div class="section-head">
-            <h2>Analiza wykonania</h2>
-            <span>Garmin PRO</span>
-          </div>
-          <p class="muted">Analiza korzysta z pełnego kontekstu D-3 → D+1 zakotwiczonego w dacie aktywności.</p>
+          <h2>Po aktywności — Analiza wykonania</h2>
           <article id="aiLatestActivity" class="activity-card muted-card">Brak danych.</article>
           <div id="aiActivityAnalysis" class="activity-ai-analysis"></div>
         </section>
       </section>
 
       <section id="screen-settings" class="screen">
-        <section class="page-title">
+        <section class="screen-title-card">
           <span class="eyebrow">Ustawienia</span>
-          <h2>Stan aplikacji</h2>
+          <h2>Status programu</h2>
+          <p>Wersja widoczna w aplikacji: <b>v5.4.2</b></p>
         </section>
         <section class="card settings-card">
-          <h3>Status aplikacji</h3>
-          <div><span>Wersja</span><b>v5.4.1-iphone-pro-visual-restart-local</b></div>
-          <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
-          <div><span>Sesja</span><b id="sessionStatus">brak sesji</b></div>
-          <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
-          <div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div>
-          <div class="view-status-list">
-            <span>Widoki PRO</span>
-            <ul id="viewStatusList"></ul>
+          <div class="settings-grid">
+            <div><span>Wersja</span><b>v5.4.2-iphone-pro-visual-fix-local</b></div>
+            <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
+            <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
+            <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
+            <div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div>
+            <div><span>Użytkownik</span><b id="userStatus">brak danych</b></div>
+            <div><span>Propozycje progów</span><b id="thresholdSuggestionCount">brak danych</b></div>
           </div>
-          <div><span>Użytkownik</span><b id="userStatus">brak danych</b></div>
-        </section>
-
-        <section class="card threshold-settings-card">
-          <div class="section-head compact-section-head">
-            <div>
-              <span class="eyebrow">Progi / decyzje</span>
-              <h2>Propozycje progów</h2>
-            </div>
-            <span id="thresholdSuggestionCount">brak pending</span>
+          <div id="viewStatusList" class="view-status-list"></div>
+          <button id="toggleThresholdSuggestionsBtn" class="secondary-btn" type="button">Pokaż propozycje progów</button>
+          <div id="thresholdSuggestionPanel" class="threshold-panel" hidden>
+            <div id="thresholdSuggestionStatus" class="status info">Brak danych.</div>
+            <div id="thresholdSuggestionList"></div>
           </div>
-          <p class="muted compact-help">Tu są tylko propozycje. Confirmed nie są nadpisywane automatycznie.</p>
-          <button id="toggleThresholdSuggestionsBtn" class="secondary-btn compact-toggle-btn" type="button" aria-expanded="false">Sprawdź progi</button>
-          <div id="thresholdSuggestionPanel" class="threshold-suggestion-collapsible" hidden>
-            <div id="thresholdSuggestionList" class="threshold-suggestion-list">
-              <div class="muted-card">Czekam na propozycje progów.</div>
-            </div>
-            <div id="thresholdSuggestionStatus" class="status info">Automat obserwuje progi. Confirmed nie są nadpisywane automatycznie.</div>
-          </div>
-        </section>
-
-        <section class="card settings-card">
-          <button id="logoutBtn" class="secondary-btn" type="button">Wyloguj</button>
+          <button id="logoutBtn" class="danger-btn" type="button">Wyloguj</button>
         </section>
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Główna nawigacja">
-      <button class="active" type="button" data-tab="dashboard"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Pulpit</span></button>
-      <button type="button" data-tab="analysis"><span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Analiza</span></button>
-      <button type="button" data-tab="history"><span class="nav-icon" aria-hidden="true">↻</span><span class="nav-label">Historia</span></button>
-      <button type="button" data-tab="ai"><span class="nav-icon" aria-hidden="true">✦</span><span class="nav-label">AI</span></button>
-      <button type="button" data-tab="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span class="nav-label">Ustawienia</span></button>
+    <nav class="bottom-nav" aria-label="Nawigacja">
+      <button class="active" data-tab="dashboard" type="button"><span>⌂</span>Pulpit</button>
+      <button data-tab="analysis" type="button"><span>✦</span>Analiza</button>
+      <button data-tab="history" type="button"><span>▤</span>Historia</button>
+      <button data-tab="ai" type="button"><span>AI</span>Coach</button>
+      <button data-tab="settings" type="button"><span>⚙</span>Ustaw.</button>
     </nav>
   </div>
 
-  <script src="app.js?v=541-iphone-pro-visual"></script>
+  <script src="app.js?v=542-iphone-pro-visual-fix"></script>
 </body>
 </html>

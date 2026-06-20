@@ -1,10 +1,10 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-541-iphone-pro-visual';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-v542-iphone-pro-visual-fix';
 const ASSETS = [
   './',
-  './index.html',
-  './styles.css?v=541-iphone-pro-visual',
-  './app.js?v=541-iphone-pro-visual',
-  './manifest.json'
+  './index.html?v=542-iphone-pro-visual-fix',
+  './styles.css?v=542-iphone-pro-visual-fix',
+  './app.js?v=542-iphone-pro-visual-fix',
+  './manifest.json?v=542'
 ];
 
 self.addEventListener('install', event => {
