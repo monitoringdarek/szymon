@@ -1,4 +1,4 @@
-const VERSION = 'v5.4.0-iphone-pro-analysis-restart-local';
+const VERSION = 'v5.4.1-iphone-pro-visual-restart-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -930,9 +930,94 @@ function proSegmentSummary(pro, segments, analytics){
   return 'Segmenty PRO porządkują aktywność i pozwalają oddzielić bodziec od kosztu.';
 }
 
+
+function proContextForActivity(pro){
+  if(!pro) return null;
+  const garminId = String(pro.garmin_activity_id || '').trim();
+  const workoutId = String(pro.workout_id || '').trim();
+  const proId = String(pro.id || '').trim();
+  return (activityContexts || []).find(record => {
+    return (garminId && String(record.garmin_activity_id || '').trim() === garminId)
+      || (workoutId && String(record.workout_id || record.activity_id || '').trim() === workoutId)
+      || (proId && String(record.activity_id || '').trim() === proId);
+  }) || null;
+}
+
+function proDailyForOffset(pro, offset){
+  const context = proContextForActivity(pro);
+  const baseDate = fmtDateIso(context?.workout_date || pro?.workout_date || pro?.started_at);
+  if(!baseDate) return null;
+  const targetDate = addDaysIso(baseDate, offset);
+  if(!targetDate) return null;
+  const dailyWindow = parseJsonArray(context?.daily_metrics_window);
+  return metricForDate(dailyWindow, targetDate);
+}
+
+function proBeforeText(pro){
+  const daily = proDailyForOffset(pro, 0) || readiness || null;
+  if(!daily){
+    return 'Brakuje pełnego stanu przed treningiem, więc oceniamy ostrożnie: najpierw bodziec, potem reakcja organizmu po nocy.';
+  }
+  const readinessScore = daily.training_readiness_score != null ? Math.round(Number(daily.training_readiness_score)) : null;
+  const sleep = daily.sleep_minutes != null ? fmtMin(daily.sleep_minutes) : null;
+  const battery = daily.body_battery_end ?? daily.body_battery_start ?? null;
+  const stress = daily.avg_stress != null ? Math.round(Number(daily.avg_stress)) : null;
+  const lowReadiness = readinessScore != null && readinessScore < 45;
+  const shortSleep = Number(daily.sleep_minutes) > 0 && Number(daily.sleep_minutes) < 360;
+  if(lowReadiness || shortSleep){
+    return 'Organizm nie wchodził w ten trening idealnie świeży. To nie blokuje pracy, ale podnosi znaczenie kosztu po wysiłku.';
+  }
+  if(readinessScore != null || sleep || battery != null || stress != null){
+    return 'Organizm wszedł w trening z czytelnym kontekstem regeneracji. Patrzymy nie tylko na wynik, ale też na cenę tego bodźca.';
+  }
+  return 'Stan przed treningiem jest częściowy. Analiza opiera się na dostępnych danych i nie dopowiada braków.';
+}
+
+function proBeforeControlLine(pro){
+  const daily = proDailyForOffset(pro, 0) || readiness || null;
+  if(!daily) return 'Sen brak danych • Body Battery brak danych • Stress brak danych • Readiness brak danych';
+  const sleep = daily.sleep_minutes != null ? fmtMin(daily.sleep_minutes) : 'brak danych';
+  const battery = daily.body_battery_end ?? daily.body_battery_start;
+  const stress = daily.avg_stress != null ? Math.round(Number(daily.avg_stress)) : null;
+  const readinessScore = daily.training_readiness_score != null ? Math.round(Number(daily.training_readiness_score)) : null;
+  return `Sen ${sleep} • Body Battery ${battery ?? 'brak danych'} • Stress ${stress ?? 'brak danych'} • Readiness ${readinessScore != null ? `${readinessScore}/100` : 'brak danych'}`;
+}
+
+function proTrainingTypeLabel(pro){
+  if(pro?.is_multisport) return 'Race';
+  const type = String(pro?.sport_type || pro?.activity_type || '').toLowerCase();
+  if(type.includes('run')) return 'Bieg';
+  if(type.includes('cycl') || type.includes('bike')) return 'Rower';
+  if(type.includes('swim')) return 'Pływanie';
+  return sportLabel(type || 'Trening');
+}
+
 function proRecoveryStatus(pro){
   const activityDate = fmtDateIso(pro?.workout_date || pro?.started_at);
   const tomorrow = addDaysIso(activityDate, 1);
+  const after = proDailyForOffset(pro, 1);
+  const hasRecoveryData = Boolean(after && (
+    after.sleep_minutes != null
+    || after.body_battery_end != null
+    || after.body_battery_start != null
+    || after.avg_stress != null
+    || after.resting_hr != null
+    || after.training_readiness_score != null
+  ));
+
+  if(hasRecoveryData){
+    const sleep = after.sleep_minutes != null ? fmtMin(after.sleep_minutes) : 'brak danych';
+    const battery = after.body_battery_end ?? after.body_battery_start ?? 'brak danych';
+    const stress = after.avg_stress != null ? Math.round(Number(after.avg_stress)) : 'brak danych';
+    const rhr = after.resting_hr != null ? Math.round(Number(after.resting_hr)) : 'brak danych';
+    const readinessScore = after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100` : 'brak danych';
+    return {
+      status: 'Odpowiedź gotowa',
+      title: 'Mamy dane z kolejnej doby, więc można uczciwie ocenić koszt regeneracji po tym treningu.',
+      text: `Sen ${sleep} • Body Battery ${battery} • Stress ${stress} • RHR ${rhr} • Readiness ${readinessScore}.`
+    };
+  }
+
   return {
     status: 'Czeka na dane',
     title: 'Pełna ocena kosztu regeneracji pojawi się po synchronizacji kolejnej nocy.',
@@ -991,7 +1076,7 @@ function renderProSegmentRows(segments){
       type === 'run' || type === 'swim' ? segmentPaceText(segment) : ''
     ].filter(Boolean).join(' • ');
     return `
-      <details class="pro-segment-row">
+      <details class="pro-segment-row pro-segment-${escapeHtml(type)}">
         <summary><span>${segmentIcon(type)} ${escapeHtml(segmentTitle(type))}</span><em>${escapeHtml(line)}</em></summary>
         <div class="pro-segment-detail-grid">
           <div><span>Dystans</span><b>${escapeHtml(fmtMetersAsKm(segment.distance_meters))}</b></div>
@@ -1015,7 +1100,7 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
       <button class="secondary-btn back-btn pro-back-btn" type="button">Wróć do historii</button>
       <section class="pro-analysis-screen">
         <div class="pro-analysis-hero">
-          <span class="eyebrow">Road to Kalmar 2026</span>
+          <span class="eyebrow">ROAD TO KALMAR 2026</span>
           <h2>Analiza treningu</h2>
           <p>${escapeHtml(name)}</p>
         </div>
@@ -1039,14 +1124,13 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
   const primarySegments = [swim, bike, run].filter(Boolean);
   const controls = proControlNumbers(pro, analytics, segments);
   const recovery = proRecoveryStatus(pro);
-  const badge = pro.is_multisport ? 'Race' : sportLabel(pro.sport_type || pro.activity_type);
+  const badge = proTrainingTypeLabel(pro);
   const title = pro.event_name || pro.activity_name || activityName(fallbackActivity) || 'Aktywność Garmin PRO';
   const date = fmtDate(pro.workout_date || pro.started_at);
   const distance = fmtMetersAsKm(pro.distance_meters);
   const duration = fmtSecToMin(pro.duration_seconds || pro.elapsed_time_seconds);
-  const beforeLine = readiness
-    ? `Sen ${readiness.sleep_minutes != null ? fmtMin(readiness.sleep_minutes) : 'brak'} • Body Battery ${readiness.body_battery_end ?? readiness.body_battery_start ?? 'brak'} • Stress ${readiness.avg_stress ?? 'brak'} • Readiness ${readiness.training_readiness_score != null ? Math.round(Number(readiness.training_readiness_score)) : 'brak'}`
-    : 'Brak danych regeneracyjnych D0 w widoku aplikacji.';
+  const beforeLine = proBeforeControlLine(pro);
+  const beforeText = proBeforeText(pro);
   const costTitle = proCostTitle(pro, analytics, segments);
   const stimulusTitle = proIntensityTitle(pro, analytics, segments);
   const segmentSummary = proSegmentSummary(pro, segments, analytics);
@@ -1059,19 +1143,19 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
     <section class="pro-analysis-screen">
       <header class="pro-analysis-hero">
         <div>
-          <span class="eyebrow">Road to Kalmar 2026</span>
+          <span class="eyebrow">ROAD TO KALMAR 2026</span>
           <h2>Analiza treningu</h2>
           <p>${escapeHtml(title)} • ${escapeHtml(date)}</p>
         </div>
-        <span class="pro-race-badge">${escapeHtml(badge)}</span>
+        <span class="pro-race-badge">🏁 ${escapeHtml(badge)}</span>
         <div class="pro-hero-line"><i></i></div>
       </header>
 
       <article class="pro-analysis-card pro-before-card">
-        <div class="pro-card-icon">♙</div>
+        <div class="pro-card-icon">☼</div>
         <div class="pro-card-body">
           <h3>STAN PRZED</h3>
-          <p>Organizm oceniamy przez sen, gotowość i obciążenie, nie tylko przez sam trening.</p>
+          <p>${escapeHtml(beforeText)}</p>
           <div class="pro-chip-row"><span>${escapeHtml(beforeLine)}</span></div>
         </div>
       </article>
@@ -1287,7 +1371,15 @@ function renderStatus(){
   renderConnectionStatus();
 }
 
+
+function applyActiveTabClass(tab){
+  const safe = ['dashboard', 'analysis', 'history', 'ai', 'settings'].includes(tab) ? tab : 'dashboard';
+  document.body.classList.remove('tab-dashboard', 'tab-analysis', 'tab-history', 'tab-ai', 'tab-settings');
+  document.body.classList.add(`tab-${safe}`);
+}
+
 function renderAll(){
+  if(!document.body.classList.contains('tab-dashboard') && !document.body.classList.contains('tab-analysis') && !document.body.classList.contains('tab-history') && !document.body.classList.contains('tab-ai') && !document.body.classList.contains('tab-settings')) applyActiveTabClass('dashboard');
   renderConnectionStatus();
   renderDashboard();
   renderAnalysis();
@@ -2759,6 +2851,7 @@ function closeActivityDetails(){
 
 function showTab(tab){
   const target = ['dashboard', 'analysis', 'history', 'ai', 'settings'].includes(tab) ? tab : 'dashboard';
+  applyActiveTabClass(target);
   if(target !== 'history') selectedActivityKey = '';
   $$('.screen').forEach(screen => screen.classList.toggle('active', screen.id === `screen-${target}`));
   $$('.bottom-nav button').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === target));

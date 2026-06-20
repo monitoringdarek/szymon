@@ -1734,3 +1734,318 @@ body.is-auth-checking .bottom-nav{display:none!important}
   .pro-card-title-row{display:grid}
   .pro-waiting-badge{justify-self:start}
 }
+
+/* =============================================================================
+   v5.4.1 — pełny visual restart ekranu Analiza PRO według makiety iPhone
+   ============================================================================= */
+body{
+  background:
+    radial-gradient(circle at 50% -10%, rgba(57,200,255,.16), transparent 34%),
+    radial-gradient(circle at 100% 12%, rgba(255,106,24,.12), transparent 28%),
+    linear-gradient(180deg,#020813 0%,#061426 52%,#020813 100%) !important;
+}
+body.tab-analysis .topbar{
+  display:none !important;
+}
+body.tab-analysis .app-shell{
+  padding-top:calc(10px + env(safe-area-inset-top)) !important;
+}
+body.tab-analysis main{
+  margin-top:0 !important;
+}
+body.tab-analysis #screen-analysis{
+  padding-top:0;
+}
+.pro-analysis-host{
+  width:100%;
+}
+.pro-analysis-screen{
+  gap:13px !important;
+  padding-bottom:8px;
+}
+.pro-analysis-screen .pro-back-btn{
+  justify-self:start;
+  min-height:42px;
+  padding:0 14px;
+  border-radius:999px;
+  background:rgba(57,200,255,.07);
+  border-color:rgba(57,200,255,.30);
+  color:#dff6ff;
+}
+.pro-analysis-hero{
+  min-height:146px;
+  padding:23px 17px 17px !important;
+  border-radius:30px !important;
+  border:1px solid rgba(128,169,220,.24) !important;
+  background:
+    radial-gradient(circle at 86% 8%,rgba(255,126,42,.32),transparent 30%),
+    radial-gradient(circle at 12% 12%,rgba(57,200,255,.20),transparent 28%),
+    linear-gradient(145deg,rgba(11,32,60,.98),rgba(3,9,22,.98) 72%) !important;
+  box-shadow:0 28px 80px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+.pro-analysis-hero::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(120deg,rgba(255,255,255,.08),transparent 26%,transparent 74%,rgba(255,255,255,.04));
+  pointer-events:none;
+}
+.pro-analysis-hero .eyebrow{
+  color:#ff9f4a !important;
+  font-size:11px;
+  letter-spacing:.14em;
+}
+.pro-analysis-hero h2{
+  margin-top:7px !important;
+  font-size:34px !important;
+  line-height:.98 !important;
+  letter-spacing:-.045em !important;
+  text-shadow:0 12px 36px rgba(0,0,0,.35);
+}
+.pro-analysis-hero p{
+  max-width:68% !important;
+  color:#d3e5ff !important;
+  font-size:14px !important;
+  margin-top:8px !important;
+}
+.pro-race-badge{
+  top:54px !important;
+  right:15px !important;
+  min-height:38px !important;
+  padding:0 13px !important;
+  border-radius:999px !important;
+  background:rgba(255,106,24,.13) !important;
+  border:1px solid rgba(255,143,66,.75) !important;
+  color:#fff3e9 !important;
+  box-shadow:0 10px 28px rgba(255,106,24,.16), inset 0 1px 0 rgba(255,255,255,.10);
+}
+.pro-hero-line{
+  margin-top:18px !important;
+  height:5px !important;
+  background:rgba(151,176,214,.17) !important;
+}
+.pro-hero-line i{
+  width:42% !important;
+  background:linear-gradient(90deg,#ffb052,#ff6a18) !important;
+  box-shadow:0 0 18px rgba(255,106,24,.45);
+}
+.pro-analysis-card{
+  position:relative;
+  grid-template-columns:50px minmax(0,1fr) !important;
+  gap:13px !important;
+  padding:15px !important;
+  border-radius:26px !important;
+  border:1px solid rgba(122,163,216,.18) !important;
+  background:
+    radial-gradient(circle at 90% 0%,rgba(57,200,255,.10),transparent 34%),
+    linear-gradient(148deg,rgba(9,28,54,.96),rgba(3,11,25,.985)) !important;
+  box-shadow:0 22px 62px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.065) !important;
+  overflow:hidden;
+}
+.pro-analysis-card::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:18px;
+  bottom:18px;
+  width:3px;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(57,200,255,.0),rgba(57,200,255,.88),rgba(57,200,255,.0));
+}
+.pro-stimulus-card::before,.pro-cost-card::before{
+  background:linear-gradient(180deg,rgba(255,106,24,0),rgba(255,126,42,.95),rgba(255,106,24,0));
+}
+.pro-night-card::before{
+  background:linear-gradient(180deg,rgba(255,210,86,0),rgba(255,210,86,.92),rgba(255,210,86,0));
+}
+.pro-card-icon{
+  width:46px !important;
+  height:46px !important;
+  border-radius:50% !important;
+  font-size:22px !important;
+  background:rgba(57,200,255,.08) !important;
+  border:1.5px solid rgba(57,200,255,.62) !important;
+  box-shadow:0 0 26px rgba(57,200,255,.13), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+.pro-card-icon.orange{
+  background:rgba(255,106,24,.10) !important;
+  border-color:rgba(255,130,54,.74) !important;
+  color:#ff9857 !important;
+  box-shadow:0 0 28px rgba(255,106,24,.15), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+.pro-card-icon.yellow{
+  background:rgba(255,210,86,.10) !important;
+  border-color:rgba(255,210,86,.74) !important;
+  color:#ffe08a !important;
+}
+.pro-card-body{
+  position:relative;
+  min-width:0;
+}
+.pro-analysis-card h3{
+  margin-bottom:9px !important;
+  font-size:18px !important;
+  line-height:1 !important;
+  letter-spacing:.075em !important;
+  font-weight:1000 !important;
+}
+.pro-analysis-card p{
+  color:#f7fbff !important;
+  font-size:15.5px !important;
+  line-height:1.38 !important;
+  font-weight:820 !important;
+  text-wrap:pretty;
+}
+.pro-analysis-card small{
+  color:#9fb0c8 !important;
+  font-size:11.5px !important;
+  line-height:1.35 !important;
+}
+.pro-chip-row,
+.pro-control-row{
+  margin-top:12px !important;
+  border-radius:18px !important;
+  border:1px solid rgba(137,168,211,.18) !important;
+  background:rgba(0,0,0,.18) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.pro-chip-row span{
+  display:block;
+  color:#d9e8ff;
+  font-size:12.5px;
+  line-height:1.35;
+}
+.pro-mini-segment-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:7px !important;
+  margin-top:13px !important;
+}
+.pro-mini-segment{
+  display:block !important;
+  text-align:left !important;
+  padding:10px 8px !important;
+  border-radius:18px !important;
+  border:1px solid rgba(151,176,214,.15) !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015)) !important;
+  min-height:92px;
+}
+.pro-mini-segment b{
+  margin:0 0 8px !important;
+  font-size:12px !important;
+  line-height:1.15 !important;
+}
+.pro-mini-segment span{
+  font-size:12px !important;
+  line-height:1.22 !important;
+  color:#f7fbff !important;
+}
+.pro-mini-segment em{
+  margin-top:5px !important;
+  font-size:11px !important;
+  color:#c4d4eb !important;
+}
+.pro-mini-swim{border-color:rgba(57,200,255,.22) !important}
+.pro-mini-bike{border-color:rgba(255,106,24,.28) !important}
+.pro-mini-run{border-color:rgba(86,224,143,.22) !important}
+.pro-segment-list{
+  margin-top:13px !important;
+  border-radius:20px !important;
+  border:1px solid rgba(137,168,211,.17) !important;
+  background:rgba(0,0,0,.16) !important;
+}
+.pro-segment-row summary{
+  min-height:54px !important;
+  padding:11px 13px !important;
+}
+.pro-segment-row summary span{
+  font-size:15px !important;
+}
+.pro-segment-row summary em{
+  max-width:52%;
+  font-size:11.5px !important;
+  color:#9fb0c8 !important;
+}
+.pro-segment-swim summary span{color:#7adfff !important}
+.pro-segment-bike summary span{color:#ff9b58 !important}
+.pro-segment-run summary span{color:#7df1ad !important}
+.pro-segment-t1 summary span,.pro-segment-t2 summary span{color:#d9e7ff !important}
+.pro-control-row{
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:6px !important;
+  padding:8px !important;
+}
+.pro-control-row span{
+  min-width:0 !important;
+  display:grid;
+  gap:3px;
+  padding:7px 3px;
+  border-radius:13px;
+  background:rgba(255,255,255,.035);
+  font-size:10.5px !important;
+  text-align:center;
+}
+.pro-control-row b{
+  font-size:14px !important;
+  color:#ff9b58 !important;
+}
+.pro-card-title-row{
+  align-items:center !important;
+}
+.pro-waiting-badge{
+  min-height:30px;
+  padding:7px 10px !important;
+  background:rgba(255,210,86,.13) !important;
+  border-color:rgba(255,210,86,.46) !important;
+  color:#ffe392 !important;
+  box-shadow:0 8px 22px rgba(255,210,86,.08);
+}
+.pro-night-card .pro-waiting-badge{
+  justify-self:start;
+}
+.pro-action-row{
+  grid-template-columns:1fr 1fr !important;
+  gap:9px !important;
+}
+.pro-action-row .secondary-btn{
+  min-height:48px !important;
+  border-radius:17px !important;
+  color:#dff6ff !important;
+  background:linear-gradient(180deg,rgba(57,200,255,.12),rgba(57,200,255,.055)) !important;
+  border-color:rgba(57,200,255,.30) !important;
+}
+body.tab-analysis .bottom-nav,
+.bottom-nav{
+  border-radius:25px !important;
+  height:78px !important;
+  border-color:rgba(137,168,211,.24) !important;
+  background:rgba(3,12,25,.88) !important;
+  box-shadow:0 24px 70px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.07) !important;
+}
+.bottom-nav button.active{
+  color:#61d5ff !important;
+  background:linear-gradient(180deg,rgba(57,200,255,.16),rgba(57,200,255,.055)) !important;
+  box-shadow:inset 0 0 0 1px rgba(57,200,255,.42),0 10px 28px rgba(57,200,255,.08) !important;
+}
+.bottom-nav button.active .nav-icon{
+  color:#ff9b58;
+}
+@media(max-width:430px){
+  .app-shell{width:100% !important;}
+  .pro-analysis-hero h2{font-size:32px !important;}
+  .pro-analysis-card{padding:14px !important;grid-template-columns:48px minmax(0,1fr) !important;}
+  .pro-mini-segment-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
+  .pro-mini-segment{min-height:94px;padding:9px 7px !important;}
+  .pro-mini-segment b{font-size:11px !important;}
+  .pro-mini-segment span{font-size:11px !important;}
+  .pro-mini-segment em{font-size:10.5px !important;}
+  .pro-action-row{grid-template-columns:1fr 1fr !important;}
+  .pro-action-row .secondary-btn{font-size:12px !important;padding:0 8px !important;}
+}
+@media(max-width:370px){
+  .pro-analysis-hero h2{font-size:29px !important;}
+  .pro-race-badge{top:52px !important;right:12px !important;font-size:11px !important;}
+  .pro-mini-segment-grid{grid-template-columns:1fr !important;}
+  .pro-mini-segment{min-height:auto !important;}
+  .pro-control-row{grid-template-columns:1fr 1fr !important;}
+}

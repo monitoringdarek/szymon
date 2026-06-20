@@ -1,4 +1,4 @@
-Szymon AI Coach PRO v5.4.0 — iPhone PRO Analysis Restart
+Szymon AI Coach PRO v5.4.1 — iPhone PRO Analysis Restart
 
 Wgraj na GitHub Pages pliki z tej paczki:
 - index.html
@@ -17,3 +17,6 @@ Zmiany:
 - timeseries i benchmarks nie są udawane — pozostają etapem późniejszym.
 
 Po wgraniu: odśwież stronę Ctrl+F5. Na iPhonie zamknij i otwórz PWA/stronę ponownie.
+
+
+v5.4.1: pełny visual restart ekranu Analiza PRO według zaakceptowanej makiety iPhone.
