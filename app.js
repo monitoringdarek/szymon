@@ -1,4 +1,4 @@
-const VERSION = 'v5.4.2-human-coach-weekly-context-local';
+const VERSION = 'v5.4.2-HC-athlete-tone-hotfix-local';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -481,7 +481,22 @@ function humanizeCoachText(value){
     .replace(/\btraining readiness\b/gi, 'gotowość treningowa')
     .replace(/\breadiness\b/gi, 'gotowość')
     .replace(/\bload 7d\b/gi, 'obciążenie z tygodnia')
+    .replace(/\bIF\s*([0-9]+(?:[.,][0-9]+)?)/gi, 'wysoka intensywność')
+    .replace(/\bload\s*([0-9]+)/gi, 'duże obciążenie')
+    .replace(/po wczorajszym/gi, 'po ostatnim')
+    .replace(/wczorajszym/gi, 'ostatnim')
+    .replace(/wczoraj/gi, 'po ostatnim treningu')
+    .replace(/Pełna regeneracja!?/gi, 'ODBUDOWA')
+    .replace(/Regeneracja!/gi, 'ODBUDOWA')
+    .replace(/!+/g, '')
     .replace(/Dane poranek po treningu:/g, 'Poranek po treningu:');
+}
+
+function normalizeCoachTitle(status, rawTitle){
+  const text = humanizeCoachText(rawTitle || '').trim().toUpperCase();
+  if(status === 'train') return text && !/MOŻNA TRENOWAĆ|TRENUJ|TRENING/.test(text) ? text : 'DZISIAJ: TRENING';
+  if(status === 'recovery') return text && !/REGENERACJA|PEŁNA|ODBUDOWA/.test(text) ? text : 'DZISIAJ: ODBUDOWA';
+  return text && !/OSTROŻNIE|KONTROLA|KONTROLOWANY/.test(text) ? text : 'DZISIAJ: KONTROLOWANY TRENING';
 }
 function readinessDecision(){
   return buildLocalTodayCoach();
@@ -528,9 +543,9 @@ function weeklyTrendFallback(){
   const load = weeklyLoadValue();
   const recent = recentTrainingItems(3);
   const strongCount = recent.filter(item => String(item.summary).includes('mocny')).length;
-  if(load != null && load >= 650) return 'W ostatnim tygodniu obciążenie jest wysokie. Forma jest budowana, ale regeneracja musi teraz nadążyć.';
-  if(strongCount >= 2) return 'W ostatnich treningach było kilka mocniejszych bodźców. Dzisiaj ważniejsza jest mądra kontrola niż dokładanie na siłę.';
-  if(recent.length >= 3) return 'Tydzień ma już wystarczająco danych, żeby ocenić trend. Na dziś decyzja zależy głównie od snu, energii i kosztu ostatniego treningu.';
+  if(load != null && load >= 650) return 'W ostatnim tygodniu praca jest duża. To buduje formę pod Kalmar, ale trzeba pilnować jakości kolejnych akcentów, zamiast dokładać zmęczenie bez celu.';
+  if(strongCount >= 2) return 'W ostatnich treningach były mocne bodźce. Dzisiaj liczy się kontrola i przygotowanie organizmu do następnej jakościowej roboty.';
+  if(recent.length >= 3) return 'Tydzień daje już obraz pracy. Decyzja na dziś zależy od snu, energii i tego, czy ostatni trening zostawił koszt w organizmie.';
   return 'Brakuje pełnego tygodnia albo minimum trzech treningów, więc decyzja jest ostrożniejsza.';
 }
 
@@ -552,23 +567,23 @@ function buildLocalTodayCoach(){
   const hardLatest = String(latestImpact).includes('mocny');
 
   let status = 'caution';
-  let title = 'DZISIAJ: OSTROŻNIE';
-  let summary = 'Można trenować, ale bez mocnego akcentu. Organizm potrzebuje kontroli, nie dokładania za wszelką cenę.';
-  let today = 'Spokojny trening tlenowy albo lekka technika. Bez ścigania, bez mocnych odcinków.';
-  let tomorrow = 'Jutro można wracać do normalnej pracy tylko wtedy, jeśli sen i energia pójdą w górę.';
+  let title = 'DZISIAJ: KONTROLOWANY TRENING';
+  let summary = 'Robimy robotę, ale bez dokładania chaosu. Dzisiaj liczy się kontrola, technika i trzymanie celu jednostki.';
+  let today = 'Spokojny tlen albo technika. Bez ścigania i bez dokładania mocnych odcinków poza planem.';
+  let tomorrow = 'Jutro wracamy do mocniejszej pracy tylko wtedy, jeśli sen i energia odbiją. Jakość ponad zaliczanie treningu.';
 
   if(veryLowReady || (hardLatest && (lowBattery || shortSleep))){
     status = 'recovery';
-    title = 'DZISIAJ: REGENERACJA';
-    summary = 'Organizm nie wygląda na gotowy do kolejnego mocnego bodźca. Ostatni trening i regeneracja po nim przemawiają za spokojniejszym dniem.';
-    today = 'Najbezpieczniej: wolne, mobilność albo bardzo lekki rozjazd 30–45 minut. Bez akcentów.';
-    tomorrow = 'Jutro spokojny trening tylko wtedy, jeśli sen, energia i gotowość wyraźnie się poprawią.';
+    title = 'DZISIAJ: ODBUDOWA';
+    summary = 'Ostatni mocny bodziec został wykonany. Dzisiaj nie dokładamy głupiego zmęczenia — odbudowa ma przygotować organizm do następnej jakościowej pracy.';
+    today = 'Odbudowa: wolne, mobilność albo 30–45 minut bardzo lekko. Zero ścigania, zero ambicji na tempo, zero dokładania siły.';
+    tomorrow = 'Jutro spokojny tlen lub technika tylko wtedy, jeśli sen, energia i gotowość wyraźnie odbiją. Jeśli nie — jeszcze jeden dzień odbudowy, żeby kolejny akcent miał sens.';
   }else if(!lowReady && !shortSleep && !lowBattery && !highLoad){
     status = 'train';
-    title = 'DZISIAJ: MOŻNA TRENOWAĆ';
-    summary = 'Dane nie pokazują mocnego rozbicia. Trening jest możliwy, ale nadal warto pilnować kontroli i celu jednostki.';
-    today = 'Można zrobić zaplanowany trening. Jeśli w planie jest akcent, wykonaj go kontrolowanie, bez dokładania ponad założenia.';
-    tomorrow = 'Jutro decyzję oprzyj na porannym śnie, energii i tętnie spoczynkowym.';
+    title = 'DZISIAJ: TRENING';
+    summary = 'Organizm wygląda gotowo do pracy. Robimy zaplanowany trening, ale trzymamy cel jednostki — bez dokładania ego ponad plan.';
+    today = 'Wykonaj zaplanowany trening. Jeśli jest akcent, zrób go jakościowo i kontrolowanie — mocno, ale nie chaotycznie.';
+    tomorrow = 'Jutro ocenimy odpowiedź organizmu po śnie, energii i tętnie spoczynkowym. Jeśli wszystko gra, jedziemy dalej z planem.';
   }
 
   const reasons = [];
@@ -585,10 +600,10 @@ function buildLocalTodayCoach(){
     summary: reasons.length ? `${summary} W tle: ${reasons.join(', ')}.` : summary,
     today,
     tomorrow,
-    nextDays: 'Najbliższe 2–3 dni prowadź według reakcji organizmu: lepszy sen i energia pozwalają wracać do pracy, słaba gotowość oznacza regenerację.',
+    nextDays: 'Najbliższe 2–3 dni prowadzimy jak sportowiec: gdy organizm odpowiada — wracasz do pracy; gdy sygnały są słabe — odbudowa, żeby kolejny mocny bodziec miał jakość.',
     weeklyTrend: weeklyTrendFallback(),
     lastTrainings: recent,
-    watch: ['sen i poranna energia', 'tętno spoczynkowe', 'czy nogi są ciężkie po ostatnim treningu'],
+    watch: ['sen i poranna energia', 'tętno spoczynkowe', 'ciężkość nóg po ostatnim treningu', 'gotowość do jakościowej pracy'],
     dataGaps: recent.length < 3 ? ['brakuje minimum trzech ostatnich treningów w widoku'] : [],
     source: 'fallback'
   };
@@ -602,7 +617,7 @@ function normalizeTodayCoach(coach){
     : 'caution';
   return {
     status,
-    title: humanizeCoachText(coach.title || coach.decisionTitle || coach.headline || (status === 'recovery' ? 'DZISIAJ: REGENERACJA' : status === 'train' ? 'DZISIAJ: MOŻNA TRENOWAĆ' : 'DZISIAJ: OSTROŻNIE')),
+    title: normalizeCoachTitle(status, coach.title || coach.decisionTitle || coach.headline),
     summary: humanizeCoachText(coach.summary || coach.reason || coach.headline || ''),
     today: humanizeCoachText(coach.today || coach.todayAction || coach.recommendationToday || coach.recovery || ''),
     tomorrow: humanizeCoachText(coach.tomorrow || coach.tomorrowAction || coach.recommendationTomorrow || ''),
@@ -649,9 +664,9 @@ async function requestWeeklyCoachAnalysis(){
 }
 
 function todayStatusLabel(status){
-  if(status === 'train') return 'można trenować';
-  if(status === 'recovery') return 'regeneracja';
-  return 'ostrożnie';
+  if(status === 'train') return 'trening';
+  if(status === 'recovery') return 'odbudowa';
+  return 'kontrola';
 }
 
 function renderRecentTrainingsList(items){
@@ -660,7 +675,7 @@ function renderRecentTrainingsList(items){
   return rows.map(item => `
     <article class="recent-training-item">
       <b>${escapeHtml(item.date || 'brak daty')} · ${escapeHtml(item.title || 'Trening')}</b>
-      <span>${escapeHtml(item.summary || 'brak opisu')}${item.load != null ? ` · load ${escapeHtml(fmtNumber(item.load))}` : ''}</span>
+      <span>${escapeHtml(item.summary || 'brak opisu')}</span>
     </article>
   `).join('');
 }
@@ -672,7 +687,7 @@ function renderHumanCoachDashboard(coach){
     : weeklyCoachStatus === 'ai' ? 'AI · tydzień + 3 treningi'
     : 'decyzja zapasowa';
 
-  if($('todayDecision')) $('todayDecision').textContent = selected.title || 'DZISIAJ: OSTROŻNIE';
+  if($('todayDecision')) $('todayDecision').textContent = normalizeCoachTitle(status, selected.title || '');
   if($('todayReason')) $('todayReason').textContent = selected.summary || 'Brak pełnej decyzji.';
   if($('todayMainAction')) $('todayMainAction').textContent = selected.today || 'Brak zalecenia na dziś.';
   if($('todayCoachSource')) $('todayCoachSource').textContent = sourceText;
@@ -3167,7 +3182,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-human-coach-weekly').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-athlete-tone').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

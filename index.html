@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.2 Human Coach</title>
+  <title>Szymon AI Coach PRO • v5.4.2 Athlete Tone</title>
   <link rel="manifest" href="manifest.json?v=542">
-  <link rel="stylesheet" href="styles.css?v=542-human-coach-weekly">
+  <link rel="stylesheet" href="styles.css?v=542-athlete-tone">
 </head>
 <body class="is-auth-checking visual-fix-v542">
   <section id="loginScreen" class="login-screen" hidden>
@@ -26,10 +26,10 @@
       <div class="topbar-title">
         <span class="eyebrow">Road to IRONMAN Kalmar 2026</span>
         <h1>Szymon AI Coach PRO</h1>
-        <small class="topbar-subtitle">Human Coach Weekly</small>
+        <small class="topbar-subtitle">Human Coach Athlete Tone</small>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.2 HC</span>
+        <span class="app-version-pill" data-app-version>v5.4.2 HC-A</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -49,8 +49,8 @@
             <span id="todayCoachSource" class="coach-mode-pill">czekam na dane</span>
           </div>
           <h2 id="todayDecision">Czekam na Garmin PRO.</h2>
-          <p id="todayReason">Po pobraniu danych dostaniesz jedną prostą decyzję: trenuj, ostrożnie albo regeneracja.</p>
-          <div id="todayMainAction" class="today-main-action">Brak decyzji treningowej.</div>
+          <p id="todayReason">Po pobraniu danych dostaniesz jedną decyzję trenerską: trening, kontrola albo odbudowa.</p>
+          <div id="todayMainAction" class="today-main-action">Czekam na decyzję trenera.</div>
         </section>
 
         <section class="card human-advice-card">
@@ -156,7 +156,7 @@
         <section class="screen-title-card ai-title-v542">
           <span class="eyebrow">Plan</span>
           <h2>Dziś, jutro i najbliższe dni</h2>
-          <p>Bez technicznego raportu: tylko praktyczna podpowiedź treningowa.</p>
+          <p>Bez technicznego raportu: konkretna podpowiedź treningowa pod Kalmar.</p>
         </section>
         <div class="mode-switch">
           <button class="active" data-mode="plan" type="button">Najbliższe dni</button>
@@ -177,11 +177,11 @@
         <section class="screen-title-card">
           <span class="eyebrow">Profil</span>
           <h2>Status i progi</h2>
-          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC</b></p>
+          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A</b></p>
         </section>
         <section class="card settings-card">
           <div class="settings-grid">
-            <div><span>Wersja</span><b>v5.4.2-human-coach-weekly-context-local</b></div>
+            <div><span>Wersja</span><b>v5.4.2-HC-athlete-tone-hotfix-local</b></div>
             <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
             <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
             <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -208,6 +208,6 @@
     </nav>
   </div>
 
-  <script src="app.js?v=542-human-coach-weekly"></script>
+  <script src="app.js?v=542-athlete-tone"></script>
 </body>
 </html>
