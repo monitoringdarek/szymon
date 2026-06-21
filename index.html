@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.2 Athlete Tone</title>
+  <title>Szymon AI Coach PRO • v5.4.2 Visual PRO+</title>
   <link rel="manifest" href="manifest.json?v=542">
-  <link rel="stylesheet" href="styles.css?v=542-athlete-data-guard">
+  <link rel="stylesheet" href="styles.css?v=542-hc-a-dg-visual-pro2">
 </head>
-<body class="is-auth-checking visual-fix-v542">
+<body class="is-auth-checking visual-fix-v542 visual-pro-v542">
   <section id="loginScreen" class="login-screen" hidden>
     <form id="loginForm" class="login-card">
       <span class="eyebrow">Garmin PRO Only</span>
@@ -26,10 +26,10 @@
       <div class="topbar-title">
         <span class="eyebrow">Road to IRONMAN Kalmar 2026</span>
         <h1>Szymon AI Coach PRO</h1>
-        <small class="topbar-subtitle">Human Coach Data Guard</small>
+        <small class="topbar-subtitle">Human Coach Visual PRO+</small>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.2 HC-A DG</span>
+        <span class="app-version-pill" data-app-version>v5.4.2 HC-A DG PRO+</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -40,6 +40,32 @@
           <div>
             <b id="connectionSummary">Supabase: brak danych · Garmin PRO: brak danych</b>
             <span id="lastReadLabel">Ostatni odczyt: brak danych</span>
+          </div>
+        </section>
+
+        <section class="kalmar-focus-card" aria-label="Cel Kalmar i gotowość">
+          <div class="kalmar-goal-block">
+            <span class="eyebrow">Road to Kalmar</span>
+            <div class="kalmar-wordmark" aria-label="IRONMAN Kalmar">IRON<span>MAN</span> <strong>KALMAR</strong></div>
+            <p>226 km celu. Jeden spokojny, mądry dzień po drugim.</p>
+            <div class="kalmar-distances" aria-label="Dystanse Ironman">
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.2c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/><path d="M3 20.6c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/></svg>3.8 km</span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M23 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M4.1 17.4h4.2l3.2-6.2 3.9 6.2"/><path d="M12.8 8.2h3.7"/></svg>180 km</span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 5.2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M9.8 10.3 13 7.2l3.2 2.1 2.7-.6"/><path d="m12.8 11.2-2.3 4.2-4.1 1.7"/><path d="m14.6 12.9 2.8 3.1 2.3 4"/></svg>42.2 km</span>
+            </div>
+          </div>
+          <div class="kalmar-side-metrics">
+            <div class="race-countdown-card">
+              <span>Do startu</span>
+              <b id="daysToKalmar">--</b>
+              <em>dni</em>
+            </div>
+            <div class="readiness-ring-card">
+              <div id="readinessRing" class="readiness-ring" style="--ready:0deg">
+                <span id="readinessRingValue">--</span>
+              </div>
+              <b id="readinessRingLabel">Gotowość</b>
+            </div>
           </div>
         </section>
 
@@ -177,11 +203,11 @@
         <section class="screen-title-card">
           <span class="eyebrow">Profil</span>
           <h2>Status i progi</h2>
-          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A DG</b></p>
+          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A DG PRO</b></p>
         </section>
         <section class="card settings-card">
           <div class="settings-grid">
-            <div><span>Wersja</span><b>v5.4.2-HC-athlete-data-guard-local</b></div>
+            <div><span>Wersja</span><b>v5.4.2-HC-A-DG-visual-polish-local</b></div>
             <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
             <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
             <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -201,13 +227,13 @@
     </main>
 
     <nav class="bottom-nav human-bottom-nav" aria-label="Nawigacja">
-      <button class="active" data-tab="dashboard" type="button"><span>⌂</span>Dzisiaj</button>
-      <button data-tab="history" type="button"><span>▤</span>Treningi</button>
-      <button data-tab="ai" type="button"><span>↗</span>Plan</button>
-      <button data-tab="settings" type="button"><span>⚙</span>Profil</button>
+      <button class="active" data-tab="dashboard" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.8 10.4 12 4.8l7.2 5.6"/><path d="M6.7 9.7v8.7h10.6V9.7"/><path d="M9.2 14.5h5.6"/></svg></span><em>Dzisiaj</em></button>
+      <button data-tab="history" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/><path d="M17.2 16.2l2 2 3-3"/></svg></span><em>Treningi</em></button>
+      <button data-tab="ai" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18.5c3.8-6.7 7.2-6.7 10.5-3.3"/><path d="M12.5 5.5h6v6"/><path d="M18.5 5.5 11 13"/></svg></span><em>Plan</em></button>
+      <button data-tab="settings" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2a3.8 3.8 0 1 0 0-7.6 3.8 3.8 0 0 0 0 7.6Z"/><path d="M5.8 20c1.1-3.5 3.1-5.3 6.2-5.3s5.1 1.8 6.2 5.3"/></svg></span><em>Profil</em></button>
     </nav>
   </div>
 
-  <script src="app.js?v=542-athlete-data-guard"></script>
+  <script src="app.js?v=542-hc-a-dg-visual-pro2"></script>
 </body>
 </html>

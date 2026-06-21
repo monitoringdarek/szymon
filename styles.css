@@ -2396,3 +2396,521 @@ body{
   .human-today-hero{min-height:240px!important}
   .today-main-action{font-size:14px}
 }
+
+
+/* =========================================================
+   v5.4.2 HC-A DG — Visual PRO Polish
+   Bezpieczny lifting: hierarchia, karty, ikony PRO. Bez zmian logiki danych.
+   ========================================================= */
+:root{
+  --pro-bg:#030914;
+  --pro-panel:rgba(9,22,42,.78);
+  --pro-card:rgba(12,29,52,.76);
+  --pro-card-strong:rgba(15,37,67,.86);
+  --pro-line:rgba(163,188,228,.18);
+  --pro-text:#f6f9ff;
+  --pro-muted:#9dafc9;
+  --pro-bike:#65b7ff;
+  --pro-run:#ffb15f;
+  --pro-swim:#55e3df;
+  --pro-tri:#b991ff;
+  --pro-green:#54e59b;
+  --pro-yellow:#f8d66d;
+  --pro-red:#ff6b7a;
+}
+body.visual-pro-v542{
+  background:
+    radial-gradient(circle at 72% -8%,rgba(101,183,255,.20),transparent 30%),
+    radial-gradient(circle at -10% 18%,rgba(85,227,223,.13),transparent 34%),
+    radial-gradient(circle at 105% 52%,rgba(255,177,95,.10),transparent 34%),
+    linear-gradient(180deg,#061326 0%,#030914 68%,#02060e 100%);
+}
+.visual-pro-v542 .app-shell{
+  padding-top:12px;
+}
+.visual-pro-v542 .topbar{
+  position:sticky;
+  top:0;
+  z-index:15;
+  padding:10px 10px 12px;
+  margin:0 -4px 12px;
+  border:1px solid rgba(163,188,228,.12);
+  border-radius:24px;
+  background:rgba(4,14,28,.72);
+  backdrop-filter:blur(18px) saturate(145%);
+  box-shadow:0 16px 38px rgba(0,0,0,.24);
+}
+.visual-pro-v542 .topbar h1{
+  font-size:23px;
+  letter-spacing:-.035em;
+}
+.visual-pro-v542 .topbar-subtitle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:3px;
+  color:#b8c8de;
+  font-weight:850;
+}
+.visual-pro-v542 .topbar-subtitle::before{
+  content:'';
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--pro-swim),var(--pro-bike));
+  box-shadow:0 0 18px rgba(85,227,223,.45);
+}
+.visual-pro-v542 .app-version-pill{
+  border:1px solid rgba(101,183,255,.24);
+  background:rgba(101,183,255,.10);
+  color:#dff1ff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.visual-pro-v542 .connection-strip{
+  border-color:rgba(84,229,155,.22);
+  background:linear-gradient(135deg,rgba(84,229,155,.11),rgba(101,183,255,.055));
+}
+.visual-pro-v542 .card,
+.visual-pro-v542 .hero-card,
+.visual-pro-v542 .screen-title-card,
+.visual-pro-v542 .page-title{
+  border-color:var(--pro-line);
+  background:linear-gradient(145deg,rgba(13,31,56,.82),rgba(5,14,28,.88));
+  box-shadow:0 18px 48px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.visual-pro-v542 .human-today-hero{
+  position:relative;
+  overflow:hidden;
+  min-height:0!important;
+  padding:22px 20px 20px;
+  gap:12px;
+}
+.visual-pro-v542 .human-today-hero::before{
+  content:'';
+  position:absolute;
+  inset:auto -26px -42px auto;
+  width:168px;
+  height:168px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.10);
+  background:radial-gradient(circle,rgba(255,255,255,.08),transparent 58%);
+  pointer-events:none;
+}
+.visual-pro-v542 .human-today-hero::after{
+  content:'';
+  position:absolute;
+  right:22px;
+  top:22px;
+  width:54px;
+  height:54px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.13);
+  background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.035));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  opacity:.78;
+}
+.visual-pro-v542 .human-today-hero.today-train{
+  border-color:rgba(84,229,155,.35)!important;
+  background:radial-gradient(circle at 92% 10%,rgba(84,229,155,.26),transparent 30%),linear-gradient(145deg,rgba(10,54,49,.92),rgba(5,15,30,.94))!important;
+}
+.visual-pro-v542 .human-today-hero.today-caution{
+  border-color:rgba(248,214,109,.32)!important;
+  background:radial-gradient(circle at 92% 10%,rgba(248,214,109,.22),transparent 30%),linear-gradient(145deg,rgba(58,43,18,.90),rgba(5,15,30,.94))!important;
+}
+.visual-pro-v542 .human-today-hero.today-recovery{
+  border-color:rgba(255,107,122,.32)!important;
+  background:radial-gradient(circle at 92% 10%,rgba(255,107,122,.24),transparent 30%),linear-gradient(145deg,rgba(55,18,34,.90),rgba(5,15,30,.94))!important;
+}
+.visual-pro-v542 .hero-kicker-row,
+.visual-pro-v542 .human-today-hero h2,
+.visual-pro-v542 .human-today-hero p,
+.visual-pro-v542 .today-main-action{
+  position:relative;
+  z-index:2;
+}
+.visual-pro-v542 .human-today-hero h2{
+  max-width:calc(100% - 66px);
+  font-size:31px;
+  letter-spacing:-.055em;
+  text-transform:uppercase;
+}
+.visual-pro-v542 .coach-mode-pill{
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.07);
+  color:#dcecff;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:11px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.visual-pro-v542 .human-today-hero p{
+  max-width:100%;
+  color:#dbe7fa;
+  font-size:15px;
+  line-height:1.52;
+}
+.visual-pro-v542 .today-main-action{
+  margin-top:6px;
+  border-radius:20px;
+  border-color:rgba(255,255,255,.13);
+  background:rgba(2,9,18,.30);
+  font-size:15px;
+}
+.visual-pro-v542 .human-advice-card .section-head,
+.visual-pro-v542 .human-week-card .section-head{
+  align-items:center;
+}
+.visual-pro-v542 .human-advice-grid{
+  grid-template-columns:1fr;
+}
+.visual-pro-v542 .human-advice-grid article{
+  position:relative;
+  overflow:hidden;
+  border-color:rgba(163,188,228,.14);
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
+}
+.visual-pro-v542 .human-advice-grid article::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:12px;
+  bottom:12px;
+  width:3px;
+  border-radius:999px;
+  background:linear-gradient(180deg,var(--pro-bike),var(--pro-swim));
+}
+.visual-pro-v542 .human-advice-grid article:nth-child(2)::before{
+  background:linear-gradient(180deg,var(--pro-run),var(--pro-yellow));
+}
+.visual-pro-v542 .human-trend-text{
+  padding:13px 14px;
+  border:1px solid rgba(248,214,109,.16);
+  border-radius:18px;
+  background:rgba(248,214,109,.055);
+}
+.visual-pro-v542 .recent-training-list{
+  gap:10px;
+}
+.visual-pro-v542 .recent-training-item{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  padding:12px!important;
+  border-radius:20px;
+  border:1px solid rgba(163,188,228,.14)!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.032))!important;
+}
+.visual-pro-v542 .recent-training-item .training-copy{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+.visual-pro-v542 .recent-training-item b{
+  font-size:14px;
+  line-height:1.25;
+  white-space:normal;
+}
+.visual-pro-v542 .recent-training-item .training-copy span{
+  color:#adbed6;
+  font-size:13px;
+  line-height:1.35;
+}
+.sport-mark{
+  width:40px;
+  height:40px;
+  min-width:40px;
+  display:inline-grid;
+  place-items:center;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.065);
+  color:#dbeeff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.sport-mark svg{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.sport-bike .sport-mark{color:var(--pro-bike);background:rgba(101,183,255,.10);border-color:rgba(101,183,255,.25)}
+.sport-run .sport-mark{color:var(--pro-run);background:rgba(255,177,95,.10);border-color:rgba(255,177,95,.25)}
+.sport-swim .sport-mark{color:var(--pro-swim);background:rgba(85,227,223,.10);border-color:rgba(85,227,223,.25)}
+.sport-triathlon .sport-mark{color:var(--pro-tri);background:rgba(185,145,255,.10);border-color:rgba(185,145,255,.25)}
+.visual-pro-v542 .activity-heading-pro{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+.visual-pro-v542 .activity-heading-pro h3{
+  margin:0 0 4px;
+}
+.visual-pro-v542 .activity-sport-mark{
+  width:42px;
+  height:42px;
+  min-width:42px;
+}
+.visual-pro-v542 .load-pill,
+.visual-pro-v542 .activity-top > span:not(.sport-mark){
+  border-color:rgba(163,188,228,.18)!important;
+  background:rgba(255,255,255,.06)!important;
+  color:#dcecff!important;
+}
+.visual-pro-v542 .bottom-nav{
+  height:78px;
+  border-color:rgba(163,188,228,.16)!important;
+  background:rgba(3,12,25,.82)!important;
+  backdrop-filter:blur(22px) saturate(160%)!important;
+}
+.visual-pro-v542 .bottom-nav button{
+  gap:5px!important;
+}
+.visual-pro-v542 .bottom-nav button em{
+  font-style:normal;
+  font-size:11px;
+  line-height:1;
+}
+.visual-pro-v542 .pro-nav-icon{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  color:#9fb2cc;
+}
+.visual-pro-v542 .pro-nav-icon svg{
+  width:22px;
+  height:22px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.visual-pro-v542 .bottom-nav button.active{
+  color:#f5fbff!important;
+  background:linear-gradient(135deg,rgba(101,183,255,.22),rgba(85,227,223,.10))!important;
+  box-shadow:inset 0 0 0 1px rgba(101,183,255,.20),0 8px 24px rgba(0,0,0,.18)!important;
+}
+.visual-pro-v542 .bottom-nav button.active .pro-nav-icon{
+  color:var(--pro-bike);
+}
+.visual-pro-v542 .human-details-card{
+  border-style:solid;
+  background:linear-gradient(145deg,rgba(8,22,42,.68),rgba(5,14,28,.78));
+}
+.visual-pro-v542 .human-last-card{
+  border-color:rgba(101,183,255,.18)!important;
+}
+@media(max-width:430px){
+  .visual-pro-v542 .topbar{margin-left:-2px;margin-right:-2px}
+  .visual-pro-v542 .human-today-hero h2{font-size:28px;max-width:calc(100% - 58px)}
+  .visual-pro-v542 .hero-kicker-row{display:grid;gap:8px;align-items:start}
+  .visual-pro-v542 .coach-mode-pill{justify-self:start}
+  .visual-pro-v542 .recent-training-item{grid-template-columns:40px minmax(0,1fr)}
+  .sport-mark{width:38px;height:38px;min-width:38px;border-radius:15px}
+  .sport-mark svg{width:22px;height:22px}
+  .visual-pro-v542 .bottom-nav button em{font-size:10px}
+  .visual-pro-v542 .pro-nav-icon svg{width:21px;height:21px}
+}
+
+/* v5.4.2 HC-A DG PRO+ — Kalmar focus refinement */
+.visual-pro-v542{
+  --kalmar-orange:#ff6a1a;
+  --kalmar-orange-soft:rgba(255,106,26,.18);
+  --kalmar-gold:#ffc93d;
+  --kalmar-blue:#55c8f6;
+}
+.visual-pro-v542 .human-today-hero::after{display:none!important;content:none!important;}
+.visual-pro-v542 .human-today-hero::before{opacity:.42;filter:blur(.2px);}
+.visual-pro-v542 .human-today-hero h2{max-width:100%;}
+.visual-pro-v542 .kalmar-focus-card{
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 138px;
+  gap:16px;
+  margin:0 0 14px;
+  padding:20px 18px;
+  border:1px solid rgba(255,106,26,.28);
+  border-radius:28px;
+  background:
+    radial-gradient(circle at 94% 10%,rgba(255,106,26,.28),transparent 28%),
+    radial-gradient(circle at 16% 0%,rgba(85,200,246,.17),transparent 34%),
+    linear-gradient(145deg,rgba(6,18,35,.94),rgba(3,10,21,.96));
+  box-shadow:0 22px 58px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.visual-pro-v542 .kalmar-focus-card::before{
+  content:'';
+  position:absolute;
+  inset:-80px -120px auto auto;
+  width:260px;
+  height:260px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,106,26,.25),transparent 62%);
+  pointer-events:none;
+}
+.visual-pro-v542 .kalmar-focus-card::after{
+  content:'';
+  position:absolute;
+  left:18px;
+  right:18px;
+  bottom:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,106,26,.72),transparent);
+  opacity:.9;
+}
+.visual-pro-v542 .kalmar-goal-block,
+.visual-pro-v542 .kalmar-side-metrics{position:relative;z-index:1;}
+.visual-pro-v542 .kalmar-goal-block .eyebrow{
+  display:inline-flex;
+  padding:6px 10px;
+  border:1px solid rgba(255,106,26,.34);
+  border-radius:999px;
+  background:rgba(255,106,26,.10);
+  color:#ffd8c5;
+  letter-spacing:.13em;
+}
+.visual-pro-v542 .kalmar-wordmark{
+  margin:12px 0 8px;
+  line-height:.9;
+  font-size:clamp(34px,11.5vw,60px);
+  font-weight:1000;
+  letter-spacing:-.08em;
+  color:rgba(101,183,255,.30);
+  text-transform:uppercase;
+}
+.visual-pro-v542 .kalmar-wordmark span{color:var(--kalmar-blue);}
+.visual-pro-v542 .kalmar-wordmark strong{
+  display:block;
+  margin-top:4px;
+  font-size:.48em;
+  letter-spacing:.08em;
+  color:var(--kalmar-gold);
+  text-shadow:0 0 22px rgba(255,201,61,.18);
+}
+.visual-pro-v542 .kalmar-goal-block p{
+  margin:0;
+  max-width:270px;
+  color:#dce8f7;
+  font-weight:800;
+  line-height:1.35;
+}
+.visual-pro-v542 .kalmar-distances{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 12px;
+  margin-top:14px;
+}
+.visual-pro-v542 .kalmar-distances span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:#f5fbff;
+  font-weight:1000;
+  font-size:15px;
+}
+.visual-pro-v542 .kalmar-distances svg{
+  width:19px;
+  height:19px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  color:var(--kalmar-orange);
+  filter:drop-shadow(0 0 10px rgba(255,106,26,.22));
+}
+.visual-pro-v542 .kalmar-side-metrics{
+  display:grid;
+  gap:10px;
+  align-content:start;
+}
+.visual-pro-v542 .race-countdown-card,
+.visual-pro-v542 .readiness-ring-card{
+  border:1px solid rgba(255,106,26,.38);
+  border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,106,26,.105),rgba(255,255,255,.035));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 16px 32px rgba(0,0,0,.24);
+  text-align:center;
+}
+.visual-pro-v542 .race-countdown-card{
+  padding:13px 10px 14px;
+}
+.visual-pro-v542 .race-countdown-card span,
+.visual-pro-v542 .readiness-ring-card b{
+  display:block;
+  color:#e5effb;
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:.02em;
+}
+.visual-pro-v542 .race-countdown-card b{
+  display:block;
+  margin:4px 0 0;
+  color:var(--kalmar-orange);
+  font-size:46px;
+  line-height:.95;
+  font-weight:1000;
+  letter-spacing:-.06em;
+  text-shadow:0 0 24px rgba(255,106,26,.22);
+}
+.visual-pro-v542 .race-countdown-card em{
+  display:block;
+  margin-top:2px;
+  color:#e6eef9;
+  font-size:19px;
+  font-style:normal;
+  font-weight:800;
+}
+.visual-pro-v542 .readiness-ring-card{
+  padding:11px 9px 12px;
+}
+.visual-pro-v542 .readiness-ring{
+  --ready:0deg;
+  width:78px;
+  height:78px;
+  margin:0 auto 8px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at center,#071529 0 52%,transparent 54%),
+    conic-gradient(var(--kalmar-orange) var(--ready),rgba(255,255,255,.13) 0);
+  box-shadow:0 0 30px rgba(255,106,26,.12);
+}
+.visual-pro-v542 .readiness-ring.is-empty{
+  background:
+    radial-gradient(circle at center,#071529 0 52%,transparent 54%),
+    conic-gradient(rgba(163,188,228,.30) 55deg,rgba(255,255,255,.10) 0);
+}
+.visual-pro-v542 .readiness-ring span{
+  color:#f7fbff;
+  font-size:25px;
+  font-weight:1000;
+  letter-spacing:-.06em;
+}
+.visual-pro-v542 .readiness-ring-card b{color:#cfdced;}
+@media(max-width:430px){
+  .visual-pro-v542 .kalmar-focus-card{
+    grid-template-columns:1fr 116px;
+    gap:12px;
+    padding:18px 16px;
+  }
+  .visual-pro-v542 .kalmar-wordmark{font-size:42px;}
+  .visual-pro-v542 .kalmar-goal-block p{font-size:14px;max-width:220px;}
+  .visual-pro-v542 .kalmar-distances span{font-size:14px;}
+  .visual-pro-v542 .race-countdown-card b{font-size:39px;}
+  .visual-pro-v542 .readiness-ring{width:66px;height:66px;}
+  .visual-pro-v542 .readiness-ring span{font-size:22px;}
+}
+@media(max-width:370px){
+  .visual-pro-v542 .kalmar-focus-card{grid-template-columns:1fr;}
+  .visual-pro-v542 .kalmar-side-metrics{grid-template-columns:1fr 1fr;}
+}

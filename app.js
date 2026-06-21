@@ -1,4 +1,5 @@
-const VERSION = 'v5.4.2-HC-athlete-tone-hotfix-local';
+const VERSION = 'v5.4.2-HC-A-DG-visual-pro-plus-local';
+const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -385,6 +386,34 @@ function addDaysIso(value, days){
   return d.toISOString().slice(0, 10);
 }
 
+function daysUntilKalmar(){
+  const target = new Date(`${IRONMAN_KALMAR_DATE}T00:00:00`);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
+}
+
+function validTodayReadinessScore(){
+  if(morningDataIncomplete()) return null;
+  const score = morningMetricValue('readiness', readiness?.training_readiness_score);
+  return score != null ? Math.max(0, Math.min(100, Math.round(Number(score)))) : null;
+}
+
+function renderKalmarFocusCard(){
+  const days = daysUntilKalmar();
+  if($('daysToKalmar')) $('daysToKalmar').textContent = days != null ? String(days) : '--';
+  const score = validTodayReadinessScore();
+  const ring = $('readinessRing');
+  if(ring){
+    const deg = score != null ? Math.round((score / 100) * 360) : 0;
+    ring.style.setProperty('--ready', `${deg}deg`);
+    ring.classList.toggle('is-empty', score == null);
+  }
+  if($('readinessRingValue')) $('readinessRingValue').textContent = score != null ? String(score) : '--';
+  if($('readinessRingLabel')) $('readinessRingLabel').textContent = score != null ? 'Gotowość /100' : 'Dane poranne';
+}
+
 function sportLabel(value){
   const key = String(value || '').toLowerCase();
   if(key.includes('swim')) return 'Pływanie';
@@ -392,6 +421,37 @@ function sportLabel(value){
   if(key.includes('run')) return 'Bieg';
   if(key.includes('walk')) return 'Marsz';
   return value || 'brak danych';
+}
+
+function sportKey(value){
+  const key = String(value || '').toLowerCase();
+  if(key.includes('triathlon') || key.includes('multi')) return 'triathlon';
+  if(key.includes('swim') || key.includes('pływ') || key.includes('basen')) return 'swim';
+  if(key.includes('bike') || key.includes('cycl') || key.includes('rower') || key.includes('kolar')) return 'bike';
+  if(key.includes('run') || key.includes('bieg')) return 'run';
+  return 'general';
+}
+
+function sportKeyForItem(item){
+  return sportKey([
+    item?.sport_type,
+    item?.activity_type,
+    item?.title,
+    item?.name,
+    item?.event_name,
+    item?.activity_name,
+    item?.summary,
+    item?.note
+  ].filter(Boolean).join(' '));
+}
+
+function sportIconSvg(key){
+  const sport = sportKey(key);
+  if(sport === 'bike') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M23 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M4.1 17.4h4.2l3.2-6.2 3.9 6.2"/><path d="M8.3 17.4h5.8l-3.5-6.2"/><path d="M12.8 8.2h3.7"/><path d="M15.4 17.4 18 10.6"/></svg>';
+  if(sport === 'run') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 5.2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M9.8 10.3 13 7.2l3.2 2.1 2.7-.6"/><path d="m12.8 11.2-2.3 4.2-4.1 1.7"/><path d="m14.6 12.9 2.8 3.1 2.3 4"/><path d="M8.9 7.6 6.6 10"/></svg>';
+  if(sport === 'swim') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.2c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/><path d="M3 20.7c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/><path d="M9.4 12.5 13 8.8l3.4 1.8"/><path d="M12.2 6.1a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>';
+  if(sport === 'triathlon') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.5c1.7-1 3.2-1 4.9 0s3.2 1 4.9 0 3.3-1 5 0 3.2 1 4.9 0"/><path d="M6.5 12.3a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0Z"/><path d="M21.8 12.3a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0Z"/><path d="M4.3 12.3h5.2l2.5-5 2.7 5h4.9"/><path d="M12 7.3h3.2"/></svg>';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v17"/><path d="M5.2 7.8h13.6"/><path d="M6.4 16.2h11.2"/></svg>';
 }
 
 function activityKey(item){
@@ -562,13 +622,18 @@ function recentTrainingItems(limit = 3){
     .filter(Boolean)
     .slice()
     .sort((a, b) => String(b.workout_date || '').localeCompare(String(a.workout_date || '')));
-  return source.slice(0, limit).map(item => ({
-    date: fmtDate(item.workout_date),
-    title: `${sportLabel(item.sport_type || item.activity_type)}${item.distance_km != null ? ` ${fmtKm(item.distance_km)}` : ''}`.trim(),
-    summary: activityImpact(item),
-    load: item.training_load != null ? Math.round(Number(item.training_load)) : null,
-    key: activityKey(item)
-  }));
+  return source.slice(0, limit).map(item => {
+    const key = sportKeyForItem(item);
+    return {
+      date: fmtDate(item.workout_date),
+      title: `${sportLabel(item.sport_type || item.activity_type)}${item.distance_km != null ? ` ${fmtKm(item.distance_km)}` : ''}`.trim(),
+      summary: activityImpact(item),
+      load: item.training_load != null ? Math.round(Number(item.training_load)) : null,
+      key: activityKey(item),
+      sportKey: key,
+      sportLabel: sportLabel(item.sport_type || item.activity_type)
+    };
+  });
 }
 
 function weeklyLoadValue(){
@@ -666,12 +731,17 @@ function normalizeTodayCoach(coach){
     tomorrow: cleanMainCoachText(coach.tomorrow || coach.tomorrowAction || coach.recommendationTomorrow || ''),
     nextDays: cleanMainCoachText(coach.nextDays || coach.next_48_72h || coach.next48h || ''),
     weeklyTrend: cleanMainCoachText(coach.weeklyTrend || coach.trend || ''),
-    lastTrainings: Array.isArray(coach.lastTrainings) ? coach.lastTrainings.slice(0, 3).map(item => ({
-      date: humanizeCoachText(item.date || ''),
-      title: humanizeCoachText(item.title || item.name || 'Trening'),
-      summary: cleanMainCoachText(item.summary || item.note || ''),
-      load: item.load ?? null
-    })) : recentTrainingItems(3),
+    lastTrainings: Array.isArray(coach.lastTrainings) ? coach.lastTrainings.slice(0, 3).map(item => {
+      const title = humanizeCoachText(item.title || item.name || 'Trening');
+      const summary = cleanMainCoachText(item.summary || item.note || '');
+      return {
+        date: humanizeCoachText(item.date || ''),
+        title,
+        summary,
+        load: item.load ?? null,
+        sportKey: sportKeyForItem({ ...item, title, summary })
+      };
+    }) : recentTrainingItems(3),
     watch: Array.isArray(coach.watch) ? coach.watch.map(humanizeCoachText).filter(Boolean).slice(0, 4) : [],
     dataGaps: Array.isArray(coach.dataGaps) ? coach.dataGaps.map(humanizeCoachText).filter(Boolean) : [],
     source: 'ai'
@@ -715,12 +785,18 @@ function todayStatusLabel(status){
 function renderRecentTrainingsList(items){
   const rows = (items && items.length ? items : recentTrainingItems(3));
   if(!rows.length) return '<div class="muted-card">Brak treningów do pokazania.</div>';
-  return rows.map(item => `
-    <article class="recent-training-item">
-      <b>${escapeHtml(item.date || 'brak daty')} · ${escapeHtml(item.title || 'Trening')}</b>
-      <span>${escapeHtml(item.summary || 'brak opisu')}</span>
-    </article>
-  `).join('');
+  return rows.map(item => {
+    const key = sportKeyForItem(item);
+    return `
+      <article class="recent-training-item sport-${escapeHtml(key)}">
+        <span class="sport-mark" aria-hidden="true">${sportIconSvg(key)}</span>
+        <div class="training-copy">
+          <b>${escapeHtml(item.date || 'brak daty')} · ${escapeHtml(item.title || 'Trening')}</b>
+          <span>${escapeHtml(item.summary || 'brak opisu')}</span>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
 function renderHumanCoachDashboard(coach){
@@ -757,14 +833,18 @@ function activityHtml(item){
   const hr = [item.hr_avg ? `avg ${Math.round(Number(item.hr_avg))}` : '', item.hr_max ? `max ${Math.round(Number(item.hr_max))}` : ''].filter(Boolean).join(' / ');
   const load = Number.isFinite(Number(item.training_load)) ? Math.round(Number(item.training_load)).toLocaleString('pl-PL') : 'brak danych';
   const summary = item.auto_summary || item.segment_summary || '';
+  const key = sportKeyForItem(item);
   return `
-    <article class="activity-card">
+    <article class="activity-card sport-${escapeHtml(key)}">
       <div class="activity-top">
-        <div>
-          <h3>${escapeHtml(name)}</h3>
-          <p>${escapeHtml(fmtDate(item.workout_date))} • ${escapeHtml(sport)}</p>
+        <div class="activity-heading-pro">
+          <span class="sport-mark activity-sport-mark" aria-hidden="true">${sportIconSvg(key)}</span>
+          <div>
+            <h3>${escapeHtml(name)}</h3>
+            <p>${escapeHtml(fmtDate(item.workout_date))} • ${escapeHtml(sport)}</p>
+          </div>
         </div>
-        <span>${escapeHtml(load)}</span>
+        <span class="load-pill">${escapeHtml(load)}</span>
       </div>
       <div class="activity-metrics">
         <b>${escapeHtml(distance)}</b>
@@ -780,7 +860,7 @@ function historyActivityHtml(item){
   if(!item) return '';
   const key = activityKey(item);
   const html = activityHtml(item);
-  return html.replace('<article class="activity-card">', `<article class="activity-card history-activity-card" data-activity-key="${escapeHtml(key)}" role="button" tabindex="0">`)
+  return html.replace(/<article class="activity-card([^"]*)">/, `<article class="activity-card$1 history-activity-card" data-activity-key="${escapeHtml(key)}" role="button" tabindex="0">`)
     .replace('</article>', '<button class="analysis-link" type="button">Szczegóły / Analiza</button></article>');
 }
 
@@ -791,7 +871,7 @@ function renderActivityInto(id, item){
     el.outerHTML = `<article id="${id}" class="activity-card muted-card">Brak danych.</article>`;
     return;
   }
-  el.outerHTML = activityHtml(item).replace('class="activity-card"', `id="${id}" class="activity-card"`);
+  el.outerHTML = activityHtml(item).replace(/<article class="activity-card([^"]*)">/, `<article id="${id}" class="activity-card$1">`);
 }
 
 function viewLabel(key){
@@ -1489,6 +1569,7 @@ function bindProAnalysisButtons(root){
 function renderDashboard(){
   const decision = buildLocalTodayCoach();
   renderHumanCoachDashboard(decision);
+  renderKalmarFocusCard();
 
   if($('readinessScore')) $('readinessScore').textContent = readiness?.training_readiness_score != null ? `${Math.round(Number(readiness.training_readiness_score))}/100` : 'brak danych';
   if($('sleepValue')) $('sleepValue').textContent = readiness?.sleep_minutes != null ? fmtMin(readiness.sleep_minutes) : 'brak danych';
@@ -3225,7 +3306,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-athlete-data-guard').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-visual-pro2').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

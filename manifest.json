@@ -2,11 +2,11 @@
   "name": "Szymon AI Coach PRO",
   "short_name": "Szymon PRO",
   "description": "Garmin PRO only coach for Road to IRONMAN Kalmar 2026",
-  "start_url": "./?v=542-athlete-data-guard",
+  "start_url": "./?v=542-hc-a-dg-visual-pro2",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#061426",
-  "theme_color": "#061426",
+  "background_color": "#030914",
+  "theme_color": "#030914",
   "orientation": "portrait",
   "icons": []
 }
