@@ -808,7 +808,6 @@ function renderHumanCoachDashboard(coach){
 
   if($('todayDecision')) $('todayDecision').textContent = normalizeCoachTitle(status, selected.title || '');
   if($('todayReason')) $('todayReason').textContent = cleanMainCoachText(selected.summary || 'Brak pełnej decyzji.');
-  if($('todayMainAction')) $('todayMainAction').textContent = cleanMainCoachText(selected.today || 'Brak zalecenia na dziś.');
   if($('todayCoachSource')) $('todayCoachSource').textContent = sourceText;
   if($('todayCoachStatus')) $('todayCoachStatus').textContent = todayStatusLabel(status);
   if($('coachToday')) $('coachToday').textContent = cleanMainCoachText(selected.today || 'Brak danych Garmin PRO do decyzji.');
@@ -1571,11 +1570,17 @@ function renderDashboard(){
   renderHumanCoachDashboard(decision);
   renderKalmarFocusCard();
 
-  if($('readinessScore')) $('readinessScore').textContent = readiness?.training_readiness_score != null ? `${Math.round(Number(readiness.training_readiness_score))}/100` : 'brak danych';
-  if($('sleepValue')) $('sleepValue').textContent = readiness?.sleep_minutes != null ? fmtMin(readiness.sleep_minutes) : 'brak danych';
-  if($('batteryValue')) $('batteryValue').textContent = readiness?.body_battery_start != null || readiness?.body_battery_end != null
-    ? `${readiness.body_battery_start != null ? fmtNumber(readiness.body_battery_start) : 'brak'} → ${readiness.body_battery_end != null ? fmtNumber(readiness.body_battery_end) : 'brak'}`
-    : 'brak danych';
+  const guardedScore = morningMetricValue('readiness', readiness?.training_readiness_score);
+  const guardedSleep = morningMetricValue('sleep', readiness?.sleep_minutes);
+  const guardedBatteryEnd = morningMetricValue('battery', readiness?.body_battery_end);
+  const guardedBatteryStart = morningMetricValue('battery', readiness?.body_battery_start);
+  const morningIncomplete = morningDataIncomplete();
+
+  if($('readinessScore')) $('readinessScore').textContent = (!morningIncomplete && guardedScore != null) ? `${Math.round(guardedScore)}/100` : 'brak pełnych danych';
+  if($('sleepValue')) $('sleepValue').textContent = (!morningIncomplete && guardedSleep != null) ? fmtMin(guardedSleep) : 'brak pełnych danych';
+  if($('batteryValue')) $('batteryValue').textContent = (!morningIncomplete && (guardedBatteryStart != null || guardedBatteryEnd != null))
+    ? `${guardedBatteryStart != null ? fmtNumber(guardedBatteryStart) : 'brak'} → ${guardedBatteryEnd != null ? fmtNumber(guardedBatteryEnd) : 'brak'}`
+    : 'brak pełnych danych';
   if($('load7dValue')) $('load7dValue').textContent = weeklyLoadValue() != null ? fmtNumber(weeklyLoadValue()) : 'brak danych';
 
   if($('weekRange')) $('weekRange').textContent = weekly?.week_start || weekly?.week_end ? `${fmtDate(weekly.week_start)} – ${fmtDate(weekly.week_end)}` : 'brak danych';
@@ -3306,7 +3311,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-visual-pro2').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-stability-hotfix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
