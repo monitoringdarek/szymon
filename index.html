@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.2 iPhone Visual Fix</title>
+  <title>Szymon AI Coach PRO • v5.4.2 Human Coach</title>
   <link rel="manifest" href="manifest.json?v=542">
-  <link rel="stylesheet" href="styles.css?v=542-iphone-pro-visual-fix">
+  <link rel="stylesheet" href="styles.css?v=542-human-coach-weekly">
 </head>
 <body class="is-auth-checking visual-fix-v542">
   <section id="loginScreen" class="login-screen" hidden>
@@ -26,10 +26,10 @@
       <div class="topbar-title">
         <span class="eyebrow">Road to IRONMAN Kalmar 2026</span>
         <h1>Szymon AI Coach PRO</h1>
-        <small class="topbar-subtitle">iPhone PRO Visual Fix</small>
+        <small class="topbar-subtitle">Human Coach Weekly</small>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.2</span>
+        <span class="app-version-pill" data-app-version>v5.4.2 HC</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -43,33 +43,49 @@
           </div>
         </section>
 
-        <section class="hero-card dashboard-hero-v542">
+        <section class="hero-card dashboard-hero-v542 human-today-hero">
           <div class="hero-kicker-row">
-            <span class="eyebrow">Co dziś zrobić?</span>
-            <span class="coach-mode-pill">PRO Coach</span>
+            <span class="eyebrow">Szymon, co dziś robimy?</span>
+            <span id="todayCoachSource" class="coach-mode-pill">czekam na dane</span>
           </div>
-          <h2 id="todayDecision">Czekam na dane Garmin PRO.</h2>
-          <p id="todayReason">Po pobraniu readiness pokażę krótką decyzję trenerską.</p>
+          <h2 id="todayDecision">Czekam na Garmin PRO.</h2>
+          <p id="todayReason">Po pobraniu danych dostaniesz jedną prostą decyzję: trenuj, ostrożnie albo regeneracja.</p>
+          <div id="todayMainAction" class="today-main-action">Brak decyzji treningowej.</div>
+        </section>
+
+        <section class="card human-advice-card">
+          <div class="section-head">
+            <span class="eyebrow">Decyzja trenera</span>
+            <b id="todayCoachStatus">analiza tygodnia</b>
+          </div>
+          <div class="human-advice-grid">
+            <article>
+              <span>Co dziś?</span>
+              <p id="coachToday">Brak danych Garmin PRO do decyzji.</p>
+            </article>
+            <article>
+              <span>Co jutro?</span>
+              <p id="coachTomorrow">Czekam na kontekst tygodnia i ostatnie treningi.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="card human-week-card">
+          <div class="section-head">
+            <span class="eyebrow">Ostatni tydzień</span>
+            <b id="weekRange">brak danych</b>
+          </div>
+          <p id="weeklyTrendText" class="human-trend-text">Brak danych tygodnia.</p>
+          <div id="recentTrainingsList" class="recent-training-list"></div>
+        </section>
+
+        <details class="card human-details-card">
+          <summary>Szczegóły danych</summary>
           <div class="metric-grid pro-metric-strip">
-            <div><span>Readiness</span><b id="readinessScore">brak danych</b></div>
+            <div><span>Gotowość</span><b id="readinessScore">brak danych</b></div>
             <div><span>Sen</span><b id="sleepValue">brak danych</b></div>
             <div><span>Body Battery</span><b id="batteryValue">brak danych</b></div>
-            <div><span>Load 7d</span><b id="load7dValue">brak danych</b></div>
-          </div>
-        </section>
-
-        <section class="card coach-card today-coach-v542">
-          <div class="section-head">
-            <span class="eyebrow">AI Coach Today</span>
-            <b>Reguły PRO</b>
-          </div>
-          <p id="coachToday">Brak danych Garmin PRO do decyzji.</p>
-        </section>
-
-        <section class="card week-card-v542">
-          <div class="section-head">
-            <h2>Tydzień Garmin PRO</h2>
-            <span id="weekRange">brak danych</span>
+            <div><span>Obciążenie 7 dni</span><b id="load7dValue">brak danych</b></div>
           </div>
           <div class="sport-week">
             <div><span>Pływanie</span><b id="weekSwim">brak danych</b></div>
@@ -77,10 +93,10 @@
             <div><span>Bieg</span><b id="weekRun">brak danych</b></div>
             <div><span>Load</span><b id="weekLoad">brak danych</b></div>
           </div>
-        </section>
+        </details>
 
-        <section class="card latest-card-v542">
-          <div class="section-head"><h2>Ostatnia aktywność</h2><span>Garmin PRO</span></div>
+        <section class="card latest-card-v542 human-last-card">
+          <div class="section-head"><h2>Ostatni trening</h2><span>szczegóły po kliknięciu</span></div>
           <article id="latestActivity" class="activity-card muted-card">Brak danych.</article>
         </section>
 
@@ -89,9 +105,9 @@
 
       <section id="screen-analysis" class="screen">
         <div class="screen-title-card">
-          <span class="eyebrow">Analiza PRO</span>
-          <h2>Trening, koszt i odpowiedź po nocy</h2>
-          <p>Najważniejsze rzeczy są na wierzchu, a szczegóły zostają rozwijane dopiero po kliknięciu.</p>
+          <span class="eyebrow">Szczegóły treningu</span>
+          <h2>Analiza po treningu</h2>
+          <p>Tu są liczby, segmenty i pełna analiza. Ekran główny zostaje prostą decyzją trenerską.</p>
         </div>
         <div id="proAnalysisMain" class="pro-analysis-host"></div>
       </section>
@@ -99,9 +115,9 @@
       <section id="screen-history" class="screen">
         <div id="historyListView">
           <section class="screen-title-card">
-            <span class="eyebrow">Historia PRO</span>
-            <h2>Aktywności Garmin</h2>
-            <p>Dotknij aktywności, żeby zobaczyć analizę trenerską i sekcję „Odpowiedź po nocy”.</p>
+            <span class="eyebrow">Treningi</span>
+            <h2>Ostatnie aktywności</h2>
+            <p>Lista jest pomocnicza. Najważniejsza decyzja jest na ekranie „Dzisiaj”.</p>
           </section>
           <div class="history-toolbar">
             <input id="historySearchInput" type="search" placeholder="Szukaj aktywności">
@@ -138,20 +154,20 @@
 
       <section id="screen-ai" class="screen">
         <section class="screen-title-card ai-title-v542">
-          <span class="eyebrow">AI PRO</span>
-          <h2>Plan przed startem / analiza po treningu</h2>
-          <p>AI korzysta z Garmin PRO i jasno pokazuje braki danych.</p>
+          <span class="eyebrow">Plan</span>
+          <h2>Dziś, jutro i najbliższe dni</h2>
+          <p>Bez technicznego raportu: tylko praktyczna podpowiedź treningowa.</p>
         </section>
         <div class="mode-switch">
-          <button class="active" data-mode="plan" type="button">Przed startem</button>
-          <button data-mode="analysis" type="button">Po aktywności</button>
+          <button class="active" data-mode="plan" type="button">Najbliższe dni</button>
+          <button data-mode="analysis" type="button">Ostatni trening</button>
         </div>
         <section id="planPanel" class="card ai-panel">
-          <h2>Przed startem — Plan startu</h2>
-          <p>Tu zostaje miejsce na założenia startu i ocenę gotowości na danych Garmin PRO.</p>
+          <h2>Plan najbliższych dni</h2>
+          <p>Główna decyzja jest na ekranie „Dzisiaj”. Tutaj zostaje miejsce na spokojne rozwinięcie planu.</p>
         </section>
         <section id="analysisPanel" class="card ai-panel" hidden>
-          <h2>Po aktywności — Analiza wykonania</h2>
+          <h2>Ostatni trening — analiza wykonania</h2>
           <article id="aiLatestActivity" class="activity-card muted-card">Brak danych.</article>
           <div id="aiActivityAnalysis" class="activity-ai-analysis"></div>
         </section>
@@ -159,13 +175,13 @@
 
       <section id="screen-settings" class="screen">
         <section class="screen-title-card">
-          <span class="eyebrow">Ustawienia</span>
-          <h2>Status programu</h2>
-          <p>Wersja widoczna w aplikacji: <b>v5.4.2</b></p>
+          <span class="eyebrow">Profil</span>
+          <h2>Status i progi</h2>
+          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC</b></p>
         </section>
         <section class="card settings-card">
           <div class="settings-grid">
-            <div><span>Wersja</span><b>v5.4.2-iphone-pro-visual-fix-local</b></div>
+            <div><span>Wersja</span><b>v5.4.2-human-coach-weekly-context-local</b></div>
             <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
             <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
             <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -184,15 +200,14 @@
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Nawigacja">
-      <button class="active" data-tab="dashboard" type="button"><span>⌂</span>Pulpit</button>
-      <button data-tab="analysis" type="button"><span>✦</span>Analiza</button>
-      <button data-tab="history" type="button"><span>▤</span>Historia</button>
-      <button data-tab="ai" type="button"><span>AI</span>Coach</button>
-      <button data-tab="settings" type="button"><span>⚙</span>Ustaw.</button>
+    <nav class="bottom-nav human-bottom-nav" aria-label="Nawigacja">
+      <button class="active" data-tab="dashboard" type="button"><span>⌂</span>Dzisiaj</button>
+      <button data-tab="history" type="button"><span>▤</span>Treningi</button>
+      <button data-tab="ai" type="button"><span>↗</span>Plan</button>
+      <button data-tab="settings" type="button"><span>⚙</span>Profil</button>
     </nav>
   </div>
 
-  <script src="app.js?v=542-iphone-pro-visual-fix"></script>
+  <script src="app.js?v=542-human-coach-weekly"></script>
 </body>
 </html>
