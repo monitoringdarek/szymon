@@ -3311,7 +3311,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-stability-hotfix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-nav-clearance-fix').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

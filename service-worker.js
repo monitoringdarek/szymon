@@ -1,9 +1,9 @@
-const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-v542-hc-a-dg-stability-hotfix';
+const CACHE_NAME = 'szymon-ai-coach-v5-pro-only-v542-hc-a-dg-nav-clearance-fix';
 const ASSETS = [
   './',
-  './index.html?v=542-hc-a-dg-stability-hotfix',
-  './styles.css?v=542-hc-a-dg-stability-hotfix',
-  './app.js?v=542-hc-a-dg-stability-hotfix',
+  './index.html?v=542-hc-a-dg-nav-clearance-fix',
+  './styles.css?v=542-hc-a-dg-nav-clearance-fix',
+  './app.js?v=542-hc-a-dg-nav-clearance-fix',
   './manifest.json?v=542'
 ];
 
