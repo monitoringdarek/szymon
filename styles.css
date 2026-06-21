@@ -3126,3 +3126,70 @@ body.visual-pro-v542{
   font-size:14px;
   white-space:pre-line;
 }
+
+/* v5.4.6 — Plan najbliższych dni: kierunek tygodnia bez kalendarza treningowego. */
+.visual-pro-v542 .plan-guide-head,
+.plan-guide-head{
+  display:grid;
+  gap:8px;
+  margin-bottom:14px;
+}
+.plan-guide-head span,
+.plan-guide-card span{
+  color:#79c7ff;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:1000;
+}
+.plan-guide-head h2{
+  margin:0;
+  color:#f5fbff;
+  font-size:26px;
+  line-height:1.02;
+  letter-spacing:-.045em;
+}
+.plan-guide-head p,
+.plan-guide-card p,
+.plan-guide-note{
+  margin:0;
+  color:#cfe1f7;
+  line-height:1.42;
+  font-weight:750;
+}
+.plan-guide-grid{
+  display:grid;
+  gap:10px;
+}
+.plan-guide-card{
+  display:grid;
+  gap:7px;
+  padding:13px 14px;
+  border-radius:18px;
+  border:1px solid rgba(163,188,228,.16);
+  background:rgba(255,255,255,.052);
+}
+.plan-guide-card b{
+  color:#f5fbff;
+  font-size:17px;
+  line-height:1.18;
+}
+.plan-guide-main{
+  border-color:rgba(248,214,109,.28);
+  background:linear-gradient(135deg,rgba(248,214,109,.10),rgba(88,166,255,.07));
+}
+.plan-guide-main span{color:#f8d66d;}
+.plan-guide-stop{
+  border-color:rgba(255,122,122,.20);
+  background:linear-gradient(135deg,rgba(255,122,122,.08),rgba(255,255,255,.035));
+}
+.plan-guide-stop span{color:#ffb4b4;}
+.plan-guide-note{
+  margin-top:12px;
+  font-size:12.5px;
+  color:#9bb5d3;
+}
+@media(min-width:680px){
+  .plan-guide-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .plan-guide-main{grid-column:1/-1;}
+}

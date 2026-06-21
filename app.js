@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.4.5';
+const VERSION = 'szymon-ai-coach-v5.4.7';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -1661,6 +1661,7 @@ function renderAi(){
   });
   $('planPanel').hidden = aiMode !== 'plan';
   $('analysisPanel').hidden = aiMode !== 'analysis';
+  renderPlanGuide();
   renderActivityInto('aiLatestActivity', latest);
   renderActivityAiAnalysis('aiActivityAnalysis', latest);
 }
@@ -2028,6 +2029,95 @@ function buildKalmarCoachTip({ confidence, missing, weak, bikeAct, runAct, swimA
   return 'Kierunek dobry, dane są spójne.\nCel: równa jazda, spokojna forma.\nPrognoza rośnie bez przepalania.';
 }
 
+
+function kalmarPlanShortText(text, fallback = 'Kontroluj jakość i nie dokładaj chaosu.'){
+  const clean = humanizeCoachText(text || '').replace(/\s+/g, ' ').trim();
+  if(!clean) return fallback;
+  if(clean.length <= 175) return clean;
+  const cut = clean.slice(0, 172).replace(/[,;:\-–—]?\s+\S*$/, '');
+  return `${cut}…`;
+}
+
+function buildPlanGuide(){
+  const forecast = buildKalmarForecast();
+  const decision = buildLocalTodayCoach();
+  const limiterKey = forecast.limiterKey || 'ok';
+
+  let goal = 'Utrzymać rytm pod Kalmar';
+  let why = 'Dane są spójne. Teraz liczy się konsekwencja, równa praca i spokojna kontrola kosztu treningów.';
+  let accent = 'Równa jazda rowerowa i krótka zakładka, jeśli poranek po treningu jest dobry.';
+  let avoid = 'Nie dokładaj mocnego bodźca tylko po to, żeby „zaliczyć” ciężki dzień.';
+
+  if(limiterKey === 'empty'){
+    goal = 'Domknąć dane przed planem';
+    why = 'Bez treningów i poranków aplikacja nie powinna udawać planu.';
+    accent = 'Najpierw synchronizacja Garmin i spokojne wejście w rytm treningów.';
+    avoid = 'Nie buduj prognozy ani planu z pustych danych.';
+  }else if(limiterKey === 'regen'){
+    goal = 'Jakość bez przepalania';
+    why = 'Kalmar pokazuje, że obciążenie rośnie szybciej niż regeneracja.';
+    accent = 'Najbliższy mocniejszy akcent dopiero po lepszym śnie, energii i poranku.';
+    avoid = 'Nie dokładaj mocnego bodźca, gdy organizm nie nadąża z odbudową.';
+  }else if(limiterKey === 'bike'){
+    goal = 'Rower + spokojna zakładka';
+    why = 'Prognozę ogranicza brak mocnego potwierdzenia długiej jazdy.';
+    accent = 'Jedna spokojna, równa jazda 120+ km i krótki bieg po rowerze.';
+    avoid = 'Nie przepalaj pierwszej części jazdy — rower ma zostawić nogi do biegu.';
+  }else if(limiterKey === 'run'){
+    goal = 'Bieg po rowerze';
+    why = 'Rower wygląda lepiej, ale bieg po nim nadal wymaga potwierdzenia.';
+    accent = 'Dłuższa jazda i krótki bieg kontrolny, bez ścigania tempa.';
+    avoid = 'Nie testuj naraz mocnego roweru i mocnego biegu.';
+  }else if(limiterKey === 'swim'){
+    goal = 'Regularność pływania';
+    why = 'Rower i bieg są ważniejsze, ale pływanie nadal obniża pewność startową.';
+    accent = 'Dłuższe spokojne pływanie, równo i technicznie, bez sprintowego chaosu.';
+    avoid = 'Nie rób z pływania walki o tempo kosztem techniki.';
+  }
+
+  const todayTitle = decision?.title || 'DZISIAJ: KONTROLA';
+  const todayText = kalmarPlanShortText(decision?.today, 'Trzymaj decyzję z ekranu Dzisiaj i nie dokładaj pracy ponad cel jednostki.');
+  const tomorrowText = kalmarPlanShortText(decision?.tomorrow, 'Jutro oceń poranek po treningu: sen, energię, tętno spoczynkowe i ciężkość nóg.');
+
+  return { goal, why, todayTitle, todayText, tomorrowText, accent, avoid, forecast };
+}
+
+function renderPlanGuide(){
+  const target = $('planPanel');
+  if(!target) return;
+  const plan = buildPlanGuide();
+  target.innerHTML = `
+    <header class="plan-guide-head">
+      <span>Plan najbliższych dni</span>
+      <h2>${escapeHtml(plan.goal)}</h2>
+      <p>${escapeHtml(plan.why)}</p>
+    </header>
+    <div class="plan-guide-grid">
+      <article class="plan-guide-card plan-guide-main">
+        <span>Cel tygodnia</span>
+        <b>${escapeHtml(plan.goal)}</b>
+        <p>${escapeHtml(plan.accent)}</p>
+      </article>
+      <article class="plan-guide-card">
+        <span>Dzisiaj</span>
+        <b>${escapeHtml(plan.todayTitle)}</b>
+        <p>${escapeHtml(plan.todayText)}</p>
+      </article>
+      <article class="plan-guide-card">
+        <span>Jutro</span>
+        <b>Odpowiedź po nocy</b>
+        <p>${escapeHtml(plan.tomorrowText)}</p>
+      </article>
+      <article class="plan-guide-card plan-guide-stop">
+        <span>Nie rób teraz</span>
+        <b>Bez chaosu</b>
+        <p>${escapeHtml(plan.avoid)}</p>
+      </article>
+    </div>
+    <p class="plan-guide-note">Plan korzysta z tych samych danych co Dzisiaj i Kalmar, ale nie jest kalendarzem treningowym.</p>
+  `;
+}
+
 function buildKalmarForecast(){
   const rows = kalmarAllActivityRows();
   const hasData = rows.length || readiness || readinessHistory.length || load28d.length || weekly || athleteThresholds.length || athleteProfileContext.length;
@@ -2036,6 +2126,7 @@ function buildKalmarForecast(){
       range:'czekam na dane',
       confidence:'brak danych',
       limiter:'brak odczytu Garmin',
+      limiterKey:'empty',
       driver:'treningi + stan organizmu',
       why:'Po pobraniu danych karta pokaże krótki kierunek pod Kalmar.',
       guard:'Brak danych do prognozy — nie udaję wyniku.',
@@ -2121,10 +2212,12 @@ function buildKalmarForecast(){
   const high = scenarioHigh * (1 + spread * 0.5);
 
   let limiter = 'bieg po rowerze';
-  if(regenerationTrend.bad) limiter = 'regeneracja tygodniowa';
-  else if(bikeAct.longest < 140) limiter = 'rower 180 km';
-  else if(!hasMulti) limiter = 'bieg po rowerze';
-  else if(swimCss.value == null && swimAct.longest < 1.5) limiter = 'pływanie / regularność';
+  let limiterKey = 'run';
+  if(regenerationTrend.bad){ limiter = 'regeneracja tygodniowa'; limiterKey = 'regen'; }
+  else if(bikeAct.longest < 140){ limiter = 'rower 180 km'; limiterKey = 'bike'; }
+  else if(!hasMulti){ limiter = 'bieg po rowerze'; limiterKey = 'run'; }
+  else if(swimCss.value == null && swimAct.longest < 1.5){ limiter = 'pływanie / regularność'; limiterKey = 'swim'; }
+  else { limiterKey = 'ok'; }
 
   const driverParts = [];
   if(bikeAct.sampleCount) driverParts.push('rower z treningów');
@@ -2159,6 +2252,7 @@ function buildKalmarForecast(){
     range: kalmarRangeText(low, high),
     confidence,
     limiter,
+    limiterKey,
     driver,
     why,
     guard,
@@ -3800,7 +3894,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=545').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=547').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

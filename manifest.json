@@ -2,7 +2,7 @@
   "name": "Szymon AI Coach PRO",
   "short_name": "Szymon PRO",
   "description": "Garmin PRO only coach for Road to Kalmar 2026",
-  "start_url": "./?v=545",
+  "start_url": "./?v=547",
   "scope": "./",
   "display": "standalone",
   "background_color": "#030914",
