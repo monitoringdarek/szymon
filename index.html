@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.3</title>
-  <link rel="manifest" href="manifest.json?v=543">
-  <link rel="stylesheet" href="styles.css?v=543">
+  <title>Szymon AI Coach PRO • v5.4.5</title>
+  <link rel="manifest" href="manifest.json?v=545">
+  <link rel="stylesheet" href="styles.css?v=545">
 </head>
 <body class="is-auth-checking visual-fix-v542 visual-pro-v542">
   <section id="loginScreen" class="login-screen" hidden>
@@ -28,7 +28,7 @@
         <h1>Szymon AI Coach</h1>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.3</span>
+        <span class="app-version-pill" data-app-version>v5.4.5</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -122,6 +122,10 @@
             <div><span>Co napędza prognozę</span><b id="kalmarForecastDriver">treningi + stan organizmu</b></div>
           </div>
           <div id="kalmarForecastGuard" class="status warn">Brak danych do prognozy — nie udaję wyniku.</div>
+          <div class="kalmar-coach-tip" aria-label="Co poprawi prognozę">
+            <span>Co poprawi prognozę</span>
+            <p id="kalmarCoachTipText">Karta pokaże jedną konkretną dźwignię po pobraniu danych.</p>
+          </div>
         </section>
 
         <details class="card human-details-card kalmar-details-card">
@@ -162,9 +166,9 @@
       </section>
 
       <section id="screen-settings" class="screen">
-        <section class="screen-title-card"><span class="eyebrow">Profil</span><h2>Status i progi</h2><p>Wersja widoczna w aplikacji: <b>v5.4.3</b></p></section>
+        <section class="screen-title-card"><span class="eyebrow">Profil</span><h2>Status i progi</h2><p>Wersja widoczna w aplikacji: <b>v5.4.5</b></p></section>
         <section class="card settings-card">
-          <div class="settings-grid"><div><span>Wersja</span><b>szymon-ai-coach-v5.4.3</b></div><div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div><div><span>Sesja</span><b id="sessionStatus">brak danych</b></div><div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div><div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div><div><span>Użytkownik</span><b id="userStatus">brak danych</b></div><div><span>Propozycje progów</span><b id="thresholdSuggestionCount">brak danych</b></div></div>
+          <div class="settings-grid"><div><span>Wersja</span><b>szymon-ai-coach-v5.4.5</b></div><div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div><div><span>Sesja</span><b id="sessionStatus">brak danych</b></div><div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div><div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div><div><span>Użytkownik</span><b id="userStatus">brak danych</b></div><div><span>Propozycje progów</span><b id="thresholdSuggestionCount">brak danych</b></div></div>
           <div id="viewStatusList" class="view-status-list"></div>
           <button id="toggleThresholdSuggestionsBtn" class="secondary-btn" type="button">Pokaż propozycje progów</button>
           <div id="thresholdSuggestionPanel" class="threshold-panel" hidden><div id="thresholdSuggestionStatus" class="status info">Brak danych.</div><div id="thresholdSuggestionList"></div></div>
@@ -187,6 +191,6 @@
     </nav>
   </div>
 
-  <script src="app.js?v=543"></script>
+  <script src="app.js?v=545"></script>
 </body>
 </html>

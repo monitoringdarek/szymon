@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.4.3';
+const VERSION = 'szymon-ai-coach-v5.4.5';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -6,6 +6,7 @@ const LOGIN_TIMEOUT_MS = 15000;
 const SUPABASE_URL = 'https://ktfjdngmvrnqkzjxvzoc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r1A-cyrFQ3ASLsOVPGcmDA_26a3P8zK';
 const READINESS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_readiness_context`;
+const READINESS_HISTORY_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_readiness_context`;
 const WEEKLY_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_weekly_summary`;
 const LATEST_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_latest_activity`;
 const CARDS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_pro_activity_cards`;
@@ -33,6 +34,7 @@ const aiAnalysisCache = new Map();
 let session = null;
 let user = null;
 let readiness = null;
+let readinessHistory = [];
 let weekly = null;
 let latest = null;
 let cards = [];
@@ -59,6 +61,7 @@ let lastReadAt = null;
 let selectedActivityKey = '';
 let viewState = {
   readiness: 'idle',
+  readinessHistory: 'idle',
   weekly: 'idle',
   latest: 'idle',
   cards: 'idle',
@@ -886,6 +889,7 @@ function renderActivityInto(id, item){
 function viewLabel(key){
   return {
     readiness: 'readiness',
+    readinessHistory: 'readiness_history',
     weekly: 'weekly',
     latest: 'latest',
     cards: 'activity_cards',
@@ -919,7 +923,7 @@ function anyViewError(){
 }
 
 function anyUsefulData(){
-  return Boolean(readiness || weekly || latest || cards.length || proActivities.length || proSegments.length || proAnalytics.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length || athleteThresholdSuggestions.length);
+  return Boolean(readiness || readinessHistory.length || weekly || latest || cards.length || proActivities.length || proSegments.length || proAnalytics.length || load28d.length || athleteThresholds.length || activityPowerIntervals.length || activityRunIntervals.length || athleteProfileContext.length || athleteThresholdSuggestions.length);
 }
 
 function garminOverallStatus(){
@@ -1750,6 +1754,7 @@ function renderGarminDiagnostics(){
 function renderStatus(){
   const labels = {
     readiness: 'gotowość',
+    readinessHistory: 'historia regeneracji',
     weekly: 'tydzień',
     latest: 'ostatnia aktywność',
     cards: 'historia',
@@ -1908,9 +1913,124 @@ function kalmarReadinessPenalty(){
   return { penalty:0, note:'stan organizmu nie blokuje prognozy' };
 }
 
+function kalmarAverage(values){
+  const nums = values.map(Number).filter(Number.isFinite);
+  if(!nums.length) return null;
+  return nums.reduce((a,b) => a + b, 0) / nums.length;
+}
+
+function kalmarDateDescValue(row, keys){
+  for(const key of keys){
+    const raw = row?.[key];
+    if(raw) return String(raw).slice(0, 10);
+  }
+  return '';
+}
+
+function kalmarSortedByDateDesc(rows, keys){
+  return [...(rows || [])].sort((a,b) => kalmarDateDescValue(b, keys).localeCompare(kalmarDateDescValue(a, keys)));
+}
+
+function kalmarDailyRecoveryIndex(row){
+  const parts = [];
+  const sleep = kalmarNum(row?.sleep_minutes);
+  const battery = kalmarNum(row?.body_battery_end ?? row?.body_battery_start);
+  const score = kalmarNum(row?.training_readiness_score);
+  if(sleep != null && sleep > 0) parts.push(kalmarClamp(sleep / 480, 0, 1));
+  if(battery != null && battery > 0) parts.push(kalmarClamp(battery / 100, 0, 1));
+  if(score != null && score > 0) parts.push(kalmarClamp(score / 100, 0, 1));
+  return kalmarAverage(parts);
+}
+
+function kalmarLoadTrend(){
+  const rows = kalmarSortedByDateDesc(load28d, ['workout_date', 'metric_date', 'date']);
+  const loads = rows.map(row => kalmarNum(row?.daily_training_load)).filter(v => v != null);
+  return {
+    recent: kalmarAverage(loads.slice(0, 7)),
+    prior: kalmarAverage(loads.slice(7, 14)),
+    count: loads.length
+  };
+}
+
+function kalmarRecoveryTrend(){
+  const rows = kalmarSortedByDateDesc(readinessHistory, ['metric_date', 'journal_date', 'date']);
+  const indexed = rows.map(row => ({ row, index: kalmarDailyRecoveryIndex(row) })).filter(x => x.index != null);
+  return {
+    recent: kalmarAverage(indexed.slice(0, 4).map(x => x.index)),
+    prior: kalmarAverage(indexed.slice(4, 8).map(x => x.index)),
+    count: indexed.length
+  };
+}
+
+function kalmarRegenerationTrend(){
+  const load = kalmarLoadTrend();
+  const recovery = kalmarRecoveryTrend();
+  const hasEnough = load.recent != null && load.prior != null && recovery.recent != null && recovery.prior != null;
+  const bad = hasEnough && load.recent > load.prior * 1.15 && recovery.recent < recovery.prior * 0.93;
+  const loadText = load.recent != null && load.prior != null
+    ? `obciążenie ${Math.round(load.recent)} vs ${Math.round(load.prior)}`
+    : 'brak pełnego trendu obciążenia';
+  const recoveryText = recovery.recent != null && recovery.prior != null
+    ? `regeneracja ${Math.round(recovery.recent * 100)}% vs ${Math.round(recovery.prior * 100)}%`
+    : 'brak pełnego trendu regeneracji';
+  return {
+    bad,
+    hasEnough,
+    load,
+    recovery,
+    fact: `${loadText}, ${recoveryText}`,
+    note: bad ? 'obciążenie rośnie szybciej niż regeneracja' : 'trend regeneracji nie blokuje prognozy'
+  };
+}
+
+function kalmarShortFact(text){
+  const map = {
+    'pływanie/CSS': 'pływanie',
+    'rower/FTP': 'rower',
+    'bieg/próg': 'bieg',
+    'T1/T2': 'zmiany',
+    'dzisiejszy stan organizmu': 'stan dziś',
+    'brakuje długiej jazdy 140+ km': 'rower 140+ km',
+    'brakuje danych rowerowych': 'dane roweru',
+    'brakuje długiego biegu': 'długi bieg',
+    'brakuje danych biegowych': 'dane biegu',
+    'mało danych pływackich': 'dane pływania',
+    'brakuje zakładki lub startu multisport': 'multisport'
+  };
+  if(map[text]) return map[text];
+  if(text && text.length > 16) return `${text.slice(0, 14)}…`;
+  return text || 'dane';
+}
+
+function buildKalmarCoachTip({ confidence, missing, weak, bikeAct, runAct, swimAct, swimCss, hasMulti, regenerationTrend }){
+  if(confidence === 'brak danych' || (missing.length >= 3 && weak.length)){
+    const fact = kalmarShortFact(missing[0] || weak[0]);
+    return `Dane są za słabe: ${fact}.\nCel: domknąć podstawę danych.\nTo da mocniejszą prognozę.`;
+  }
+  if(confidence === 'niska' && (missing.length || weak.length)){
+    const fact = kalmarShortFact(weak[0] || missing[0]);
+    return `Prognoza wczesna: ${fact}.\nCel: mocniejszy sygnał z treningu.\nTo podniesie pewność prognozy.`;
+  }
+  if(regenerationTrend?.bad){
+    return `Rośnie obciążenie, spada regeneracja.\nCel tygodnia: jakość bez przepalania.\nTo podniesie pewność prognozy.`;
+  }
+  if(bikeAct.longest < 140){
+    const fact = bikeAct.longest ? `najdłużej ${Math.round(bikeAct.longest)} km` : 'brak długiej jazdy';
+    return `Rower ogranicza: ${fact}.\nCel: spokojne 120+ km, bez szarpania.\nTo wzmocni bieg po rowerze.`;
+  }
+  if(!hasMulti){
+    return `Rower OK, bieg po nim niewiadomą.\nCel: długa jazda + krótki bieg.\nTo zweryfikuje koszt przejścia.`;
+  }
+  if(swimCss.value == null && swimAct.longest < 1.5){
+    const longest = swimAct.longest ? fmtKmDot(swimAct.longest) : 'brak danych';
+    return `Pływanie ma mało danych: ${longest}.\nCel: dłuższe, regularne pływanie.\nTo podniesie pewność startu.`;
+  }
+  return 'Kierunek dobry, dane są spójne.\nCel: równa jazda, spokojna forma.\nPrognoza rośnie bez przepalania.';
+}
+
 function buildKalmarForecast(){
   const rows = kalmarAllActivityRows();
-  const hasData = rows.length || readiness || weekly || athleteThresholds.length || athleteProfileContext.length;
+  const hasData = rows.length || readiness || readinessHistory.length || load28d.length || weekly || athleteThresholds.length || athleteProfileContext.length;
   if(!hasData){
     return {
       range:'czekam na dane',
@@ -1919,6 +2039,7 @@ function buildKalmarForecast(){
       driver:'treningi + stan organizmu',
       why:'Po pobraniu danych karta pokaże krótki kierunek pod Kalmar.',
       guard:'Brak danych do prognozy — nie udaję wyniku.',
+      coachTip:'Brak danych z treningów i poranków.\nCel: pierwsza synchronizacja Garmin.\nBez tego to byłoby zgadywanie.',
       details:'Brak aktywności, progów i danych porannych.',
       status:'empty'
     };
@@ -1933,6 +2054,7 @@ function buildKalmarForecast(){
   const t1 = kalmarTransitionSeconds('t1');
   const t2 = kalmarTransitionSeconds('t2');
   const readinessGuard = kalmarReadinessPenalty();
+  const regenerationTrend = kalmarRegenerationTrend();
 
   const swimBase = swimCss.value != null
     ? swimCss.value * 38 * 1.07
@@ -1970,6 +2092,7 @@ function buildKalmarForecast(){
   if(runThreshold.value == null && runAct.sampleCount < 2) missing.push('bieg/próg');
   if(t1.count === 0 || t2.count === 0) missing.push('T1/T2');
   if(!readiness) missing.push('dzisiejszy stan organizmu');
+  if(readinessHistory.length < 5) weak.push('za krótka historia regeneracji');
   if(bikeAct.longest > 0 && bikeAct.longest < 140) weak.push('brakuje długiej jazdy 140+ km');
   if(bikeAct.longest === 0) weak.push('brakuje danych rowerowych');
   if(runAct.longest > 0 && runAct.longest < 18) weak.push('brakuje długiego biegu');
@@ -1998,7 +2121,8 @@ function buildKalmarForecast(){
   const high = scenarioHigh * (1 + spread * 0.5);
 
   let limiter = 'bieg po rowerze';
-  if(bikeAct.longest < 140) limiter = 'rower 180 km';
+  if(regenerationTrend.bad) limiter = 'regeneracja tygodniowa';
+  else if(bikeAct.longest < 140) limiter = 'rower 180 km';
   else if(!hasMulti) limiter = 'bieg po rowerze';
   else if(swimCss.value == null && swimAct.longest < 1.5) limiter = 'pływanie / regularność';
 
@@ -2006,11 +2130,13 @@ function buildKalmarForecast(){
   if(bikeAct.sampleCount) driverParts.push('rower z treningów');
   if(runAct.sampleCount || runThreshold.value != null) driverParts.push('bieg');
   if(readiness) driverParts.push('stan organizmu');
+  if(regenerationTrend.hasEnough) driverParts.push('trend regeneracji');
   const driver = driverParts.length ? driverParts.slice(0,3).join(' + ') : 'dostępne dane Garmin';
 
   let why = 'Największy wpływ ma koszt roweru i to, czy po nim zostanie bieg.';
   if(bikeAct.sampleCount && !hasMulti) why = 'Rower daje najwięcej sygnału, ale brakuje mocnej zakładki z biegiem.';
   if(readinessGuard.penalty) why = 'Treningi dają kierunek, ale dzisiejszy stan organizmu obniża pewność.';
+  if(regenerationTrend.bad) why = 'Obciążenie rośnie szybciej niż regeneracja, więc prognozę trzeba budować cierpliwie.';
   if(confidence === 'rosnąca') why = 'Dane treningowe zaczynają być spójne, ale nadal nie traktuję tego jak gwarancji startowej.';
 
   let guard = 'Prognoza jest kierunkiem, nie obietnicą wyniku.';
@@ -2023,8 +2149,11 @@ function buildKalmarForecast(){
     `Bieg: ${runAct.longest ? `najdłużej ${fmtKmDot(runAct.longest)}` : 'brak długich biegów'}`,
     `Scenariusze: bezpieczny ${kalmarTimeHM(totalConservative)}, realny ${kalmarTimeHM(totalReal)}, mocny dzień ${kalmarTimeHM(totalAggressive)}`,
     `Zmiany: ${t1.count || t2.count ? 'są sygnały T1/T2' : 'zakres generyczny'}`,
-    `Regeneracja: ${readinessGuard.note}`
+    `Regeneracja dziś: ${readinessGuard.note}`,
+    `Trend: ${regenerationTrend.note}`
   ].join(' · ');
+
+  const coachTip = buildKalmarCoachTip({ confidence, missing, weak, bikeAct, runAct, swimAct, swimCss, hasMulti, regenerationTrend });
 
   return {
     range: kalmarRangeText(low, high),
@@ -2033,6 +2162,7 @@ function buildKalmarForecast(){
     driver,
     why,
     guard,
+    coachTip,
     details,
     status: confidence === 'niska' ? 'weak' : 'ok'
   };
@@ -2049,6 +2179,7 @@ function renderKalmarForecast(){
   if($('kalmarForecastDriver')) $('kalmarForecastDriver').textContent = forecast.driver;
   if($('kalmarForecastWhy')) $('kalmarForecastWhy').textContent = forecast.why;
   if($('kalmarForecastGuard')) $('kalmarForecastGuard').textContent = forecast.guard;
+  if($('kalmarCoachTipText')) $('kalmarCoachTipText').textContent = forecast.coachTip || 'Karta pokaże jedną konkretną dźwignię po pobraniu danych.';
   if($('kalmarForecastDetails')) $('kalmarForecastDetails').textContent = forecast.details;
   if($('kalmarForecastHint')) $('kalmarForecastHint').textContent = 'Liczone jako zakres godzinowy w kilometrach: 3,8 km pływania + T1 + 180 km roweru + T2 + 42,2 km biegu po rowerze.';
   if(statusEl){
@@ -2111,8 +2242,9 @@ async function loadActivityAnalysisContexts(){
 
 async function loadAllData(){
   await refreshSession();
-  const [readinessRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows, suggestionRows, proActivityRows, proSegmentRows, proAnalyticsRows] = await Promise.all([
+  const [readinessRows, readinessHistoryRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows, suggestionRows, proActivityRows, proSegmentRows, proAnalyticsRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
+    loadOne('readinessHistory', `${READINESS_HISTORY_ENDPOINT}?select=*&order=metric_date.desc&limit=14`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
     loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
@@ -2127,6 +2259,7 @@ async function loadAllData(){
     loadOne('proAnalytics', `${GARMIN_ANALYTICS_ENDPOINT}?select=*&limit=100`)
   ]);
   readiness = readinessRows[0] || null;
+  readinessHistory = readinessHistoryRows;
   weekly = weeklyRows[0] || null;
   latest = latestRows[0] || null;
   cards = cardRows;
@@ -3667,7 +3800,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=543').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=545').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
