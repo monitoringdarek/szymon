@@ -510,6 +510,42 @@ function metricValue(...values){
   return null;
 }
 
+function morningMetricValue(kind, ...values){
+  for(const value of values){
+    const n = Number(value);
+    if(!Number.isFinite(n)) continue;
+    if(kind === 'readiness' && n <= 0) continue;
+    if(kind === 'sleep' && n <= 0) continue;
+    if(kind === 'battery' && n <= 5) continue;
+    if(kind === 'stress' && n <= 0) continue;
+    if(kind === 'rhr' && n <= 0) continue;
+    return n;
+  }
+  return null;
+}
+
+function morningDataIncomplete(){
+  const rawScore = Number(readiness?.training_readiness_score);
+  const rawSleep = Number(readiness?.sleep_minutes);
+  const rawBatteryEnd = Number(readiness?.body_battery_end);
+  const rawBatteryStart = Number(readiness?.body_battery_start);
+  if(readiness && Number.isFinite(rawScore) && rawScore <= 0) return true;
+  if(readiness && Number.isFinite(rawSleep) && rawSleep <= 0) return true;
+  if(readiness && Number.isFinite(rawBatteryEnd) && rawBatteryEnd <= 5) return true;
+  if(readiness && Number.isFinite(rawBatteryStart) && rawBatteryStart <= 5) return true;
+  return !readiness;
+}
+
+function cleanMainCoachText(value){
+  return humanizeCoachText(value)
+    .replace(/gotowość\s*0\/100/gi, 'gotowość: brak pełnych danych porannych')
+    .replace(/sen\s*0\s*min/gi, 'sen: brak pełnych danych')
+    .replace(/Body Battery\s*[0-5]\b/gi, 'Body Battery: brak pełnych danych')
+    .replace(/,\s*,/g, ',')
+    .replace(/W tle:\s*\./g, 'Dane poranne są niepełne.')
+    .trim();
+}
+
 function activityImpact(item){
   const load = metricValue(item?.training_load);
   const text = String(item?.auto_summary || item?.segment_summary || item?.bike_if_category || '').toLowerCase();
@@ -550,17 +586,18 @@ function weeklyTrendFallback(){
 }
 
 function buildLocalTodayCoach(){
-  const score = metricValue(readiness?.training_readiness_score);
+  const score = morningMetricValue('readiness', readiness?.training_readiness_score);
   const level = String(readiness?.training_readiness_level || '').toUpperCase();
-  const sleep = metricValue(readiness?.sleep_minutes);
-  const battery = metricValue(readiness?.body_battery_end, readiness?.body_battery_start);
-  const stress = metricValue(readiness?.avg_stress);
+  const sleep = morningMetricValue('sleep', readiness?.sleep_minutes);
+  const battery = morningMetricValue('battery', readiness?.body_battery_end, readiness?.body_battery_start);
+  const stress = morningMetricValue('stress', readiness?.avg_stress);
+  const incompleteMorning = morningDataIncomplete();
   const load7d = weeklyLoadValue();
   const latestImpact = activityImpact(latest);
   const recent = recentTrainingItems(3);
 
-  const veryLowReady = (score != null && score <= 25) || level === 'POOR';
-  const lowReady = (score != null && score <= 55) || ['LOW', 'MODERATE'].includes(level);
+  const veryLowReady = !incompleteMorning && ((score != null && score <= 25) || level === 'POOR');
+  const lowReady = !incompleteMorning && ((score != null && score <= 55) || ['LOW', 'MODERATE'].includes(level));
   const shortSleep = sleep != null && sleep < 360;
   const lowBattery = battery != null && battery <= 45;
   const highLoad = load7d != null && load7d >= 650;
@@ -572,7 +609,7 @@ function buildLocalTodayCoach(){
   let today = 'Spokojny tlen albo technika. Bez ścigania i bez dokładania mocnych odcinków poza planem.';
   let tomorrow = 'Jutro wracamy do mocniejszej pracy tylko wtedy, jeśli sen i energia odbiją. Jakość ponad zaliczanie treningu.';
 
-  if(veryLowReady || (hardLatest && (lowBattery || shortSleep))){
+  if(veryLowReady || (hardLatest && (lowBattery || shortSleep || highLoad))){
     status = 'recovery';
     title = 'DZISIAJ: ODBUDOWA';
     summary = 'Ostatni mocny bodziec został wykonany. Dzisiaj nie dokładamy głupiego zmęczenia — odbudowa ma przygotować organizm do następnej jakościowej pracy.';
@@ -587,10 +624,13 @@ function buildLocalTodayCoach(){
   }
 
   const reasons = [];
-  if(score != null) reasons.push(`gotowość ${Math.round(score)}/100`);
-  if(sleep != null) reasons.push(`sen ${fmtMin(sleep)}`);
-  if(battery != null) reasons.push(`Body Battery ${Math.round(battery)}`);
-  if(stress != null) reasons.push(`stress ${Math.round(stress)}`);
+  if(incompleteMorning) reasons.push('dane poranne niepełne');
+  else{
+    if(score != null) reasons.push(`gotowość ${Math.round(score)}/100`);
+    if(sleep != null) reasons.push(`sen ${fmtMin(sleep)}`);
+    if(battery != null) reasons.push(`Body Battery ${Math.round(battery)}`);
+    if(stress != null) reasons.push(`stress ${Math.round(stress)}`);
+  }
   if(load7d != null) reasons.push(`obciążenie tygodnia ${Math.round(load7d)}`);
   if(hardLatest) reasons.push('ostatni trening był mocny');
 
@@ -604,7 +644,10 @@ function buildLocalTodayCoach(){
     weeklyTrend: weeklyTrendFallback(),
     lastTrainings: recent,
     watch: ['sen i poranna energia', 'tętno spoczynkowe', 'ciężkość nóg po ostatnim treningu', 'gotowość do jakościowej pracy'],
-    dataGaps: recent.length < 3 ? ['brakuje minimum trzech ostatnich treningów w widoku'] : [],
+    dataGaps: [
+      ...(recent.length < 3 ? ['brakuje minimum trzech ostatnich treningów w widoku'] : []),
+      ...(incompleteMorning ? ['brak pełnych danych z dzisiejszego poranka'] : [])
+    ],
     source: 'fallback'
   };
 }
@@ -618,15 +661,15 @@ function normalizeTodayCoach(coach){
   return {
     status,
     title: normalizeCoachTitle(status, coach.title || coach.decisionTitle || coach.headline),
-    summary: humanizeCoachText(coach.summary || coach.reason || coach.headline || ''),
-    today: humanizeCoachText(coach.today || coach.todayAction || coach.recommendationToday || coach.recovery || ''),
-    tomorrow: humanizeCoachText(coach.tomorrow || coach.tomorrowAction || coach.recommendationTomorrow || ''),
-    nextDays: humanizeCoachText(coach.nextDays || coach.next_48_72h || coach.next48h || ''),
-    weeklyTrend: humanizeCoachText(coach.weeklyTrend || coach.trend || ''),
+    summary: cleanMainCoachText(coach.summary || coach.reason || coach.headline || ''),
+    today: cleanMainCoachText(coach.today || coach.todayAction || coach.recommendationToday || coach.recovery || ''),
+    tomorrow: cleanMainCoachText(coach.tomorrow || coach.tomorrowAction || coach.recommendationTomorrow || ''),
+    nextDays: cleanMainCoachText(coach.nextDays || coach.next_48_72h || coach.next48h || ''),
+    weeklyTrend: cleanMainCoachText(coach.weeklyTrend || coach.trend || ''),
     lastTrainings: Array.isArray(coach.lastTrainings) ? coach.lastTrainings.slice(0, 3).map(item => ({
       date: humanizeCoachText(item.date || ''),
       title: humanizeCoachText(item.title || item.name || 'Trening'),
-      summary: humanizeCoachText(item.summary || item.note || ''),
+      summary: cleanMainCoachText(item.summary || item.note || ''),
       load: item.load ?? null
     })) : recentTrainingItems(3),
     watch: Array.isArray(coach.watch) ? coach.watch.map(humanizeCoachText).filter(Boolean).slice(0, 4) : [],
@@ -688,13 +731,13 @@ function renderHumanCoachDashboard(coach){
     : 'decyzja zapasowa';
 
   if($('todayDecision')) $('todayDecision').textContent = normalizeCoachTitle(status, selected.title || '');
-  if($('todayReason')) $('todayReason').textContent = selected.summary || 'Brak pełnej decyzji.';
-  if($('todayMainAction')) $('todayMainAction').textContent = selected.today || 'Brak zalecenia na dziś.';
+  if($('todayReason')) $('todayReason').textContent = cleanMainCoachText(selected.summary || 'Brak pełnej decyzji.');
+  if($('todayMainAction')) $('todayMainAction').textContent = cleanMainCoachText(selected.today || 'Brak zalecenia na dziś.');
   if($('todayCoachSource')) $('todayCoachSource').textContent = sourceText;
   if($('todayCoachStatus')) $('todayCoachStatus').textContent = todayStatusLabel(status);
-  if($('coachToday')) $('coachToday').textContent = selected.today || 'Brak danych Garmin PRO do decyzji.';
-  if($('coachTomorrow')) $('coachTomorrow').textContent = selected.tomorrow || selected.nextDays || 'Jutro ocenimy po poranku i jakości snu.';
-  if($('weeklyTrendText')) $('weeklyTrendText').textContent = selected.weeklyTrend || weeklyTrendFallback();
+  if($('coachToday')) $('coachToday').textContent = cleanMainCoachText(selected.today || 'Brak danych Garmin PRO do decyzji.');
+  if($('coachTomorrow')) $('coachTomorrow').textContent = cleanMainCoachText(selected.tomorrow || selected.nextDays || 'Jutro ocenimy po poranku i jakości snu.');
+  if($('weeklyTrendText')) $('weeklyTrendText').textContent = cleanMainCoachText(selected.weeklyTrend || weeklyTrendFallback());
   if($('recentTrainingsList')) $('recentTrainingsList').innerHTML = renderRecentTrainingsList(selected.lastTrainings);
 
   const hero = document.querySelector('.human-today-hero');
@@ -3182,7 +3225,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-athlete-tone').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-athlete-data-guard').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
