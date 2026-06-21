@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.2 Compact+</title>
-  <link rel="manifest" href="manifest.json?v=542">
-  <link rel="stylesheet" href="styles.css?v=542-hc-a-dg-compact">
+  <title>Szymon AI Coach PRO • v5.4.3</title>
+  <link rel="manifest" href="manifest.json?v=543">
+  <link rel="stylesheet" href="styles.css?v=543">
 </head>
 <body class="is-auth-checking visual-fix-v542 visual-pro-v542">
   <section id="loginScreen" class="login-screen" hidden>
@@ -28,7 +28,7 @@
         <h1>Szymon AI Coach</h1>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.2 HC-A DG Compact+</span>
+        <span class="app-version-pill" data-app-version>v5.4.3</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -45,60 +45,36 @@
         <section class="kalmar-focus-card" aria-label="Cel Kalmar i gotowość">
           <div class="kalmar-goal-block">
             <span class="eyebrow">Road to Kalmar</span>
-            <div class="kalmar-wordmark" aria-label="IRONMAN Kalmar">IRON<span>MAN</span> <strong>KALMAR</strong></div>
+            <div class="kalmar-wordmark" aria-label="Kalmar 226 km">KALMAR <strong>226 km</strong></div>
             <p>226 km celu. Jeden spokojny, mądry dzień po drugim.</p>
-            <div class="kalmar-distances" aria-label="Dystanse Ironman">
+            <div class="kalmar-distances" aria-label="Dystanse 226 km">
               <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.2c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/><path d="M3 20.6c2.2-1.4 4.1-1.4 6.3 0s4.1 1.4 6.3 0 4.2-1.4 6.4 0"/></svg>3.8 km</span>
               <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M23 17.4a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0Z"/><path d="M4.1 17.4h4.2l3.2-6.2 3.9 6.2"/><path d="M12.8 8.2h3.7"/></svg>180 km</span>
               <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 5.2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M9.8 10.3 13 7.2l3.2 2.1 2.7-.6"/><path d="m12.8 11.2-2.3 4.2-4.1 1.7"/><path d="m14.6 12.9 2.8 3.1 2.3 4"/></svg>42.2 km</span>
             </div>
           </div>
           <div class="kalmar-side-metrics">
-            <div class="race-countdown-card">
-              <span>Do startu</span>
-              <b id="daysToKalmar">--</b>
-              <em>dni</em>
-            </div>
-            <div class="readiness-ring-card">
-              <div id="readinessRing" class="readiness-ring" style="--ready:0deg">
-                <span id="readinessRingValue">--</span>
-              </div>
-              <b id="readinessRingLabel">Gotowość</b>
-            </div>
+            <div class="race-countdown-card"><span>Do startu</span><b id="daysToKalmar">--</b><em>dni</em></div>
+            <div class="readiness-ring-card"><div id="readinessRing" class="readiness-ring" style="--ready:0deg"><span id="readinessRingValue">--</span></div><b id="readinessRingLabel">Gotowość</b></div>
           </div>
         </section>
 
         <section class="hero-card dashboard-hero-v542 human-today-hero">
-          <div class="hero-kicker-row">
-            <span class="eyebrow">Szymon, co dziś robimy?</span>
-            <span id="todayCoachSource" class="coach-mode-pill">czekam na dane</span>
-          </div>
+          <div class="hero-kicker-row"><span class="eyebrow">Szymon, co dziś robimy?</span><span id="todayCoachSource" class="coach-mode-pill">czekam na dane</span></div>
           <h2 id="todayDecision">Czekam na Garmin PRO.</h2>
           <p id="todayReason">Po pobraniu danych dostaniesz jedną decyzję trenerską: trening, kontrola albo odbudowa.</p>
         </section>
 
         <section class="card human-advice-card">
-          <div class="section-head">
-            <span class="eyebrow">Decyzja trenera</span>
-            <b id="todayCoachStatus">analiza tygodnia</b>
-          </div>
+          <div class="section-head"><span class="eyebrow">Decyzja trenera</span><b id="todayCoachStatus">analiza tygodnia</b></div>
           <div class="human-advice-grid">
-            <article>
-              <span>Co dziś?</span>
-              <p id="coachToday">Brak danych Garmin PRO do decyzji.</p>
-            </article>
-            <article>
-              <span>Co jutro?</span>
-              <p id="coachTomorrow">Czekam na kontekst tygodnia i ostatnie treningi.</p>
-            </article>
+            <article><span>Co dziś?</span><p id="coachToday">Brak danych Garmin PRO do decyzji.</p></article>
+            <article><span>Co jutro?</span><p id="coachTomorrow">Czekam na kontekst tygodnia i ostatnie treningi.</p></article>
           </div>
         </section>
 
         <section class="card human-week-card">
-          <div class="section-head">
-            <span class="eyebrow">Ostatni tydzień</span>
-            <b id="weekRange">brak danych</b>
-          </div>
+          <div class="section-head"><span class="eyebrow">Ostatni tydzień</span><b id="weekRange">brak danych</b></div>
           <p id="weeklyTrendText" class="human-trend-text">Brak danych tygodnia.</p>
           <div id="recentTrainingsList" class="recent-training-list"></div>
         </section>
@@ -123,132 +99,94 @@
           <div class="section-head"><h2>Ostatni trening</h2><span>szczegóły po kliknięciu</span></div>
           <article id="latestActivity" class="activity-card muted-card">Brak danych.</article>
         </section>
-
         <section class="status-panel"><div id="dataStatus" class="status info">Gotowe do pobrania danych.</div></section>
       </section>
 
+      <section id="screen-kalmar" class="screen">
+        <section class="screen-title-card kalmar-title-card">
+          <span class="eyebrow">Kalmar 2026</span>
+          <h2>Prognoza 226 km</h2>
+          <p>Krótki kierunek startowy z treningów, stanu organizmu i jakości danych. Zakres, nie obietnica wyniku.</p>
+        </section>
+
+        <section class="card kalmar-forecast-card" aria-label="Prognoza czasu Kalmar 2026">
+          <div class="section-head">
+            <span class="eyebrow">Realny kierunek</span>
+            <b id="kalmarForecastStatus" class="coach-mode-pill kalmar-status-empty">czekam na Garmin PRO</b>
+          </div>
+          <div id="kalmarForecastRange" class="kalmar-forecast-range">czekam na dane</div>
+          <p id="kalmarForecastWhy" class="kalmar-forecast-why">Po pobraniu danych karta pokaże krótki kierunek pod Kalmar.</p>
+          <div class="kalmar-forecast-grid">
+            <div><span>Pewność</span><b id="kalmarForecastConfidence">brak danych</b></div>
+            <div><span>Największa rezerwa</span><b id="kalmarForecastLimiter">brak danych</b></div>
+            <div><span>Co napędza prognozę</span><b id="kalmarForecastDriver">treningi + stan organizmu</b></div>
+          </div>
+          <div id="kalmarForecastGuard" class="status warn">Brak danych do prognozy — nie udaję wyniku.</div>
+        </section>
+
+        <details class="card human-details-card kalmar-details-card">
+          <summary>Szczegóły prognozy</summary>
+          <p id="kalmarForecastHint" class="kalmar-small-note">Liczone jako zakres godzinowy: pływanie + T1 + rower + T2 + bieg po rowerze.</p>
+          <p id="kalmarForecastDetails" class="kalmar-small-note">Brak aktywności, progów i danych porannych.</p>
+        </details>
+      </section>
+
       <section id="screen-analysis" class="screen">
-        <div class="screen-title-card">
-          <span class="eyebrow">Szczegóły treningu</span>
-          <h2>Analiza po treningu</h2>
-          <p>Tu są liczby, segmenty i pełna analiza. Ekran główny zostaje prostą decyzją trenerską.</p>
-        </div>
+        <div class="screen-title-card"><span class="eyebrow">Szczegóły treningu</span><h2>Analiza po treningu</h2><p>Tu są liczby, segmenty i pełna analiza. Ekran główny zostaje prostą decyzją trenerską.</p></div>
         <div id="proAnalysisMain" class="pro-analysis-host"></div>
       </section>
 
       <section id="screen-history" class="screen">
         <div id="historyListView">
-          <section class="screen-title-card">
-            <span class="eyebrow">Treningi</span>
-            <h2>Ostatnie aktywności</h2>
-            <p>Lista jest pomocnicza. Najważniejsza decyzja jest na ekranie „Dzisiaj”.</p>
-          </section>
-          <div class="history-toolbar">
-            <input id="historySearchInput" type="search" placeholder="Szukaj aktywności">
-            <select id="historySportFilter" aria-label="Filtr sportu">
-              <option value="all">Wszystkie</option>
-              <option value="swim">Pływanie</option>
-              <option value="bike">Rower</option>
-              <option value="run">Bieg</option>
-              <option value="triathlon">Triathlon</option>
-            </select>
-          </div>
+          <section class="screen-title-card"><span class="eyebrow">Treningi</span><h2>Ostatnie aktywności</h2><p>Lista jest pomocnicza. Najważniejsza decyzja jest na ekranie „Dzisiaj”.</p></section>
+          <div class="history-toolbar"><input id="historySearchInput" type="search" placeholder="Szukaj aktywności"><select id="historySportFilter" aria-label="Filtr sportu"><option value="all">Wszystkie</option><option value="swim">Pływanie</option><option value="bike">Rower</option><option value="run">Bieg</option><option value="triathlon">Triathlon</option></select></div>
           <div id="historyStatus" class="status info">Historia Garmin PRO gotowa do odczytu.</div>
           <div id="activityList" class="activity-list"></div>
           <button id="historyShowMoreBtn" class="secondary-btn" type="button" hidden>Pokaż więcej</button>
         </div>
-
         <div id="activityDetailView" hidden>
           <button id="backToHistoryBtn" class="secondary-btn back-btn" type="button">Wróć do historii</button>
           <section class="card activity-detail-card legacy-detail-fallback" hidden>
-            <span class="eyebrow">Szczegóły</span>
-            <h2 id="detailActivityName">Aktywność</h2>
-            <p id="detailActivityMeta">brak danych</p>
-            <div class="metric-grid">
-              <div><span>Dystans</span><b id="detailDistance">brak danych</b></div>
-              <div><span>Czas</span><b id="detailDuration">brak danych</b></div>
-              <div><span>HR</span><b id="detailHr">brak danych</b></div>
-              <div><span>Load</span><b id="detailLoad">brak danych</b></div>
-            </div>
-            <p id="detailSummary">brak danych</p>
-            <div id="activityAiAnalysis"></div>
+            <span class="eyebrow">Szczegóły</span><h2 id="detailActivityName">Aktywność</h2><p id="detailActivityMeta">brak danych</p>
+            <div class="metric-grid"><div><span>Dystans</span><b id="detailDistance">brak danych</b></div><div><span>Czas</span><b id="detailDuration">brak danych</b></div><div><span>HR</span><b id="detailHr">brak danych</b></div><div><span>Load</span><b id="detailLoad">brak danych</b></div></div>
+            <p id="detailSummary">brak danych</p><div id="activityAiAnalysis"></div>
           </section>
         </div>
       </section>
 
       <section id="screen-ai" class="screen">
-        <section class="screen-title-card ai-title-v542">
-          <span class="eyebrow">Plan</span>
-          <h2>Dziś, jutro i najbliższe dni</h2>
-          <p>Bez technicznego raportu: konkretna podpowiedź treningowa pod Kalmar.</p>
-        </section>
-        <div class="mode-switch">
-          <button class="active" data-mode="plan" type="button">Najbliższe dni</button>
-          <button data-mode="analysis" type="button">Ostatni trening</button>
-        </div>
-        <section id="planPanel" class="card ai-panel">
-          <h2>Plan najbliższych dni</h2>
-          <p>Główna decyzja jest na ekranie „Dzisiaj”. Tutaj zostaje miejsce na spokojne rozwinięcie planu.</p>
-        </section>
-        <section id="analysisPanel" class="card ai-panel" hidden>
-          <h2>Ostatni trening — analiza wykonania</h2>
-          <article id="aiLatestActivity" class="activity-card muted-card">Brak danych.</article>
-          <div id="aiActivityAnalysis" class="activity-ai-analysis"></div>
-        </section>
+        <section class="screen-title-card ai-title-v542"><span class="eyebrow">Plan</span><h2>Dziś, jutro i najbliższe dni</h2><p>Bez technicznego raportu: konkretna podpowiedź treningowa pod Kalmar.</p></section>
+        <div class="mode-switch"><button class="active" data-mode="plan" type="button">Najbliższe dni</button><button data-mode="analysis" type="button">Ostatni trening</button></div>
+        <section id="planPanel" class="card ai-panel"><h2>Plan najbliższych dni</h2><p>Główna decyzja jest na ekranie „Dzisiaj”. Tutaj zostaje miejsce na spokojne rozwinięcie planu.</p></section>
+        <section id="analysisPanel" class="card ai-panel" hidden><h2>Ostatni trening — analiza wykonania</h2><article id="aiLatestActivity" class="activity-card muted-card">Brak danych.</article><div id="aiActivityAnalysis" class="activity-ai-analysis"></div></section>
       </section>
 
       <section id="screen-settings" class="screen">
-        <section class="screen-title-card">
-          <span class="eyebrow">Profil</span>
-          <h2>Status i progi</h2>
-          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A DG Compact+</b></p>
-        </section>
+        <section class="screen-title-card"><span class="eyebrow">Profil</span><h2>Status i progi</h2><p>Wersja widoczna w aplikacji: <b>v5.4.3</b></p></section>
         <section class="card settings-card">
-          <div class="settings-grid">
-            <div><span>Wersja</span><b>v5.4.2-HC-A-DG-Compact</b></div>
-            <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
-            <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
-            <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
-            <div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div>
-            <div><span>Użytkownik</span><b id="userStatus">brak danych</b></div>
-            <div><span>Propozycje progów</span><b id="thresholdSuggestionCount">brak danych</b></div>
-          </div>
+          <div class="settings-grid"><div><span>Wersja</span><b>szymon-ai-coach-v5.4.3</b></div><div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div><div><span>Sesja</span><b id="sessionStatus">brak danych</b></div><div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div><div><span>Ostatni odczyt</span><b id="settingsLastRead">brak danych</b></div><div><span>Użytkownik</span><b id="userStatus">brak danych</b></div><div><span>Propozycje progów</span><b id="thresholdSuggestionCount">brak danych</b></div></div>
           <div id="viewStatusList" class="view-status-list"></div>
           <button id="toggleThresholdSuggestionsBtn" class="secondary-btn" type="button">Pokaż propozycje progów</button>
-          <div id="thresholdSuggestionPanel" class="threshold-panel" hidden>
-            <div id="thresholdSuggestionStatus" class="status info">Brak danych.</div>
-            <div id="thresholdSuggestionList"></div>
-          </div>
+          <div id="thresholdSuggestionPanel" class="threshold-panel" hidden><div id="thresholdSuggestionStatus" class="status info">Brak danych.</div><div id="thresholdSuggestionList"></div></div>
           <button id="logoutBtn" class="danger-btn" type="button">Wyloguj</button>
         </section>
-
         <section class="card settings-card" id="garminDiagnosticsCard">
-          <div class="section-head">
-            <span class="eyebrow">Diagnostyka</span>
-            <b>Dane Garmin</b>
-          </div>
+          <div class="section-head"><span class="eyebrow">Diagnostyka</span><b>Dane Garmin</b></div>
           <div id="garminDiagnosticMessage" class="status info">Sprawdzam dane Garmin…</div>
-          <div class="settings-grid">
-            <div><span>Ostatni udany odczyt</span><b id="diagLastRead">brak danych</b></div>
-            <div><span>Ostatnia aktywność</span><b id="diagLastActivity">brak danych</b></div>
-            <div><span>Ostatni dzień z danymi porannymi</span><b id="diagLastMorningDay">brak danych</b></div>
-            <div><span>Ostatni zapis snu</span><b id="diagLastSleep">brak danych</b></div>
-            <div><span>Ostatni Body Battery</span><b id="diagLastBattery">brak danych</b></div>
-            <div><span>Ostatnia gotowość</span><b id="diagLastReadiness">brak danych</b></div>
-            <div><span>Ostatnie tętno spoczynkowe</span><b id="diagLastRhr">brak danych</b></div>
-          </div>
+          <div class="settings-grid"><div><span>Ostatni udany odczyt</span><b id="diagLastRead">brak danych</b></div><div><span>Ostatnia aktywność</span><b id="diagLastActivity">brak danych</b></div><div><span>Ostatni dzień z danymi porannymi</span><b id="diagLastMorningDay">brak danych</b></div><div><span>Ostatni zapis snu</span><b id="diagLastSleep">brak danych</b></div><div><span>Ostatni Body Battery</span><b id="diagLastBattery">brak danych</b></div><div><span>Ostatnia gotowość</span><b id="diagLastReadiness">brak danych</b></div><div><span>Ostatnie tętno spoczynkowe</span><b id="diagLastRhr">brak danych</b></div></div>
         </section>
       </section>
     </main>
 
-    <nav class="bottom-nav human-bottom-nav" aria-label="Nawigacja">
+    <nav class="bottom-nav human-bottom-nav nav-five" aria-label="Nawigacja">
       <button class="active" data-tab="dashboard" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.8 10.4 12 4.8l7.2 5.6"/><path d="M6.7 9.7v8.7h10.6V9.7"/><path d="M9.2 14.5h5.6"/></svg></span><em>Dzisiaj</em></button>
       <button data-tab="history" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14"/><path d="M5 12h14"/><path d="M5 17.5h9"/><path d="M17.2 16.2l2 2 3-3"/></svg></span><em>Treningi</em></button>
       <button data-tab="ai" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18.5c3.8-6.7 7.2-6.7 10.5-3.3"/><path d="M12.5 5.5h6v6"/><path d="M18.5 5.5 11 13"/></svg></span><em>Plan</em></button>
+      <button data-tab="kalmar" type="button"><span class="nav-icon pro-nav-icon kalmar-nav-icon">226</span><em>Kalmar</em></button>
       <button data-tab="settings" type="button"><span class="nav-icon pro-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2a3.8 3.8 0 1 0 0-7.6 3.8 3.8 0 0 0 0 7.6Z"/><path d="M5.8 20c1.1-3.5 3.1-5.3 6.2-5.3s5.1 1.8 6.2 5.3"/></svg></span><em>Profil</em></button>
     </nav>
   </div>
 
-  <script src="app.js?v=542-hc-a-dg-compact"></script>
+  <script src="app.js?v=543"></script>
 </body>
 </html>

@@ -2963,3 +2963,139 @@ body.visual-pro-v542{
   border-radius:11px !important;
   font-size:16px !important;
 }
+
+/* =========================================================
+   v5.4.3 — Kalmar forecast module
+   Frontend only. Safe removable fifth tab.
+   ========================================================= */
+.visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five,
+.human-bottom-nav.nav-five{
+  grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+  width:min(calc(100% - 14px), 520px) !important;
+  height:74px !important;
+  padding:5px !important;
+  gap:3px !important;
+}
+.visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five button,
+.human-bottom-nav.nav-five button{
+  padding:5px 2px !important;
+  gap:4px !important;
+  min-width:0 !important;
+}
+.visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five button em,
+.human-bottom-nav.nav-five button em{
+  font-size:9.5px !important;
+  letter-spacing:-.02em !important;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five .pro-nav-icon,
+.human-bottom-nav.nav-five .pro-nav-icon{
+  width:24px !important;
+  height:24px !important;
+  border-radius:9px !important;
+}
+.visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five .pro-nav-icon svg,
+.human-bottom-nav.nav-five .pro-nav-icon svg{
+  width:20px !important;
+  height:20px !important;
+}
+.visual-pro-v542 .kalmar-nav-icon{
+  font-size:10px !important;
+  font-weight:1000 !important;
+  letter-spacing:0 !important;
+  color:#f8d66d !important;
+  border:1px solid rgba(248,214,109,.26);
+  background:linear-gradient(135deg,rgba(248,214,109,.18),rgba(88,166,255,.10));
+}
+.visual-pro-v542 .bottom-nav button.active .kalmar-nav-icon{
+  color:#061426 !important;
+  background:linear-gradient(135deg,#f8d66d,#58a6ff);
+}
+.visual-pro-v542 .kalmar-title-card{
+  border-color:rgba(248,214,109,.24) !important;
+}
+.visual-pro-v542 .kalmar-forecast-card{
+  display:grid;
+  gap:14px;
+  border-color:rgba(248,214,109,.30) !important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(248,214,109,.14),transparent 34%),
+    linear-gradient(145deg,rgba(10,26,49,.92),rgba(5,15,30,.95)) !important;
+}
+.kalmar-forecast-range{
+  font-size:clamp(42px, 13vw, 64px);
+  line-height:.95;
+  font-weight:1000;
+  letter-spacing:-.075em;
+  color:#f5fbff;
+  text-shadow:0 16px 40px rgba(0,0,0,.35);
+}
+.kalmar-forecast-why{
+  margin:0;
+  color:#cfe1f7;
+  line-height:1.45;
+  font-weight:800;
+  font-size:15px;
+}
+.kalmar-forecast-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+.kalmar-forecast-grid > div{
+  border:1px solid rgba(163,188,228,.16);
+  background:rgba(255,255,255,.055);
+  border-radius:18px;
+  padding:11px 12px;
+  display:grid;
+  gap:5px;
+}
+.kalmar-forecast-grid span{
+  color:#9bb5d3;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:950;
+}
+.kalmar-forecast-grid b{
+  color:#f5fbff;
+  font-size:16px;
+  line-height:1.2;
+}
+.kalmar-details-card{
+  border-color:rgba(88,166,255,.20) !important;
+}
+.kalmar-small-note{
+  margin:10px 0 0;
+  color:#cfe1f7;
+  line-height:1.45;
+  font-weight:750;
+}
+.kalmar-status-ok{color:#c8ffd9 !important; border-color:rgba(53,211,157,.35) !important;}
+.kalmar-status-weak{color:#ffe2a0 !important; border-color:rgba(248,214,109,.35) !important;}
+.kalmar-status-empty{color:#dbeeff !important; border-color:rgba(88,166,255,.30) !important;}
+@media(min-width:680px){
+  .kalmar-forecast-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:390px){
+  .visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five button em{font-size:9px !important;}
+  .visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five .pro-nav-icon{width:22px !important;height:22px !important;}
+  .kalmar-forecast-range{font-size:40px;}
+}
+
+
+/* v5.4.3 — Profil spacing guard: przycisk Wyloguj nie może wpadać pod fixed bottom-nav. */
+.visual-pro-v542 #screen-settings .settings-card:first-of-type{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:12px !important;
+}
+.visual-pro-v542 #screen-settings .settings-card:first-of-type .settings-grid{order:1;}
+.visual-pro-v542 #logoutBtn{order:2;width:100%;margin:2px 0 4px !important;position:relative;z-index:2;}
+.visual-pro-v542 #viewStatusList{order:3;}
+.visual-pro-v542 #toggleThresholdSuggestionsBtn{order:4;}
+.visual-pro-v542 #thresholdSuggestionPanel{order:5;}
+.visual-pro-v542 #screen-settings{padding-bottom:calc(124px + env(safe-area-inset-bottom)) !important;}
