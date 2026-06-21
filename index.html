@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#061426">
-  <title>Szymon AI Coach PRO • v5.4.2 Visual PRO+</title>
+  <title>Szymon AI Coach PRO • v5.4.2 Compact+</title>
   <link rel="manifest" href="manifest.json?v=542">
-  <link rel="stylesheet" href="styles.css?v=542-hc-a-dg-nav-clearance-fix">
+  <link rel="stylesheet" href="styles.css?v=542-hc-a-dg-compact">
 </head>
 <body class="is-auth-checking visual-fix-v542 visual-pro-v542">
   <section id="loginScreen" class="login-screen" hidden>
@@ -22,14 +22,13 @@
   </section>
 
   <div id="appShell" class="app-shell" hidden>
-    <header class="topbar pro-topbar-v542">
+    <header class="topbar pro-topbar-v542 topbar-compact">
       <div class="topbar-title">
-        <span class="eyebrow">Road to IRONMAN Kalmar 2026</span>
-        <h1>Szymon AI Coach PRO</h1>
-        <small class="topbar-subtitle">Human Coach Visual PRO+</small>
+        <span class="eyebrow">Road to Kalmar 2026</span>
+        <h1>Szymon AI Coach</h1>
       </div>
       <div class="topbar-actions">
-        <span class="app-version-pill" data-app-version>v5.4.2 HC-A DG Stability+</span>
+        <span class="app-version-pill" data-app-version>v5.4.2 HC-A DG Compact+</span>
         <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież dane">↻</button>
       </div>
     </header>
@@ -202,11 +201,11 @@
         <section class="screen-title-card">
           <span class="eyebrow">Profil</span>
           <h2>Status i progi</h2>
-          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A DG Stability+</b></p>
+          <p>Wersja widoczna w aplikacji: <b>v5.4.2 HC-A DG Compact+</b></p>
         </section>
         <section class="card settings-card">
           <div class="settings-grid">
-            <div><span>Wersja</span><b>v5.4.2-HC-A-DG-visual-polish-local</b></div>
+            <div><span>Wersja</span><b>v5.4.2-HC-A-DG-Compact</b></div>
             <div><span>Supabase</span><b id="supabaseStatus">brak danych</b></div>
             <div><span>Sesja</span><b id="sessionStatus">brak danych</b></div>
             <div><span>Garmin PRO</span><b id="garminStatus">brak danych</b></div>
@@ -222,6 +221,23 @@
           </div>
           <button id="logoutBtn" class="danger-btn" type="button">Wyloguj</button>
         </section>
+
+        <section class="card settings-card" id="garminDiagnosticsCard">
+          <div class="section-head">
+            <span class="eyebrow">Diagnostyka</span>
+            <b>Dane Garmin</b>
+          </div>
+          <div id="garminDiagnosticMessage" class="status info">Sprawdzam dane Garmin…</div>
+          <div class="settings-grid">
+            <div><span>Ostatni udany odczyt</span><b id="diagLastRead">brak danych</b></div>
+            <div><span>Ostatnia aktywność</span><b id="diagLastActivity">brak danych</b></div>
+            <div><span>Ostatni dzień z danymi porannymi</span><b id="diagLastMorningDay">brak danych</b></div>
+            <div><span>Ostatni zapis snu</span><b id="diagLastSleep">brak danych</b></div>
+            <div><span>Ostatni Body Battery</span><b id="diagLastBattery">brak danych</b></div>
+            <div><span>Ostatnia gotowość</span><b id="diagLastReadiness">brak danych</b></div>
+            <div><span>Ostatnie tętno spoczynkowe</span><b id="diagLastRhr">brak danych</b></div>
+          </div>
+        </section>
       </section>
     </main>
 
@@ -233,6 +249,6 @@
     </nav>
   </div>
 
-  <script src="app.js?v=542-hc-a-dg-nav-clearance-fix"></script>
+  <script src="app.js?v=542-hc-a-dg-compact"></script>
 </body>
 </html>

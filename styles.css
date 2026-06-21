@@ -2916,3 +2916,50 @@ body.visual-pro-v542{
   .visual-pro-v542 .kalmar-focus-card{grid-template-columns:1fr;}
   .visual-pro-v542 .kalmar-side-metrics{grid-template-columns:1fr 1fr;}
 }
+
+/* =========================================================
+   v5.4.2 HC-A DG Compact+ — topbar compaction only
+   Cel: sticky topbar zostaje, ale wyraźnie mniejszy i mniej
+   dominujący. Nie dotyczy karty Kalmar, dolnej nawigacji,
+   kolorów głównej grafiki ani logiki.
+   ========================================================= */
+.topbar.topbar-compact{
+  min-height:0 !important;
+  padding:calc(7px + env(safe-area-inset-top)) 14px 7px !important;
+  margin:-14px -14px 10px !important;
+  gap:8px !important;
+}
+.topbar.topbar-compact .topbar-title{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:1px !important;
+  min-width:0 !important;
+}
+.topbar.topbar-compact .eyebrow{
+  font-size:9px !important;
+  font-weight:800 !important;
+  letter-spacing:.08em !important;
+  margin:0 !important;
+  line-height:1.2 !important;
+}
+.topbar.topbar-compact h1{
+  font-size:16px !important;
+  margin:0 !important;
+  line-height:1.15 !important;
+  letter-spacing:-.02em !important;
+  white-space:nowrap !important;
+}
+.topbar.topbar-compact .topbar-actions{
+  gap:6px !important;
+  flex-shrink:0 !important;
+}
+.topbar.topbar-compact .app-version-pill{
+  padding:4px 8px !important;
+  font-size:10px !important;
+}
+.topbar.topbar-compact .icon-btn{
+  width:32px !important;
+  height:32px !important;
+  border-radius:11px !important;
+  font-size:16px !important;
+}

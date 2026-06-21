@@ -354,6 +354,16 @@ function fmtClock(value){
   return d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
 }
 
+function fmtDateTime(value){
+  const d = value instanceof Date ? value : (value ? new Date(value) : null);
+  if(!d || Number.isNaN(d.getTime())) return 'brak danych';
+  return d.toLocaleString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function todayIso(){
+  return new Date().toISOString().slice(0, 10);
+}
+
 function fmtSeconds(value){
   const n = Number(value);
   if(!Number.isFinite(n)) return 'brak danych';
@@ -1670,6 +1680,71 @@ function renderSettings(){
     toggle.textContent = thresholdPanelOpen ? 'Zwiń propozycje progów' : (count ? `Sprawdź progi (${count})` : 'Sprawdź progi');
   }
   renderThresholdSuggestions();
+  renderGarminDiagnostics();
+}
+
+function renderGarminDiagnostics(){
+  const incomplete = morningDataIncomplete();
+  const morningDateRaw = readiness?.metric_date ? String(readiness.metric_date).slice(0, 10) : null;
+
+  if($('diagLastRead')) $('diagLastRead').textContent = lastReadAt ? fmtDateTime(lastReadAt) : 'brak danych';
+
+  if($('diagLastActivity')){
+    if(latest){
+      const name = latest.event_name || latest.activity_name || 'Aktywność Garmin';
+      const sport = sportLabel(latest.sport_type || latest.activity_type);
+      const date = fmtDate(latest.workout_date);
+      const sportSuffix = sport && sport !== 'brak danych' && !String(name).toLowerCase().includes(String(sport).toLowerCase()) ? ` (${sport})` : '';
+      $('diagLastActivity').textContent = `${date} • ${name}${sportSuffix}`;
+    }else{
+      $('diagLastActivity').textContent = 'brak danych';
+    }
+  }
+
+  if($('diagLastMorningDay')) $('diagLastMorningDay').textContent = morningDateRaw ? fmtDate(morningDateRaw) : 'brak danych';
+
+  const guardedSleep = morningMetricValue('sleep', readiness?.sleep_minutes);
+  const guardedBatteryEnd = morningMetricValue('battery', readiness?.body_battery_end);
+  const guardedBatteryStart = morningMetricValue('battery', readiness?.body_battery_start);
+  const guardedReadiness = morningMetricValue('readiness', readiness?.training_readiness_score);
+  const guardedRhr = morningMetricValue('rhr', readiness?.resting_hr);
+
+  if($('diagLastSleep')) $('diagLastSleep').textContent = (!incomplete && guardedSleep != null && morningDateRaw)
+    ? `${fmtDate(morningDateRaw)} • ${fmtMin(guardedSleep)}`
+    : 'brak pełnych danych';
+
+  if($('diagLastBattery')) $('diagLastBattery').textContent = (!incomplete && (guardedBatteryStart != null || guardedBatteryEnd != null) && morningDateRaw)
+    ? `${fmtDate(morningDateRaw)} • ${guardedBatteryStart != null ? fmtNumber(guardedBatteryStart) : 'brak'} → ${guardedBatteryEnd != null ? fmtNumber(guardedBatteryEnd) : 'brak'}`
+    : 'brak pełnych danych';
+
+  if($('diagLastReadiness')) $('diagLastReadiness').textContent = (!incomplete && guardedReadiness != null && morningDateRaw)
+    ? `${fmtDate(morningDateRaw)} • ${Math.round(guardedReadiness)}/100`
+    : 'brak pełnych danych';
+
+  if($('diagLastRhr')) $('diagLastRhr').textContent = (!incomplete && guardedRhr != null && morningDateRaw)
+    ? `${fmtDate(morningDateRaw)} • ${Math.round(guardedRhr)} bpm`
+    : 'brak pełnych danych';
+
+  const msgEl = $('garminDiagnosticMessage');
+  if(msgEl){
+    msgEl.classList.remove('ok', 'warn', 'bad', 'info');
+    if(!morningDateRaw){
+      msgEl.textContent = 'Brak pełnych danych porannych z dzisiaj — aplikacja nie udaje oceny regeneracji.';
+      msgEl.classList.add('warn');
+    }else{
+      const isToday = morningDateRaw === todayIso();
+      if(isToday && !incomplete){
+        msgEl.textContent = 'Dane poranne z dzisiaj są dostępne.';
+        msgEl.classList.add('ok');
+      }else if(isToday && incomplete){
+        msgEl.textContent = 'Brak pełnych danych porannych z dzisiaj — aplikacja nie udaje oceny regeneracji.';
+        msgEl.classList.add('warn');
+      }else{
+        msgEl.textContent = `Ostatnie dane poranne są z: ${fmtDate(morningDateRaw)}.`;
+        msgEl.classList.add('warn');
+      }
+    }
+  }
 }
 
 function renderStatus(){
@@ -3311,7 +3386,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-nav-clearance-fix').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=542-hc-a-dg-compact').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
