@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.1';
+const VERSION = 'szymon-ai-coach-v5.5.2';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -1332,73 +1332,164 @@ function proBeforeText(pro){
   return 'Stan przed treningiem jest częściowy. Analiza opiera się na dostępnych danych i nie dopowiada braków.';
 }
 
+/* Porównanie do ostatnich 2-3 sesji tej samej dyscypliny — osobna,
+   zawsze obecna nić w werdykcie, niezależna od 8-tygodniowego
+   baseline'u. Trening może być "normalny" względem miesięcy, a
+   jednocześnie zauważalnym skokiem względem ostatnich kilku dni. */
+function kalmarRecentSessionsComparison(sport, load, excludeDate){
+  if(!sport || load == null) return { hasEnough: false };
+  const rows = kalmarAllActivityRows()
+    .filter(row => sportKeyForItem(row) === sport)
+    .filter(row => row?.workout_date && row.workout_date !== excludeDate)
+    .map(row => ({ date: row.workout_date, load: kalmarNum(row.training_load) }))
+    .filter(row => row.load != null)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  const recentLoads = rows.slice(0, 3).map(r => r.load);
+  if(recentLoads.length < 2) return { hasEnough: false };
+
+  const avgRecent = kalmarAverage(recentLoads);
+  if(!avgRecent) return { hasEnough: false };
+
+  const ratio = load / avgRecent;
+  let tier;
+  if(ratio >= 1.35) tier = 'much_higher';
+  else if(ratio >= 1.15) tier = 'higher';
+  else if(ratio <= 0.70) tier = 'much_lower';
+  else if(ratio <= 0.85) tier = 'lower';
+  else tier = 'similar';
+
+  return { hasEnough: true, tier, avgRecent, ratio, sampleCount: recentLoads.length };
+}
+
+function kalmarComparisonPhrase(tier, label){
+  switch(tier){
+    case 'much_higher': return `Dzisiejszy ${label} był znacznie mocniejszy niż ostatnie sesje.`;
+    case 'higher': return `Dzisiejszy ${label} był trochę mocniejszy niż ostatnio.`;
+    case 'similar': return `To podobny poziom do ostatnich sesji.`;
+    case 'lower': return `Dzisiejszy ${label} był trochę spokojniejszy niż ostatnio.`;
+    case 'much_lower': return `Dzisiejszy ${label} był znacznie spokojniejszy niż ostatnie sesje.`;
+    default: return '';
+  }
+}
+
+function joinVerdictParts(...parts){
+  return parts.filter(Boolean).join(' ');
+}
+
+
 function proWorkoutVerdict(pro, analytics, segments){
   const sport = sportKeyForItem(pro);
-  const label = proTrainingTypeLabel(pro).toLowerCase();
+  const labelCap = proTrainingTypeLabel(pro);
+  const label = labelCap.toLowerCase();
   const load = kalmarNum(pro?.training_load);
-  const hrAvg = kalmarNum(pro?.hr_avg);
-  const hrMax = kalmarNum(pro?.hr_max);
-  const duration = pro?.duration_seconds || pro?.elapsed_time_seconds;
-  const durationMin = Number(duration) / 60;
-  const distanceKm = Number(pro?.distance_meters) / 1000;
+
+  if(load == null){
+    return 'Brak pełnych danych kosztu tego treningu — pełną ocenę da dopiero poranek po treningu.';
+  }
+
+  const ifValue = kalmarNum(analytics?.bike_if_value ?? pro?.intensity_factor);
+  const tooHard = String(analytics?.bike_if_category || '').includes('too_hard') || (ifValue != null && ifValue >= 0.93);
+
   const baseline = buildAthleteBaseline(sport);
+  const hasBaseline = baseline?.hasEnough;
   const classification = classifyAgainstBaseline(load, baseline);
-  const hasBaseline = baseline?.hasEnough && load != null;
+  const overnight = hasBaseline ? kalmarOvernightResponseForSimilar(sport, load, baseline) : { hasEnough: false };
+  const regenTrend = kalmarRegenerationTrend();
+  const comparison = kalmarRecentSessionsComparison(sport, load, pro?.workout_date);
+  const comparisonText = comparison.hasEnough ? kalmarComparisonPhrase(comparison.tier, label) : '';
 
-  let verdict = 'Trening zaliczony.';
-  let meaning = 'To był konkretny bodziec, ale oceniamy go przez wykonanie i reakcję organizmu, nie przez samą liczbę.';
-
-  if(hasBaseline){
-    if(classification.tier === 'normal'){
-      verdict = `${proTrainingTypeLabel(pro)} był OK.`;
-      meaning = `Obciążenie mieści się w normalnym zakresie Szymona, więc nie ma alarmu.`;
-    }else if(classification.tier === 'elevated'){
-      verdict = `${proTrainingTypeLabel(pro)} był mocniejszy niż zwykła praca.`;
-      meaning = `To nadal wygląda na kontrolowany bodziec, ale kolejny mocny krok zależy od poranka.`;
-    }else if(classification.tier === 'over'){
-      verdict = `${proTrainingTypeLabel(pro)} wyszedł ponad typowy zakres Szymona.`;
-      meaning = `Nie dramatyzujemy, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.`;
-    }
-  }else if(load != null){
-    if(load >= 250){
-      verdict = `${proTrainingTypeLabel(pro)} był mocnym bodźcem.`;
-      meaning = 'To nie jest automatyczny alarm, ale następny akcent musi poczekać na poranne dane.';
-    }else if(load >= 120){
-      verdict = `${proTrainingTypeLabel(pro)} był konkretny, ale wygląda na kontrolowany.`;
-      meaning = 'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu.';
+  // Multisport: rower zjadł bieg — ten sam sygnał (IF segmentu roweru),
+  // który już działa w proSegmentSummary().
+  if(pro?.is_multisport && segments?.length){
+    const bikeSeg = segments.find(s => s.segment_type === 'bike');
+    const bikeIf = kalmarNum(bikeSeg?.intensity_factor ?? analytics?.bike_if_value);
+    if(bikeIf != null && bikeIf >= 0.93){
+      return joinVerdictParts(
+        'Start był solidny, ale rower poszedł bardzo mocno i to zostawiło koszt na biegu.',
+        comparisonText,
+        'To jest dokładnie to, co trzeba pilnować pod Kalmar: rower ma budować wynik, nie zabierać go biegowi.'
+      );
     }
   }
 
-  const isMeaningfulSession = (Number.isFinite(durationMin) && durationMin >= 35) || (Number.isFinite(distanceKm) && distanceKm >= 8) || (load != null && load >= 100);
-  if(isMeaningfulSession && sport === 'run'){
-    if(hasBaseline && classification.tier === 'normal'){
-      verdict = 'Bieg był OK.';
-      meaning = 'To nie była odbudowa, tylko normalny, kontrolowany trening dla Szymona. Obciążenie mieści się w jego aktualnym poziomie, więc nie ma alarmu.';
-    }else if(hasBaseline && classification.tier === 'elevated'){
-      verdict = 'Bieg był mocniejszy niż zwykła praca.';
-      meaning = 'To nie była odbudowa, ale nadal może być kontrolowany bodziec. Kolejny mocny krok zależy od poranka.';
-    }else if(hasBaseline && classification.tier === 'over'){
-      verdict = 'Bieg wyszedł ponad typowy zakres Szymona.';
-      meaning = 'To nie jest powód do paniki, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.';
-    }else if(load != null && load >= 100){
-      verdict = 'Bieg był konkretny, ale wygląda na kontrolowany.';
-      meaning = 'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu. Poranek pokaże, jak szybko wracamy do pracy.';
-    }
+  // 1. Intensywność (IF) ważniejsza niż sam load — głównie rower.
+  if(tooHard){
+    return joinVerdictParts(
+      `${labelCap} był mocniejszy niż zwykła praca — jechałeś na górnej granicy, nie w spokojnym tempie. To nie alarm, ale to był mocny bodziec, nie rutynowa jazda.`,
+      comparisonText,
+      'Następny akcent czeka na dobry poranek.'
+    );
   }
 
-  let kalmar = 'Pod Kalmar liczy się teraz spokojne dokładanie pracy bez chaosu.';
-  if(sport === 'run'){
-    kalmar = 'Pod Kalmar bieg wygląda pod kontrolą; największy sens ma dalej budować równy rower i krótkie biegi po rowerze.';
-  }else if(sport === 'bike'){
-    kalmar = 'Pod Kalmar najważniejsza jest równa jazda: rower ma budować wynik, ale zostawić nogi do biegu.';
-  }else if(pro?.is_multisport || sport === 'triathlon'){
-    kalmar = 'Pod Kalmar najważniejsze jest połączenie: rower ma być mocny, ale nie może zabrać biegu.';
-  }else if(sport === 'swim'){
-    kalmar = 'Pod Kalmar pływanie ma dać spokojne wejście w dzień startu, bez płacenia za nie na rowerze.';
+  // 2. Pojedyncza sesja ponad osobistą tolerancję — to jest pierwszeństwo
+  //    przed tygodniowym trendem, bo to mocniejszy, bardziej pilny sygnał.
+  if(hasBaseline && classification.tier === 'over'){
+    return joinVerdictParts(
+      `${labelCap} wyszedł ponad Twój typowy zakres.`,
+      comparisonText,
+      'Nie dramatyzujemy, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.'
+    );
   }
 
-  const morning = 'Pełną reakcję organizmu sprawdzimy rano, gdy pojawią się dane po nocy.';
-  return `${verdict} ${meaning} ${morning} ${kalmar}`;
+  // 3. Sama sesja nie jest ekstremalna, ale tydzień już jest napięty —
+  //    to wtedy jest ważniejszy temat niż "był OK".
+  if(regenTrend?.bad && (!hasBaseline || classification.tier === 'normal' || classification.tier === 'elevated')){
+    return joinVerdictParts(
+      `Sam ${label} nie ma w sobie nic niepokojącego, ale to już kilka dni, gdzie obciążenie rośnie szybciej niż regeneracja.`,
+      comparisonText ? `${comparisonText} To dokładanie się sumuje, nie zaczyna od zera.` : 'Warto to obserwować w najbliższych dniach, nie oceniać pojedynczo.'
+    );
+  }
+
+  // 4. Podwyższony bodziec względem osobistego poziomu.
+  if(hasBaseline && classification.tier === 'elevated'){
+    return joinVerdictParts(
+      `${labelCap} był mocniejszy niż zwykła praca dla Twojego aktualnego poziomu.`,
+      comparisonText,
+      'To nadal wygląda na kontrolowany bodziec, ale kolejny mocny krok zależy od poranka.'
+    );
+  }
+
+  // 5. Sesja normalna, ale historia podobnych treningów ostrzega
+  //    przed wolniejszą regeneracją — zabezpieczenie z v5.5.0.
+  if(hasBaseline && classification.tier === 'normal' && overnight.hasEnough && overnight.avgNextDayReadiness < 50){
+    return joinVerdictParts(
+      `${labelCap} był OK i mieści się w Twoim zwykłym zakresie.`,
+      comparisonText,
+      'Jedno do zapamiętania: po podobnych treningach Twoja regeneracja bywała wolniejsza — jeśli jutro poranek będzie słabszy, to nie zaskoczenie, tylko Twój wzorzec.'
+    );
+  }
+
+  // 6. Domyślny, najczęstszy przypadek: normalny bodziec roboczy.
+  if(hasBaseline && classification.tier === 'normal'){
+    return joinVerdictParts(
+      `${labelCap} był OK — spokojna, kontrolowana robota, dokładnie w Twoim normalnym zakresie.`,
+      comparisonText,
+      'Pełny obraz dorzuci poranek, ale już teraz to wygląda na zdrowy bodziec pod Kalmar.'
+    );
+  }
+
+  // Fallback: za mało danych do osobistego baseline'u — stare,
+  // już tone-poprawione progi absolutne z v5.4.9.
+  if(load >= 250){
+    return joinVerdictParts(
+      `${labelCap} był mocnym bodźcem.`,
+      comparisonText,
+      'To nie jest automatyczny alarm, ale następny akcent musi poczekać na poranne dane.'
+    );
+  }
+  if(load >= 120){
+    return joinVerdictParts(
+      `${labelCap} był konkretny, ale wygląda na kontrolowany.`,
+      comparisonText,
+      'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu.'
+    );
+  }
+  return joinVerdictParts(
+    `${labelCap} wygląda na lekką, kontrolowaną jednostkę.`,
+    comparisonText,
+    'Pełną ocenę da dopiero poranek po treningu.'
+  );
 }
 
 function proBeforeControlLine(pro){
@@ -4127,7 +4218,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=551').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=552').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
