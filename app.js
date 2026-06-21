@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.0';
+const VERSION = 'szymon-ai-coach-v5.5.1';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -1332,6 +1332,75 @@ function proBeforeText(pro){
   return 'Stan przed treningiem jest częściowy. Analiza opiera się na dostępnych danych i nie dopowiada braków.';
 }
 
+function proWorkoutVerdict(pro, analytics, segments){
+  const sport = sportKeyForItem(pro);
+  const label = proTrainingTypeLabel(pro).toLowerCase();
+  const load = kalmarNum(pro?.training_load);
+  const hrAvg = kalmarNum(pro?.hr_avg);
+  const hrMax = kalmarNum(pro?.hr_max);
+  const duration = pro?.duration_seconds || pro?.elapsed_time_seconds;
+  const durationMin = Number(duration) / 60;
+  const distanceKm = Number(pro?.distance_meters) / 1000;
+  const baseline = buildAthleteBaseline(sport);
+  const classification = classifyAgainstBaseline(load, baseline);
+  const hasBaseline = baseline?.hasEnough && load != null;
+
+  let verdict = 'Trening zaliczony.';
+  let meaning = 'To był konkretny bodziec, ale oceniamy go przez wykonanie i reakcję organizmu, nie przez samą liczbę.';
+
+  if(hasBaseline){
+    if(classification.tier === 'normal'){
+      verdict = `${proTrainingTypeLabel(pro)} był OK.`;
+      meaning = `Obciążenie mieści się w normalnym zakresie Szymona, więc nie ma alarmu.`;
+    }else if(classification.tier === 'elevated'){
+      verdict = `${proTrainingTypeLabel(pro)} był mocniejszy niż zwykła praca.`;
+      meaning = `To nadal wygląda na kontrolowany bodziec, ale kolejny mocny krok zależy od poranka.`;
+    }else if(classification.tier === 'over'){
+      verdict = `${proTrainingTypeLabel(pro)} wyszedł ponad typowy zakres Szymona.`;
+      meaning = `Nie dramatyzujemy, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.`;
+    }
+  }else if(load != null){
+    if(load >= 250){
+      verdict = `${proTrainingTypeLabel(pro)} był mocnym bodźcem.`;
+      meaning = 'To nie jest automatyczny alarm, ale następny akcent musi poczekać na poranne dane.';
+    }else if(load >= 120){
+      verdict = `${proTrainingTypeLabel(pro)} był konkretny, ale wygląda na kontrolowany.`;
+      meaning = 'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu.';
+    }
+  }
+
+  const isMeaningfulSession = (Number.isFinite(durationMin) && durationMin >= 35) || (Number.isFinite(distanceKm) && distanceKm >= 8) || (load != null && load >= 100);
+  if(isMeaningfulSession && sport === 'run'){
+    if(hasBaseline && classification.tier === 'normal'){
+      verdict = 'Bieg był OK.';
+      meaning = 'To nie była odbudowa, tylko normalny, kontrolowany trening dla Szymona. Obciążenie mieści się w jego aktualnym poziomie, więc nie ma alarmu.';
+    }else if(hasBaseline && classification.tier === 'elevated'){
+      verdict = 'Bieg był mocniejszy niż zwykła praca.';
+      meaning = 'To nie była odbudowa, ale nadal może być kontrolowany bodziec. Kolejny mocny krok zależy od poranka.';
+    }else if(hasBaseline && classification.tier === 'over'){
+      verdict = 'Bieg wyszedł ponad typowy zakres Szymona.';
+      meaning = 'To nie jest powód do paniki, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.';
+    }else if(load != null && load >= 100){
+      verdict = 'Bieg był konkretny, ale wygląda na kontrolowany.';
+      meaning = 'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu. Poranek pokaże, jak szybko wracamy do pracy.';
+    }
+  }
+
+  let kalmar = 'Pod Kalmar liczy się teraz spokojne dokładanie pracy bez chaosu.';
+  if(sport === 'run'){
+    kalmar = 'Pod Kalmar bieg wygląda pod kontrolą; największy sens ma dalej budować równy rower i krótkie biegi po rowerze.';
+  }else if(sport === 'bike'){
+    kalmar = 'Pod Kalmar najważniejsza jest równa jazda: rower ma budować wynik, ale zostawić nogi do biegu.';
+  }else if(pro?.is_multisport || sport === 'triathlon'){
+    kalmar = 'Pod Kalmar najważniejsze jest połączenie: rower ma być mocny, ale nie może zabrać biegu.';
+  }else if(sport === 'swim'){
+    kalmar = 'Pod Kalmar pływanie ma dać spokojne wejście w dzień startu, bez płacenia za nie na rowerze.';
+  }
+
+  const morning = 'Pełną reakcję organizmu sprawdzimy rano, gdy pojawią się dane po nocy.';
+  return `${verdict} ${meaning} ${morning} ${kalmar}`;
+}
+
 function proBeforeControlLine(pro){
   const daily = proDailyForOffset(pro, 0) || readiness || null;
   if(!daily) return 'Sen brak danych • Body Battery brak danych • Stress brak danych • gotowość brak danych';
@@ -1392,11 +1461,11 @@ function proRecoveryStatus(pro){
   }
 
   return {
-    status: 'Czeka na dane',
-    title: 'Brak danych z kolejnej nocy — pełna ocena kosztu regeneracji nie jest jeszcze możliwa.',
+    status: 'Rano',
+    title: 'Pełną reakcję organizmu sprawdzimy rano.',
     text: tomorrow
-      ? `Czekam na poranek po treningu (${fmtDate(tomorrow)}): sen brak danych • Body Battery brak danych • stress brak danych • tętno spoczynkowe brak danych • gotowość brak danych.`
-      : 'Czekam na poranek po treningu: sen brak danych • Body Battery brak danych • stress brak danych • tętno spoczynkowe brak danych • gotowość brak danych.'
+      ? `Ocena po nocy pojawi się po danych z ${fmtDate(tomorrow)}. Na teraz wystarczy werdykt treningu i plan kolejnego kroku.`
+      : 'Ocena po nocy pojawi się po kolejnym poranku. Na teraz wystarczy werdykt treningu i plan kolejnego kroku.'
   };
 }
 
@@ -1523,6 +1592,14 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
         <span class="pro-race-badge">🏁 ${escapeHtml(badge)}</span>
         <div class="pro-hero-line"><i></i></div>
       </header>
+
+      <article class="pro-analysis-card pro-verdict-card">
+        <div class="pro-card-icon green">✓</div>
+        <div class="pro-card-body">
+          <h3>WERDYKT TRENERA</h3>
+          <p>${escapeHtml(proWorkoutVerdict(pro, analytics, segments))}</p>
+        </div>
+      </article>
 
       <article class="pro-analysis-card pro-before-card">
         <div class="pro-card-icon">☼</div>
@@ -4050,7 +4127,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=550').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=551').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

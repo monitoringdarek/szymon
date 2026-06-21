@@ -3195,3 +3195,18 @@ body.visual-pro-v542{
 }
 
 .athlete-profile-note{margin-top:5px;color:var(--muted);font-size:11px;line-height:1.35;}
+
+/* v5.5.1 — human coach verdict in activity details */
+.pro-verdict-card{
+  border-color:rgba(83,223,143,.32) !important;
+  background:linear-gradient(135deg,rgba(20,78,48,.42),rgba(9,26,44,.78)) !important;
+}
+.pro-card-icon.green{
+  background:rgba(83,223,143,.16) !important;
+  color:#caffdf !important;
+  border-color:rgba(83,223,143,.30) !important;
+}
+.pro-verdict-card p{
+  color:#e6f6ed !important;
+  font-weight:650 !important;
+}
