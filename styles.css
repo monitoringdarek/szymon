@@ -2186,8 +2186,8 @@ body{
 .settings-grid > div{
   background:rgba(255,255,255,.075) !important;
   border:1px solid rgba(255,255,255,.1) !important;
-  border-radius:20px !important;
-  padding:12px !important;
+  border-radius:18px !important;
+  padding:9px 12px !important;
 }
 .metric-grid span,
 .sport-week span,
@@ -3193,3 +3193,5 @@ body.visual-pro-v542{
   .plan-guide-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
   .plan-guide-main{grid-column:1/-1;}
 }
+
+.athlete-profile-note{margin-top:5px;color:var(--muted);font-size:11px;line-height:1.35;}
