@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.2';
+const VERSION = 'szymon-ai-coach-v5.5.3';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -4218,7 +4218,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=552').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=553').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

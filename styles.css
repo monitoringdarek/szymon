@@ -3210,3 +3210,88 @@ body.visual-pro-v542{
   color:#e6f6ed !important;
   font-weight:650 !important;
 }
+
+/* =========================================================
+   v5.5.3 — zabezpieczenie przed poziomym rozjeżdżaniem ekranu
+   Zasada: zewnętrzne kontenery (html/body/app-shell/screen/karty)
+   dostają overflow-x:hidden + max-width:100% + min-width:0 jako
+   siatkę bezpieczeństwa. Wewnętrzne wrappery tabel (.run-table-wrap,
+   .power-table-wrap) ZACHOWUJĄ własny overflow-x:auto — to jest
+   jedyne miejsce, gdzie poziomy suwak ma się pojawiać.
+   Nie dotyczy tabel: komórki tabel mają zostać nieprzełamane, żeby
+   nie gubić wyrównania kolumn — przewijają się, nie zawijają.
+   ========================================================= */
+
+html, body{
+  overflow-x:hidden !important;
+  max-width:100vw !important;
+}
+
+.app-shell{
+  overflow-x:hidden !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}
+
+.screen{
+  max-width:100% !important;
+  overflow-x:hidden !important;
+}
+
+.card,
+.analysis-section,
+.run-coach-card,
+.power-coach-card,
+.segment-card,
+.segment-card-grid,
+.timeline-card,
+.timeline-grid,
+.pro-segment-detail-grid,
+.pro-mini-segment-grid,
+.pro-mini-segment,
+.profile-detail-grid,
+.plan-guide-card,
+.plan-guide-main,
+.plan-guide-stop,
+.kalmar-section,
+.settings-grid > div,
+.kalmar-coach-tip,
+.hero-card,
+.connection-strip{
+  min-width:0 !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+}
+
+/* Długie, nieprzełamane wartości (np. techniczne liczby, długie nazwy
+   aktywności) mają się łamać wewnątrz elastycznych kolumn gridów —
+   ale NIE wewnątrz tabel run-table/power-table, gdzie psułoby to
+   wyrównanie i sens przewijania. */
+.pro-segment-detail-grid b,
+.pro-segment-detail-grid span,
+.segment-card b,
+.segment-card span,
+.timeline-card b,
+.timeline-card span,
+.profile-detail-grid b,
+.profile-detail-grid span,
+.settings-grid b,
+.settings-grid span,
+.run-coach-part p,
+.power-coach-part p,
+.plan-guide-card p,
+.plan-guide-card b{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+/* Wrappery tabel — utrzymane explicite, żeby żadna przyszła zmiana
+   gdzie indziej nie wyłączyła tego przez przypadek. To jest JEDYNE
+   miejsce z zamierzonym poziomym suwakiem. */
+.run-table-wrap,
+.power-table-wrap{
+  max-width:100% !important;
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+
