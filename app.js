@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.3';
+const VERSION = 'szymon-ai-coach-v5.5.4';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -427,12 +427,28 @@ function renderKalmarFocusCard(){
   if($('readinessRingLabel')) $('readinessRingLabel').textContent = score != null ? 'Gotowość /100' : 'Dane poranne';
 }
 
+const GENERIC_GARMIN_TYPE_WORDS = [
+  'strength', 'strength_training', 'cardio', 'walking', 'walk', 'running', 'run',
+  'cycling', 'bike', 'swimming', 'swim', 'multisport', 'multi_sport', 'triathlon',
+  'treadmill_running', 'indoor_cycling', 'lap_swimming', 'pool_swimming', 'activity'
+];
+function looksLikeRawGarminType(name){
+  if(!name) return true;
+  const normalized = String(name).toLowerCase().trim().replace(/[\s-]+/g, '_');
+  return GENERIC_GARMIN_TYPE_WORDS.includes(normalized);
+}
+
 function sportLabel(value){
   const key = String(value || '').toLowerCase();
-  if(key.includes('swim')) return 'Pływanie';
-  if(key.includes('bike') || key.includes('cycl')) return 'Rower';
-  if(key.includes('run')) return 'Bieg';
-  if(key.includes('walk')) return 'Marsz';
+  if(key.includes('triathlon') || key.includes('multisport') || key.includes('multi_sport')) return 'Multisport';
+  if(key.includes('strength') || key.includes('siłow') || key.includes('silow')) return 'Trening siłowy';
+  if(key.includes('treadmill')) return 'Bieżnia';
+  if(key.includes('indoor') && (key.includes('cycl') || key.includes('bike') || key.includes('rower'))) return 'Rower indoor';
+  if(key.includes('lap_swim') || key.includes('pool_swim') || key.includes('swim') || key.includes('pływ')) return 'Pływanie';
+  if(key.includes('bike') || key.includes('cycl') || key.includes('rower') || key.includes('kolar')) return 'Rower';
+  if(key.includes('run') || key.includes('bieg')) return 'Bieg';
+  if(key.includes('cardio')) return 'Cardio';
+  if(key.includes('walk') || key.includes('spacer') || key.includes('marsz')) return 'Spacer';
   return value || 'brak danych';
 }
 
@@ -649,7 +665,7 @@ function recentTrainingItems(limit = 3){
     const key = sportKeyForItem(item);
     return {
       date: fmtDate(item.workout_date),
-      title: `${sportLabel(item.sport_type || item.activity_type)}${item.distance_km != null ? ` ${fmtKm(item.distance_km)}` : ''}`.trim(),
+      title: `${sportLabel(item.sport_type || item.activity_type)}${Number(item.distance_km) > 0 ? ` ${fmtKm(item.distance_km)}` : ''}`.trim(),
       summary: activityImpact(item),
       load: item.training_load != null ? Math.round(Number(item.training_load)) : null,
       key: activityKey(item),
@@ -850,13 +866,16 @@ function renderHumanCoachDashboard(coach){
 
 function activityHtml(item){
   if(!item) return '<div class="muted-card">Brak danych.</div>';
-  const name = item.event_name || item.activity_name || item.sport_type || 'Aktywność Garmin PRO';
   const sport = sportLabel(item.sport_type || item.activity_type);
-  const distance = fmtKm(item.distance_km);
+  const rawName = item.event_name || item.activity_name || '';
+  const name = (!rawName || looksLikeRawGarminType(rawName)) ? sport : rawName;
+  const hasDistance = Number(item.distance_km) > 0;
+  const distance = hasDistance ? fmtKm(item.distance_km) : sport;
   const duration = fmtMin(item.duration_min);
   const hr = [item.hr_avg ? `avg ${Math.round(Number(item.hr_avg))}` : '', item.hr_max ? `max ${Math.round(Number(item.hr_max))}` : ''].filter(Boolean).join(' / ');
   const load = Number.isFinite(Number(item.training_load)) ? Math.round(Number(item.training_load)).toLocaleString('pl-PL') : 'brak danych';
-  const summary = item.auto_summary || item.segment_summary || '';
+  const rawSummary = item.auto_summary || item.segment_summary || '';
+  const summary = /^\s*0\s*segment/i.test(rawSummary) ? '' : rawSummary;
   const key = sportKeyForItem(item);
   return `
     <article class="activity-card sport-${escapeHtml(key)}">
@@ -1377,12 +1396,42 @@ function joinVerdictParts(...parts){
   return parts.filter(Boolean).join(' ');
 }
 
+/* Trening siłowy / cardio / spacer nie są bodźcem endurance pod
+   Kalmar — Adaptive Athlete Profile (baseline per dyscyplinie
+   run/bike/swim) świadomie ich nie obejmuje. Werdykt ma to nazwać
+   wprost, cytując konkretne liczby, a nie milczeć albo traktować
+   niski load jako "lekki bieg/rower". */
+function nonEnduranceSportLabel(pro){
+  const text = [pro?.sport_type, pro?.activity_type].filter(Boolean).join(' ').toLowerCase();
+  if(!text) return null;
+  if(text.includes('strength') || text.includes('siłow') || text.includes('silow')) return 'Trening siłowy';
+  if(text.includes('cardio')) return 'Cardio';
+  if(text.includes('walk') || text.includes('spacer') || text.includes('marsz')) return 'Spacer';
+  return null;
+}
 
 function proWorkoutVerdict(pro, analytics, segments){
   const sport = sportKeyForItem(pro);
   const labelCap = proTrainingTypeLabel(pro);
   const label = labelCap.toLowerCase();
   const load = kalmarNum(pro?.training_load);
+
+  const nonEnduranceLabel = nonEnduranceSportLabel(pro);
+  if(nonEnduranceLabel){
+    const durationMin = pro?.duration_seconds != null ? Math.round(Number(pro.duration_seconds) / 60) : null;
+    const hrAvg = kalmarNum(pro?.hr_avg);
+    const hrMax = kalmarNum(pro?.hr_max);
+    const facts = [];
+    if(durationMin != null) facts.push(`czas ${durationMin} min`);
+    if(hrAvg != null || hrMax != null) facts.push(`HR ${hrAvg ?? 'brak'}/${hrMax ?? 'brak'}`);
+    if(load != null) facts.push(`obciążenie ${fmtNumber(load)}`);
+    const factsText = facts.length ? `${facts.join(', ')}.` : '';
+    return joinVerdictParts(
+      `${nonEnduranceLabel}.`,
+      factsText,
+      'To trening uzupełniający, nie główny bodziec pod Kalmar — nie liczymy go jak biegu czy roweru.'
+    );
+  }
 
   if(load == null){
     return 'Brak pełnych danych kosztu tego treningu — pełną ocenę da dopiero poranek po treningu.';
@@ -1504,10 +1553,7 @@ function proBeforeControlLine(pro){
 
 function proTrainingTypeLabel(pro){
   if(pro?.is_multisport) return 'Race';
-  const type = String(pro?.sport_type || pro?.activity_type || '').toLowerCase();
-  if(type.includes('run')) return 'Bieg';
-  if(type.includes('cycl') || type.includes('bike')) return 'Rower';
-  if(type.includes('swim')) return 'Pływanie';
+  const type = String(pro?.sport_type || pro?.activity_type || '');
   return sportLabel(type || 'Trening');
 }
 
@@ -1658,7 +1704,9 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
   const controls = proControlNumbers(pro, analytics, segments);
   const recovery = proRecoveryStatus(pro);
   const badge = proTrainingTypeLabel(pro);
-  const title = pro.event_name || pro.activity_name || activityName(fallbackActivity) || 'Aktywność Garmin PRO';
+  const badgeShort = ({ 'Trening siłowy': 'Siła', 'Rower indoor': 'Rower' })[badge] || badge;
+  const rawTitleCandidate = pro.event_name || pro.activity_name || activityName(fallbackActivity) || '';
+  const title = (!rawTitleCandidate || looksLikeRawGarminType(rawTitleCandidate)) ? badge : rawTitleCandidate;
   const date = fmtDate(pro.workout_date || pro.started_at);
   const distance = fmtMetersAsKm(pro.distance_meters);
   const duration = fmtSecToMin(pro.duration_seconds || pro.elapsed_time_seconds);
@@ -1680,7 +1728,7 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
           <h2>Analiza treningu</h2>
           <p>${escapeHtml(title)} • ${escapeHtml(date)}</p>
         </div>
-        <span class="pro-race-badge">🏁 ${escapeHtml(badge)}</span>
+        <span class="pro-race-badge">🏁 ${escapeHtml(badgeShort)}</span>
         <div class="pro-hero-line"><i></i></div>
       </header>
 
@@ -1707,7 +1755,7 @@ function renderProActivityAnalysisShell(activityOrPro, options = {}){
           <h3>BODZIEC</h3>
           <p>${escapeHtml(stimulusTitle)}</p>
           <div class="pro-mini-segment-grid">
-            ${primarySegments.length ? primarySegments.map(renderProSegmentMini).join('') : `<article class="pro-mini-segment"><b>◆ Aktywność</b><span>${escapeHtml(distance)} • ${escapeHtml(duration)}</span><em>Load ${escapeHtml(controls.load)}</em></article>`}
+            ${primarySegments.length ? primarySegments.map(renderProSegmentMini).join('') : `<article class="pro-mini-segment"><b>◆ ${escapeHtml(badge)}</b><span>${Number(pro.distance_meters) > 0 ? `${escapeHtml(distance)} • ` : ''}${escapeHtml(duration)}</span><em>Load ${escapeHtml(controls.load)}</em></article>`}
           </div>
         </div>
       </article>
@@ -2757,7 +2805,7 @@ function buildActivityFacts(activity, context = {}){
     aerobicEffect,
     anaerobicEffect,
     ef,
-    segmentSummary: textOrMissing(activity?.segment_summary),
+    segmentSummary: /^\s*0\s*segment/i.test(String(activity?.segment_summary || '')) ? 'brak danych' : textOrMissing(activity?.segment_summary),
     autoSummary: textOrMissing(activity?.auto_summary),
     segments,
     hasSegmentDetails,
@@ -4218,7 +4266,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=553').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=554').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
