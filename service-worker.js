@@ -1,10 +1,10 @@
-const CACHE_NAME = 'szymon-ai-coach-v5.5.4';
+const CACHE_NAME = 'szymon-ai-coach-v5.5.6';
 const ASSETS = [
   './',
-  './index.html?v=554',
-  './styles.css?v=554',
-  './app.js?v=554',
-  './manifest.json?v=554'
+  './index.html?v=556',
+  './styles.css?v=556',
+  './app.js?v=556',
+  './manifest.json?v=556'
 ];
 
 self.addEventListener('install', event => {

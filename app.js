@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.4';
+const VERSION = 'szymon-ai-coach-v5.5.6';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -27,8 +27,13 @@ const GARMIN_ACTIVITIES_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activities`;
 const GARMIN_SEGMENTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_segments`;
 const GARMIN_ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_analytics`;
 
-// Cache analiz AI per aktywność, żeby nie odpytywać Gemini przy każdym
-// otwarciu tego samego treningu w trakcie sesji.
+// Cache analiz AI, żeby nie odpytywać Gemini przy każdym
+// odświeżeniu aplikacji / wejściu w ten sam trening.
+const AI_CACHE_VERSION = 'v555';
+const AI_ACTIVITY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:activity:`;
+const AI_TODAY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:today:`;
+const AI_ACTIVITY_CACHE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const AI_TODAY_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const aiAnalysisCache = new Map();
 
 let session = null;
@@ -150,6 +155,50 @@ function loadSession(){
   }catch{
     return false;
   }
+}
+
+
+function aiCacheNow(){
+  return Date.now();
+}
+
+function readAiCache(key, maxAgeMs){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed?.savedAt || 0);
+    if(!parsed?.value || !savedAt || (maxAgeMs && aiCacheNow() - savedAt > maxAgeMs)){
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.value;
+  }catch{
+    return null;
+  }
+}
+
+function writeAiCache(key, value){
+  try{
+    localStorage.setItem(key, JSON.stringify({ savedAt: aiCacheNow(), value }));
+  }catch(err){
+    console.warn('Nie udało się zapisać cache AI:', err);
+  }
+}
+
+function activityAiCacheKey(activity){
+  const id = activity?.id ?? activity?.activity_id;
+  if(!id) return '';
+  return `${AI_ACTIVITY_CACHE_PREFIX}${id}`;
+}
+
+function todayAiCacheKey(cacheKey){
+  return cacheKey ? `${AI_TODAY_CACHE_PREFIX}${cacheKey}` : '';
+}
+
+function aiLimitFriendlyError(error){
+  const message = String(error?.message || error || '').toLowerCase();
+  return message.includes('429') || message.includes('quota') || message.includes('limit') || message.includes('rate');
 }
 
 function simplifyAuthError(error){
@@ -789,14 +838,38 @@ function normalizeTodayCoach(coach){
   };
 }
 
-async function requestWeeklyCoachAnalysis(){
+async function requestWeeklyCoachAnalysis(force = false){
   const activityId = latest?.activity_id || latest?.id || latest?.garmin_activity_id;
   const cacheKey = `${activityId || 'no-activity'}:${readiness?.metric_date || weekly?.week_end || ''}`;
   if(!activityId) return;
-  if(weeklyCoachCacheKey === cacheKey && weeklyCoachAnalysis) return;
+
+  if(!force && weeklyCoachCacheKey === cacheKey && weeklyCoachAnalysis){
+    return;
+  }
+
   weeklyCoachCacheKey = cacheKey;
+  const storageKey = todayAiCacheKey(cacheKey);
+
+  if(!force){
+    const cached = readAiCache(storageKey, AI_TODAY_CACHE_MAX_AGE_MS);
+    if(cached){
+      weeklyCoachAnalysis = cached;
+      weeklyCoachStatus = 'cache';
+      renderDashboard();
+      return;
+    }
+
+    // Gemini Guard: po zwykłym odświeżeniu aplikacji nie odpalamy AI automatycznie.
+    // Pokazujemy lokalną decyzję, a Gemini uruchamia dopiero przycisk użytkownika.
+    weeklyCoachAnalysis = null;
+    weeklyCoachStatus = 'local';
+    renderDashboard();
+    return;
+  }
+
   weeklyCoachStatus = 'loading';
   renderDashboard();
+  console.info('GEMINI_CALL_START_CLIENT', { mode: 'today', activityId, cacheKey, time: new Date().toISOString() });
   try{
     const response = await fetch(ACTIVITY_AI_ANALYSIS_ENDPOINT, {
       method: 'POST',
@@ -809,10 +882,12 @@ async function requestWeeklyCoachAnalysis(){
     if(!coach) throw new Error('Brak todayCoach w odpowiedzi AI');
     weeklyCoachAnalysis = coach;
     weeklyCoachStatus = 'ai';
+    writeAiCache(storageKey, coach);
+    console.info('GEMINI_CALL_END_CLIENT', { mode: 'today', activityId, cacheKey, time: new Date().toISOString() });
   }catch(err){
     console.warn('Nie udało się pobrać tygodniowej decyzji AI, zostaje decyzja lokalna:', err);
     weeklyCoachAnalysis = null;
-    weeklyCoachStatus = 'fallback';
+    weeklyCoachStatus = aiLimitFriendlyError(err) ? 'limit' : 'fallback';
   }
   renderDashboard();
 }
@@ -844,13 +919,27 @@ function renderHumanCoachDashboard(coach){
   const selected = weeklyCoachAnalysis || coach || buildLocalTodayCoach();
   const status = selected.status || 'caution';
   const sourceText = weeklyCoachStatus === 'loading' ? 'AI analizuje tydzień'
-    : weeklyCoachStatus === 'ai' ? 'AI · tydzień + 3 treningi'
-    : 'decyzja zapasowa';
+    : weeklyCoachStatus === 'ai' ? 'AI · wygenerowano teraz'
+    : weeklyCoachStatus === 'cache' ? 'AI · z cache'
+    : weeklyCoachStatus === 'limit' ? 'AI limit · decyzja lokalna'
+    : weeklyCoachStatus === 'fallback' ? 'AI niedostępne · lokalnie'
+    : 'lokalna decyzja bez Gemini';
 
   if($('todayDecision')) $('todayDecision').textContent = normalizeCoachTitle(status, selected.title || '');
   if($('todayReason')) $('todayReason').textContent = cleanMainCoachText(selected.summary || 'Brak pełnej decyzji.');
   if($('todayCoachSource')) $('todayCoachSource').textContent = sourceText;
   if($('todayCoachStatus')) $('todayCoachStatus').textContent = todayStatusLabel(status);
+  if($('todayAiStatus')) $('todayAiStatus').textContent = weeklyCoachStatus === 'loading'
+    ? 'Gemini pracuje tylko po ręcznym kliknięciu.'
+    : weeklyCoachStatus === 'ai'
+      ? 'Ta decyzja została właśnie wygenerowana przez AI i zapisana w cache.'
+      : weeklyCoachStatus === 'cache'
+        ? 'Pokazuję zapisaną decyzję AI. Nie zużywam teraz Gemini.'
+        : 'Pokazuję lokalną decyzję trenera. Gemini nie zostało uruchomione.';
+  if($('todayAiRefreshBtn')){
+    $('todayAiRefreshBtn').disabled = weeklyCoachStatus === 'loading';
+    $('todayAiRefreshBtn').textContent = weeklyCoachStatus === 'loading' ? 'Odświeżam AI...' : 'Odśwież AI';
+  }
   if($('coachToday')) $('coachToday').textContent = cleanMainCoachText(selected.today || 'Brak danych Garmin PRO do decyzji.');
   if($('coachTomorrow')) $('coachTomorrow').textContent = cleanMainCoachText(selected.tomorrow || selected.nextDays || 'Jutro ocenimy po poranku i jakości snu.');
   if($('weeklyTrendText')) $('weeklyTrendText').textContent = cleanMainCoachText(selected.weeklyTrend || weeklyTrendFallback());
@@ -3863,10 +3952,33 @@ function buildFactBasedActivityAnalysis(activityContext){
   };
 }
 
-async function fetchRealAiAnalysis(activity){
+function readCachedActivityAiAnalysis(activity){
+  const key = activityAiCacheKey(activity);
+  if(!key) return null;
+  if(aiAnalysisCache.has(key)) return aiAnalysisCache.get(key);
+  const cached = readAiCache(key, AI_ACTIVITY_CACHE_MAX_AGE_MS);
+  if(cached) aiAnalysisCache.set(key, cached);
+  return cached;
+}
+
+function writeCachedActivityAiAnalysis(activity, analysis){
+  const key = activityAiCacheKey(activity);
+  if(!key || !analysis) return;
+  aiAnalysisCache.set(key, analysis);
+  writeAiCache(key, analysis);
+}
+
+async function fetchRealAiAnalysis(activity, force = false){
   const activityId = activity?.id ?? activity?.activity_id;
-  if(!activityId) return null;
-  if(aiAnalysisCache.has(activityId)) return aiAnalysisCache.get(activityId);
+  if(!activityId) return { analysis: null, source: 'fallback' };
+
+  if(!force){
+    const cached = readCachedActivityAiAnalysis(activity);
+    if(cached) return { analysis: cached, source: 'cache' };
+    return { analysis: null, source: 'manual' };
+  }
+
+  console.info('GEMINI_CALL_START_CLIENT', { mode: 'activity', activityId, time: new Date().toISOString() });
   try{
     const response = await fetch(ACTIVITY_AI_ANALYSIS_ENDPOINT, {
       method: 'POST',
@@ -3876,11 +3988,12 @@ async function fetchRealAiAnalysis(activity){
     if(!response.ok) throw new Error(`AI analysis ${response.status}`);
     const json = await response.json();
     if(json.error || !json.analysis) throw new Error(json.error || 'Brak analysis w odpowiedzi');
-    aiAnalysisCache.set(activityId, json.analysis);
-    return json.analysis;
+    writeCachedActivityAiAnalysis(activity, json.analysis);
+    console.info('GEMINI_CALL_END_CLIENT', { mode: 'activity', activityId, time: new Date().toISOString() });
+    return { analysis: json.analysis, source: 'ai' };
   }catch(err){
     console.warn('Nie udało się pobrać analizy AI, używam analizy faktograficznej jako fallback:', err);
-    return null;
+    return { analysis: null, source: aiLimitFriendlyError(err) ? 'limit' : 'fallback', error: err };
   }
 }
 
@@ -3895,10 +4008,18 @@ function mergeRealAiIntoAnalysis(baseAnalysis, aiResult){
     kalmar: aiResult.kalmar || baseAnalysis.kalmar,
     recovery: aiResult.recovery || baseAnalysis.recovery,
     nightResponse: aiResult.nightResponse || baseAnalysis.nightResponse,
-    dataGaps: Array.isArray(aiResult.dataGaps) ? aiResult.dataGaps : [],
-    isRealAi: true
+    thresholdProfile: aiResult.thresholdProfile || baseAnalysis.thresholdProfile
   };
 }
+
+/* ===========================================================
+   v5.5.6 — przywrócony blok funkcji renderujących, przypadkowo
+   usunięty w v5.5.6 podczas refaktoryzacji cache/Gemini Guard.
+   Przywrócone 1:1 z v5.5.4 — to są generyczne helpery render,
+   niezależne od logiki auto-fetch/manual/cache, wciąż wołane
+   przez nowy kod (renderActivityAiAnalysis, renderAiAnalysisInto
+   poniżej).
+   =========================================================== */
 
 function buildActivityAiAnalysis(activity){
   return buildFactBasedActivityAnalysis(buildActivityContext(activity));
@@ -4029,7 +4150,6 @@ function renderRunIntervals(rows, insight){
   `;
 }
 
-
 function renderPowerIntervals(rows, insight){
   if(!rows || !rows.length) return '';
 
@@ -4126,18 +4246,27 @@ function renderActivityAiAnalysis(targetId, activity){
   const target = $(targetId);
   if(!target) return;
   const baseAnalysis = buildActivityAiAnalysis(activity);
-  renderAiAnalysisInto(target, baseAnalysis, 'loading');
-
-  fetchRealAiAnalysis(activity).then(aiResult => {
-    // Jeśli w międzyczasie użytkownik przełączył się na inną aktywność, nie nadpisuj.
-    const selected = selectedActivity();
-    if(selected && selected.id !== activity?.id && selected.activity_id !== activity?.activity_id) return;
-    const merged = mergeRealAiIntoAnalysis(baseAnalysis, aiResult);
-    renderAiAnalysisInto(target, merged, aiResult ? 'ai' : 'fallback');
-  });
+  const cached = readCachedActivityAiAnalysis(activity);
+  if(cached){
+    renderAiAnalysisInto(target, mergeRealAiIntoAnalysis(baseAnalysis, cached), 'cache', activity);
+  }else{
+    renderAiAnalysisInto(target, baseAnalysis, 'manual', activity);
+  }
 }
 
-function renderAiAnalysisInto(target, analysis, status){
+async function refreshActivityAiAnalysis(targetId, activity){
+  const target = $(targetId);
+  if(!target || !activity) return;
+  const baseAnalysis = buildActivityAiAnalysis(activity);
+  renderAiAnalysisInto(target, baseAnalysis, 'loading', activity);
+  const result = await fetchRealAiAnalysis(activity, true);
+  const selected = selectedActivity();
+  if(selected && selected.id !== activity?.id && selected.activity_id !== activity?.activity_id) return;
+  const merged = mergeRealAiIntoAnalysis(baseAnalysis, result.analysis);
+  renderAiAnalysisInto(target, merged, result.source === 'ai' ? 'ai' : result.source, activity);
+}
+
+function renderAiAnalysisInto(target, analysis, status, activity){
   const topCards = [
     renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
     renderRunIntervals(analysis.runIntervals, analysis.runInsight)
@@ -4150,16 +4279,47 @@ function renderAiAnalysisInto(target, analysis, status){
   const statusBadge = status === 'loading'
     ? '<div class="ai-status-badge loading">AI analizuje trening...</div>'
     : status === 'ai'
-      ? '<div class="ai-status-badge ai-ok">Analiza wygenerowana przez AI</div>'
-      : '<div class="ai-status-badge ai-fallback">Analiza podstawowa (AI niedostępne) — pokazuję dane faktograficzne</div>';
+      ? '<div class="ai-status-badge ai-ok">Analiza wygenerowana przez AI i zapisana w cache</div>'
+      : status === 'cache'
+        ? '<div class="ai-status-badge ai-cache">Analiza z cache — bez zużycia Gemini</div>'
+        : status === 'manual'
+          ? '<div class="ai-status-badge ai-manual">Lokalna analiza — Gemini nie zostało uruchomione</div>'
+          : status === 'limit'
+            ? '<div class="ai-status-badge ai-fallback">Limit Gemini / AI niedostępne — pokazuję lokalną analizę</div>'
+            : '<div class="ai-status-badge ai-fallback">Analiza podstawowa (AI niedostępne) — pokazuję dane faktograficzne</div>';
+
+  const actionText = status === 'loading' ? 'Generuję AI...'
+    : status === 'cache' || status === 'ai' ? 'Odśwież AI'
+    : 'Wygeneruj AI';
+  const controlText = status === 'manual'
+    ? 'Oszczędzam limit: pełna analiza AI uruchamia się dopiero po kliknięciu.'
+    : status === 'cache'
+      ? 'Pokazuję zapisany wynik. Ponowne kliknięcie zużyje Gemini.'
+      : status === 'ai'
+        ? 'Nowy wynik został zapisany. Kolejne wejście użyje cache.'
+        : status === 'limit'
+          ? 'Gemini odmówiło przez limit albo błąd. Lokalna analiza zostaje na ekranie.'
+          : 'Kontrolujesz, kiedy aplikacja zużywa Gemini.';
+  const controls = `
+    <div class="ai-control-row">
+      <span>${escapeHtml(controlText)}</span>
+      <button class="secondary-btn ai-refresh-btn" type="button" data-ai-refresh-activity ${status === 'loading' ? 'disabled' : ''}>${escapeHtml(actionText)}</button>
+    </div>
+  `;
 
   const nightSummary = renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section night-response-visible');
   target.innerHTML = [
     statusBadge,
+    controls,
     visibleSummary,
     nightSummary,
     renderFullAnalysisDetails(analysis)
   ].join('');
+
+  const btn = target.querySelector('[data-ai-refresh-activity]');
+  if(btn){
+    btn.addEventListener('click', () => refreshActivityAiAnalysis(target.id, activity || selectedActivity() || latest));
+  }
 }
 
 function renderActivityDetails(){
@@ -4205,6 +4365,10 @@ function bindEvents(){
   });
   $('logoutBtn').addEventListener('click', signOut);
   $('refreshBtn').addEventListener('click', loadAllData);
+  const todayAiRefreshBtn = $('todayAiRefreshBtn');
+  if(todayAiRefreshBtn){
+    todayAiRefreshBtn.addEventListener('click', () => requestWeeklyCoachAnalysis(true));
+  }
   $('backToHistoryBtn').addEventListener('click', closeActivityDetails);
   const historySearch = $('historySearchInput');
   if(historySearch){
@@ -4266,7 +4430,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=554').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=556').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
