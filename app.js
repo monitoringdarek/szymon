@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.5';
+const VERSION = 'szymon-ai-coach-v5.5.4';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -27,13 +27,8 @@ const GARMIN_ACTIVITIES_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activities`;
 const GARMIN_SEGMENTS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_segments`;
 const GARMIN_ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_analytics`;
 
-// Cache analiz AI, żeby nie odpytywać Gemini przy każdym
-// odświeżeniu aplikacji / wejściu w ten sam trening.
-const AI_CACHE_VERSION = 'v555';
-const AI_ACTIVITY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:activity:`;
-const AI_TODAY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:today:`;
-const AI_ACTIVITY_CACHE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
-const AI_TODAY_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+// Cache analiz AI per aktywność, żeby nie odpytywać Gemini przy każdym
+// otwarciu tego samego treningu w trakcie sesji.
 const aiAnalysisCache = new Map();
 
 let session = null;
@@ -155,50 +150,6 @@ function loadSession(){
   }catch{
     return false;
   }
-}
-
-
-function aiCacheNow(){
-  return Date.now();
-}
-
-function readAiCache(key, maxAgeMs){
-  try{
-    const raw = localStorage.getItem(key);
-    if(!raw) return null;
-    const parsed = JSON.parse(raw);
-    const savedAt = Number(parsed?.savedAt || 0);
-    if(!parsed?.value || !savedAt || (maxAgeMs && aiCacheNow() - savedAt > maxAgeMs)){
-      localStorage.removeItem(key);
-      return null;
-    }
-    return parsed.value;
-  }catch{
-    return null;
-  }
-}
-
-function writeAiCache(key, value){
-  try{
-    localStorage.setItem(key, JSON.stringify({ savedAt: aiCacheNow(), value }));
-  }catch(err){
-    console.warn('Nie udało się zapisać cache AI:', err);
-  }
-}
-
-function activityAiCacheKey(activity){
-  const id = activity?.id ?? activity?.activity_id;
-  if(!id) return '';
-  return `${AI_ACTIVITY_CACHE_PREFIX}${id}`;
-}
-
-function todayAiCacheKey(cacheKey){
-  return cacheKey ? `${AI_TODAY_CACHE_PREFIX}${cacheKey}` : '';
-}
-
-function aiLimitFriendlyError(error){
-  const message = String(error?.message || error || '').toLowerCase();
-  return message.includes('429') || message.includes('quota') || message.includes('limit') || message.includes('rate');
 }
 
 function simplifyAuthError(error){
@@ -838,38 +789,14 @@ function normalizeTodayCoach(coach){
   };
 }
 
-async function requestWeeklyCoachAnalysis(force = false){
+async function requestWeeklyCoachAnalysis(){
   const activityId = latest?.activity_id || latest?.id || latest?.garmin_activity_id;
   const cacheKey = `${activityId || 'no-activity'}:${readiness?.metric_date || weekly?.week_end || ''}`;
   if(!activityId) return;
-
-  if(!force && weeklyCoachCacheKey === cacheKey && weeklyCoachAnalysis){
-    return;
-  }
-
+  if(weeklyCoachCacheKey === cacheKey && weeklyCoachAnalysis) return;
   weeklyCoachCacheKey = cacheKey;
-  const storageKey = todayAiCacheKey(cacheKey);
-
-  if(!force){
-    const cached = readAiCache(storageKey, AI_TODAY_CACHE_MAX_AGE_MS);
-    if(cached){
-      weeklyCoachAnalysis = cached;
-      weeklyCoachStatus = 'cache';
-      renderDashboard();
-      return;
-    }
-
-    // Gemini Guard: po zwykłym odświeżeniu aplikacji nie odpalamy AI automatycznie.
-    // Pokazujemy lokalną decyzję, a Gemini uruchamia dopiero przycisk użytkownika.
-    weeklyCoachAnalysis = null;
-    weeklyCoachStatus = 'local';
-    renderDashboard();
-    return;
-  }
-
   weeklyCoachStatus = 'loading';
   renderDashboard();
-  console.info('GEMINI_CALL_START_CLIENT', { mode: 'today', activityId, cacheKey, time: new Date().toISOString() });
   try{
     const response = await fetch(ACTIVITY_AI_ANALYSIS_ENDPOINT, {
       method: 'POST',
@@ -882,12 +809,10 @@ async function requestWeeklyCoachAnalysis(force = false){
     if(!coach) throw new Error('Brak todayCoach w odpowiedzi AI');
     weeklyCoachAnalysis = coach;
     weeklyCoachStatus = 'ai';
-    writeAiCache(storageKey, coach);
-    console.info('GEMINI_CALL_END_CLIENT', { mode: 'today', activityId, cacheKey, time: new Date().toISOString() });
   }catch(err){
     console.warn('Nie udało się pobrać tygodniowej decyzji AI, zostaje decyzja lokalna:', err);
     weeklyCoachAnalysis = null;
-    weeklyCoachStatus = aiLimitFriendlyError(err) ? 'limit' : 'fallback';
+    weeklyCoachStatus = 'fallback';
   }
   renderDashboard();
 }
@@ -919,27 +844,13 @@ function renderHumanCoachDashboard(coach){
   const selected = weeklyCoachAnalysis || coach || buildLocalTodayCoach();
   const status = selected.status || 'caution';
   const sourceText = weeklyCoachStatus === 'loading' ? 'AI analizuje tydzień'
-    : weeklyCoachStatus === 'ai' ? 'AI · wygenerowano teraz'
-    : weeklyCoachStatus === 'cache' ? 'AI · z cache'
-    : weeklyCoachStatus === 'limit' ? 'AI limit · decyzja lokalna'
-    : weeklyCoachStatus === 'fallback' ? 'AI niedostępne · lokalnie'
-    : 'lokalna decyzja bez Gemini';
+    : weeklyCoachStatus === 'ai' ? 'AI · tydzień + 3 treningi'
+    : 'decyzja zapasowa';
 
   if($('todayDecision')) $('todayDecision').textContent = normalizeCoachTitle(status, selected.title || '');
   if($('todayReason')) $('todayReason').textContent = cleanMainCoachText(selected.summary || 'Brak pełnej decyzji.');
   if($('todayCoachSource')) $('todayCoachSource').textContent = sourceText;
   if($('todayCoachStatus')) $('todayCoachStatus').textContent = todayStatusLabel(status);
-  if($('todayAiStatus')) $('todayAiStatus').textContent = weeklyCoachStatus === 'loading'
-    ? 'Gemini pracuje tylko po ręcznym kliknięciu.'
-    : weeklyCoachStatus === 'ai'
-      ? 'Ta decyzja została właśnie wygenerowana przez AI i zapisana w cache.'
-      : weeklyCoachStatus === 'cache'
-        ? 'Pokazuję zapisaną decyzję AI. Nie zużywam teraz Gemini.'
-        : 'Pokazuję lokalną decyzję trenera. Gemini nie zostało uruchomione.';
-  if($('todayAiRefreshBtn')){
-    $('todayAiRefreshBtn').disabled = weeklyCoachStatus === 'loading';
-    $('todayAiRefreshBtn').textContent = weeklyCoachStatus === 'loading' ? 'Odświeżam AI...' : 'Odśwież AI';
-  }
   if($('coachToday')) $('coachToday').textContent = cleanMainCoachText(selected.today || 'Brak danych Garmin PRO do decyzji.');
   if($('coachTomorrow')) $('coachTomorrow').textContent = cleanMainCoachText(selected.tomorrow || selected.nextDays || 'Jutro ocenimy po poranku i jakości snu.');
   if($('weeklyTrendText')) $('weeklyTrendText').textContent = cleanMainCoachText(selected.weeklyTrend || weeklyTrendFallback());
@@ -3952,33 +3863,10 @@ function buildFactBasedActivityAnalysis(activityContext){
   };
 }
 
-function readCachedActivityAiAnalysis(activity){
-  const key = activityAiCacheKey(activity);
-  if(!key) return null;
-  if(aiAnalysisCache.has(key)) return aiAnalysisCache.get(key);
-  const cached = readAiCache(key, AI_ACTIVITY_CACHE_MAX_AGE_MS);
-  if(cached) aiAnalysisCache.set(key, cached);
-  return cached;
-}
-
-function writeCachedActivityAiAnalysis(activity, analysis){
-  const key = activityAiCacheKey(activity);
-  if(!key || !analysis) return;
-  aiAnalysisCache.set(key, analysis);
-  writeAiCache(key, analysis);
-}
-
-async function fetchRealAiAnalysis(activity, force = false){
+async function fetchRealAiAnalysis(activity){
   const activityId = activity?.id ?? activity?.activity_id;
-  if(!activityId) return { analysis: null, source: 'fallback' };
-
-  if(!force){
-    const cached = readCachedActivityAiAnalysis(activity);
-    if(cached) return { analysis: cached, source: 'cache' };
-    return { analysis: null, source: 'manual' };
-  }
-
-  console.info('GEMINI_CALL_START_CLIENT', { mode: 'activity', activityId, time: new Date().toISOString() });
+  if(!activityId) return null;
+  if(aiAnalysisCache.has(activityId)) return aiAnalysisCache.get(activityId);
   try{
     const response = await fetch(ACTIVITY_AI_ANALYSIS_ENDPOINT, {
       method: 'POST',
@@ -3988,12 +3876,11 @@ async function fetchRealAiAnalysis(activity, force = false){
     if(!response.ok) throw new Error(`AI analysis ${response.status}`);
     const json = await response.json();
     if(json.error || !json.analysis) throw new Error(json.error || 'Brak analysis w odpowiedzi');
-    writeCachedActivityAiAnalysis(activity, json.analysis);
-    console.info('GEMINI_CALL_END_CLIENT', { mode: 'activity', activityId, time: new Date().toISOString() });
-    return { analysis: json.analysis, source: 'ai' };
+    aiAnalysisCache.set(activityId, json.analysis);
+    return json.analysis;
   }catch(err){
     console.warn('Nie udało się pobrać analizy AI, używam analizy faktograficznej jako fallback:', err);
-    return { analysis: null, source: aiLimitFriendlyError(err) ? 'limit' : 'fallback', error: err };
+    return null;
   }
 }
 
@@ -4008,35 +3895,249 @@ function mergeRealAiIntoAnalysis(baseAnalysis, aiResult){
     kalmar: aiResult.kalmar || baseAnalysis.kalmar,
     recovery: aiResult.recovery || baseAnalysis.recovery,
     nightResponse: aiResult.nightResponse || baseAnalysis.nightResponse,
-    thresholdProfile: aiResult.thresholdProfile || baseAnalysis.thresholdProfile
+    dataGaps: Array.isArray(aiResult.dataGaps) ? aiResult.dataGaps : [],
+    isRealAi: true
   };
 }
+
+function buildActivityAiAnalysis(activity){
+  return buildFactBasedActivityAnalysis(buildActivityContext(activity));
+}
+
+function renderFactsBlock(rows){
+  return `<details class="facts-block analysis-details"><summary>Surowe fakty Garmin PRO</summary><ul>${rows.map(([label, value]) => `<li><b>${escapeHtml(label)}</b><em>${escapeHtml(value || 'brak danych')}</em></li>`).join('')}</ul></details>`;
+}
+
+function renderAnalysisBlock(title, text, className = ''){
+  return `<section class="analysis-section ${className}"><span>${escapeHtml(title)}</span><p>${escapeHtml(humanizeCoachText(text || 'brak danych'))}</p></section>`;
+}
+
+function renderBulletSection(title, items, className = ''){
+  const list = (items && items.length ? items : ['brak danych']).map(item => `<li>${escapeHtml(humanizeCoachText(item))}</li>`).join('');
+  return `<section class="analysis-section ${className}"><span>${escapeHtml(title)}</span><ul class="coach-bullets">${list}</ul></section>`;
+}
+
+function renderSegmentCards(cards){
+  if(!cards || !cards.length) return renderAnalysisBlock('Segmenty', 'brak danych');
+  return `<section class="analysis-section segment-section"><span>Segmenty</span><div class="segment-card-grid">${cards.map(card => `<article class="segment-card segment-${escapeHtml(card.type)}"><h4>${escapeHtml(card.title)}</h4>${card.lines.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</article>`).join('')}</div></section>`;
+}
+
+function renderTimeline(title, entries){
+  if(!entries || !entries.length) return renderAnalysisBlock(title, 'brak danych');
+  return `<section class="analysis-section timeline-section"><span>${escapeHtml(title)}</span><div class="timeline-grid">${entries.map(entry => `<article class="timeline-card"><h4>${escapeHtml(entry.label)} · ${escapeHtml(entry.date || 'brak danych')}</h4>${entry.rows.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</article>`).join('')}</div></section>`;
+}
+
+function renderRawSummary(text){
+  if(!text) return '';
+  return `<details class="analysis-details raw-summary"><summary>Podsumowanie Garmin</summary><p>${escapeHtml(text)}</p></details>`;
+}
+
+
+
+function renderThresholdProfileContext(status){
+  if(!status) return '';
+  const availableList = status.available?.length
+    ? status.available.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+    : '<li>brak dostępnych progów dla tej dyscypliny</li>';
+  const missingList = status.missing?.length
+    ? status.missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+    : '<li>brak jawnie oznaczonych braków</li>';
+
+  return `
+    <section class="analysis-section profile-context-section">
+      <span>${escapeHtml(status.title || 'Profil progów — status danych')}</span>
+      <p>${escapeHtml(status.summary || 'brak danych')}</p>
+      <details class="profile-details">
+        <summary>Co AI ma, a czego nie ma?</summary>
+        <div class="profile-detail-grid">
+          <div>
+            <b>Dostępne</b>
+            <ul>${availableList}</ul>
+          </div>
+          <div>
+            <b>Braki</b>
+            <ul>${missingList}</ul>
+          </div>
+        </div>
+      </details>
+    </section>
+  `;
+}
+
+
+
+function renderRunIntervals(rows, insight){
+  if(!rows || !rows.length) return '';
+
+  const key = keyRunInterval(rows);
+  const texts = runCoachTexts(key);
+
+  const detailRows = rows.map(row => {
+    const cells = [
+      `<td>${escapeHtml(runIntervalLabel(row.interval_type, row.target_m).replace('Najlepszy ', '').replace('Najlepsze ', ''))}</td>`,
+      `<td>${escapeHtml(paceTextFromSec(row.pace_sec_per_km))}</td>`,
+      `<td>${row.moving_time_sec != null ? `${escapeHtml(fmtNumber(row.moving_time_sec))} s` : 'brak'}</td>`,
+      `<td>${row.avg_hr != null ? escapeHtml(fmtNumber(row.avg_hr)) : 'brak'}</td>`,
+      `<td>${row.max_hr != null ? escapeHtml(fmtNumber(row.max_hr)) : 'brak'}</td>`,
+      `<td>${row.avg_power_w != null ? `${escapeHtml(fmtNumber(row.avg_power_w))} W` : 'brak'}</td>`,
+      `<td>${row.avg_cadence != null ? escapeHtml(fmtNumber(row.avg_cadence)) : 'brak'}</td>`
+    ].join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  return `
+    <section class="analysis-section run-coach-section">
+      <span>Run curve — wniosek trenerski</span>
+
+      <div class="run-coach-card">
+        <div class="run-coach-part">
+          <b>Najmocniejszy sygnał</b>
+          <p>${escapeHtml(texts.signal)}</p>
+        </div>
+
+        <div class="run-coach-part">
+          <b>Interpretacja</b>
+          <p>${escapeHtml(texts.interpretation)}</p>
+        </div>
+
+        <div class="run-coach-part">
+          <b>Znaczenie</b>
+          <p>${escapeHtml(texts.meaning)}</p>
+        </div>
+      </div>
+
+      <details class="run-details">
+        <summary>Więcej szczegółów biegu</summary>
+        <div class="run-table-wrap">
+          <table class="run-table">
+            <thead>
+              <tr>
+                <th>Odcinek</th>
+                <th>Tempo</th>
+                <th>Czas</th>
+                <th>HR śr.</th>
+                <th>HR max</th>
+                <th>Moc</th>
+                <th>Kad.</th>
+              </tr>
+            </thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  `;
+}
+
+
+function renderPowerIntervals(rows, insight){
+  if(!rows || !rows.length) return '';
+
+  const key = keyPowerInterval(rows);
+  const texts = powerCoachTexts(key);
+
+  const detailRows = rows.map(row => {
+    const cells = [
+      `<td>${escapeHtml(powerIntervalLabel(row.interval_type, row.target_sec).replace('Najlepsze ', ''))}</td>`,
+      `<td>${row.avg_power_w != null ? `${escapeHtml(fmtNumber(row.avg_power_w))} W` : 'brak'}</td>`,
+      `<td>${row.pct_ftp != null ? `${escapeHtml(fmtNumber(row.pct_ftp))}%` : 'brak'}</td>`,
+      `<td>${row.pct_eftp != null ? `${escapeHtml(fmtNumber(row.pct_eftp))}%` : 'brak'}</td>`,
+      `<td>${row.w_per_kg != null ? escapeHtml(fmtNumber(row.w_per_kg, 2)) : 'brak'}</td>`,
+      `<td>${row.avg_hr != null ? escapeHtml(fmtNumber(row.avg_hr)) : 'brak'}</td>`
+    ].join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  return `
+    <section class="analysis-section power-coach-section">
+      <span>Power curve — wniosek trenerski</span>
+
+      <div class="power-coach-card">
+        <div class="power-coach-part">
+          <b>Najmocniejszy sygnał</b>
+          <p>${escapeHtml(texts.signal)}</p>
+        </div>
+
+        <div class="power-coach-part">
+          <b>Interpretacja</b>
+          <p>${escapeHtml(texts.interpretation)}</p>
+        </div>
+
+        <div class="power-coach-part">
+          <b>Znaczenie</b>
+          <p>${escapeHtml(texts.meaning)}</p>
+        </div>
+      </div>
+
+      <details class="power-details">
+        <summary>Więcej szczegółów mocy</summary>
+        <div class="power-table-wrap">
+          <table class="power-table">
+            <thead>
+              <tr>
+                <th>Odcinek</th>
+                <th>Moc</th>
+                <th>FTP</th>
+                <th>eFTP</th>
+                <th>W/kg</th>
+                <th>HR</th>
+              </tr>
+            </thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  `;
+}
+
+
+
+function renderFullAnalysisDetails(analysis){
+  const content = [
+    renderAnalysisBlock('Tryb analizy', analysis.mode, 'mode-section'),
+    renderThresholdProfileContext(analysis.profileContextStatus),
+    renderAnalysisBlock('Najważniejszy wniosek', analysis.headline, 'headline-section'),
+    renderAnalysisBlock('Profil / progi Szymona', analysis.thresholdProfile, 'threshold-section'),
+    renderBulletSection('Co poszło dobrze', analysis.good, 'good-section'),
+    renderBulletSection('Koszt / ryzyka', analysis.risks, 'risk-section'),
+    renderSegmentCards(analysis.segmentCards),
+    renderTimeline('Kontekst przed aktywnością', analysis.contextBefore),
+    renderTimeline('Dzień aktywności', analysis.activityDay),
+    renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section'),
+    renderTimeline('Regeneracja po aktywności', analysis.recoveryContext),
+    renderAnalysisBlock('Analiza trenerska', analysis.coachAnalysis, 'coach-section'),
+    renderAnalysisBlock('Wniosek pod Ironman Kalmar', analysis.kalmar, 'kalmar-section'),
+    renderAnalysisBlock('Zalecenie', analysis.recovery, 'recommendation-section'),
+    renderFactsBlock(analysis.facts),
+    renderRawSummary(analysis.rawSummary)
+  ].filter(Boolean).join('');
+
+  return `
+    <details class="analysis-full-details">
+      <summary>Więcej szczegółów analizy AI</summary>
+      <div class="analysis-full-details-body">${content}</div>
+    </details>
+  `;
+}
+
 
 function renderActivityAiAnalysis(targetId, activity){
   const target = $(targetId);
   if(!target) return;
   const baseAnalysis = buildActivityAiAnalysis(activity);
-  const cached = readCachedActivityAiAnalysis(activity);
-  if(cached){
-    renderAiAnalysisInto(target, mergeRealAiIntoAnalysis(baseAnalysis, cached), 'cache', activity);
-  }else{
-    renderAiAnalysisInto(target, baseAnalysis, 'manual', activity);
-  }
+  renderAiAnalysisInto(target, baseAnalysis, 'loading');
+
+  fetchRealAiAnalysis(activity).then(aiResult => {
+    // Jeśli w międzyczasie użytkownik przełączył się na inną aktywność, nie nadpisuj.
+    const selected = selectedActivity();
+    if(selected && selected.id !== activity?.id && selected.activity_id !== activity?.activity_id) return;
+    const merged = mergeRealAiIntoAnalysis(baseAnalysis, aiResult);
+    renderAiAnalysisInto(target, merged, aiResult ? 'ai' : 'fallback');
+  });
 }
 
-async function refreshActivityAiAnalysis(targetId, activity){
-  const target = $(targetId);
-  if(!target || !activity) return;
-  const baseAnalysis = buildActivityAiAnalysis(activity);
-  renderAiAnalysisInto(target, baseAnalysis, 'loading', activity);
-  const result = await fetchRealAiAnalysis(activity, true);
-  const selected = selectedActivity();
-  if(selected && selected.id !== activity?.id && selected.activity_id !== activity?.activity_id) return;
-  const merged = mergeRealAiIntoAnalysis(baseAnalysis, result.analysis);
-  renderAiAnalysisInto(target, merged, result.source === 'ai' ? 'ai' : result.source, activity);
-}
-
-function renderAiAnalysisInto(target, analysis, status, activity){
+function renderAiAnalysisInto(target, analysis, status){
   const topCards = [
     renderPowerIntervals(analysis.powerIntervals, analysis.powerInsight),
     renderRunIntervals(analysis.runIntervals, analysis.runInsight)
@@ -4049,47 +4150,16 @@ function renderAiAnalysisInto(target, analysis, status, activity){
   const statusBadge = status === 'loading'
     ? '<div class="ai-status-badge loading">AI analizuje trening...</div>'
     : status === 'ai'
-      ? '<div class="ai-status-badge ai-ok">Analiza wygenerowana przez AI i zapisana w cache</div>'
-      : status === 'cache'
-        ? '<div class="ai-status-badge ai-cache">Analiza z cache — bez zużycia Gemini</div>'
-        : status === 'manual'
-          ? '<div class="ai-status-badge ai-manual">Lokalna analiza — Gemini nie zostało uruchomione</div>'
-          : status === 'limit'
-            ? '<div class="ai-status-badge ai-fallback">Limit Gemini / AI niedostępne — pokazuję lokalną analizę</div>'
-            : '<div class="ai-status-badge ai-fallback">Analiza podstawowa (AI niedostępne) — pokazuję dane faktograficzne</div>';
-
-  const actionText = status === 'loading' ? 'Generuję AI...'
-    : status === 'cache' || status === 'ai' ? 'Odśwież AI'
-    : 'Wygeneruj AI';
-  const controlText = status === 'manual'
-    ? 'Oszczędzam limit: pełna analiza AI uruchamia się dopiero po kliknięciu.'
-    : status === 'cache'
-      ? 'Pokazuję zapisany wynik. Ponowne kliknięcie zużyje Gemini.'
-      : status === 'ai'
-        ? 'Nowy wynik został zapisany. Kolejne wejście użyje cache.'
-        : status === 'limit'
-          ? 'Gemini odmówiło przez limit albo błąd. Lokalna analiza zostaje na ekranie.'
-          : 'Kontrolujesz, kiedy aplikacja zużywa Gemini.';
-  const controls = `
-    <div class="ai-control-row">
-      <span>${escapeHtml(controlText)}</span>
-      <button class="secondary-btn ai-refresh-btn" type="button" data-ai-refresh-activity ${status === 'loading' ? 'disabled' : ''}>${escapeHtml(actionText)}</button>
-    </div>
-  `;
+      ? '<div class="ai-status-badge ai-ok">Analiza wygenerowana przez AI</div>'
+      : '<div class="ai-status-badge ai-fallback">Analiza podstawowa (AI niedostępne) — pokazuję dane faktograficzne</div>';
 
   const nightSummary = renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section night-response-visible');
   target.innerHTML = [
     statusBadge,
-    controls,
     visibleSummary,
     nightSummary,
     renderFullAnalysisDetails(analysis)
   ].join('');
-
-  const btn = target.querySelector('[data-ai-refresh-activity]');
-  if(btn){
-    btn.addEventListener('click', () => refreshActivityAiAnalysis(target.id, activity || selectedActivity() || latest));
-  }
 }
 
 function renderActivityDetails(){
@@ -4135,10 +4205,6 @@ function bindEvents(){
   });
   $('logoutBtn').addEventListener('click', signOut);
   $('refreshBtn').addEventListener('click', loadAllData);
-  const todayAiRefreshBtn = $('todayAiRefreshBtn');
-  if(todayAiRefreshBtn){
-    todayAiRefreshBtn.addEventListener('click', () => requestWeeklyCoachAnalysis(true));
-  }
   $('backToHistoryBtn').addEventListener('click', closeActivityDetails);
   const historySearch = $('historySearchInput');
   if(historySearch){
@@ -4200,7 +4266,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=555').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=554').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

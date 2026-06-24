@@ -641,50 +641,6 @@ body.is-auth-checking .bottom-nav{display:none!important}
   border:1px solid rgba(240,168,74,.26);
 }
 .ai-status-badge.ai-fallback::before{ content:'!'; }
-
-.ai-control-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  border:1px solid rgba(151,176,214,.18);
-  border-radius:14px;
-  background:rgba(255,255,255,.035);
-  color:#b9c8e2;
-  font-size:12px;
-  line-height:1.35;
-}
-.dashboard-ai-control{
-  margin-top:16px;
-  background:rgba(4,14,28,.22);
-}
-.ai-refresh-btn{
-  min-height:34px;
-  padding:0 12px;
-  white-space:nowrap;
-  font-size:12px;
-}
-.ai-refresh-btn:disabled{
-  opacity:.55;
-  cursor:wait;
-}
-.ai-status-badge.ai-cache{
-  color:#75d6ff;
-  background:rgba(117,214,255,.10);
-  border:1px solid rgba(117,214,255,.26);
-}
-.ai-status-badge.ai-cache::before{ content:'↺'; }
-.ai-status-badge.ai-manual{
-  color:#d6bfff;
-  background:rgba(160,128,255,.10);
-  border:1px solid rgba(160,128,255,.26);
-}
-.ai-status-badge.ai-manual::before{ content:'◌'; }
-@media(max-width:420px){
-  .ai-control-row{align-items:stretch;flex-direction:column;}
-  .ai-refresh-btn{width:100%;}
-}
 @keyframes aiPulse{
   0%,100%{opacity:1}
   50%{opacity:.3}
