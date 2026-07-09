@@ -2675,6 +2675,27 @@ function kalmarHistoricalDataCoverage(){
   };
 }
 
+function kalmarDaysBetween(startIso, endIso){
+  const start = new Date(`${startIso}T00:00:00`);
+  const end = new Date(`${endIso}T00:00:00`);
+  if(Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  return Math.max(0, Math.round((end - start) / 86400000));
+}
+
+function kalmarFirstContextDate(ctx){
+  const dates = [
+    ...kalmarRowsUntil([...(ctx?.proActivities || []), ...(ctx?.cards || [])], ['workout_date', 'started_at', 'date'], '9999-12-31').map(row => kalmarDataDate(row, ['workout_date', 'started_at', 'date'])),
+    ...kalmarRowsUntil(ctx?.readinessHistory || [], ['metric_date', 'journal_date', 'date'], '9999-12-31').map(row => kalmarDataDate(row, ['metric_date', 'journal_date', 'date']))
+  ].filter(Boolean).sort();
+  return dates[0] || '';
+}
+
+function kalmarActivityHasUsableRangeInput(row){
+  const distance = activityDistanceKm(row);
+  const seconds = kalmarNum(row?.duration_seconds ?? row?.elapsed_time_seconds ?? (row?.duration_min != null ? Number(row.duration_min) * 60 : null));
+  return distance != null && distance > 0 && seconds != null && seconds > 0;
+}
+
 function withKalmarDataContext(ctx, fn){
   const previous = { readiness, readinessHistory, cards, load28d, proActivities, athleteThresholds };
   try{
@@ -2710,27 +2731,51 @@ function kalmarHistoricalContextUntil(cutoffDate){
   };
 }
 
-function kalmarHasEnoughHistoricalData(ctx){
-  if(!ctx) return false;
+function kalmarHistoricalPointStatus(ctx){
+  if(!ctx) return { ok:false, reason:'brak kontekstu danych' };
   const rows = [...(ctx.proActivities || []), ...(ctx.cards || [])];
-  const sportRows = rows.filter(row => kalmarIsSport(row, 'bike') || kalmarIsSport(row, 'run') || kalmarIsSport(row, 'swim') || kalmarIsSport(row, 'multi'));
-  const hasBikeOrRun = sportRows.some(row => kalmarIsSport(row, 'bike') || kalmarIsSport(row, 'run') || kalmarIsSport(row, 'multi'));
-  return sportRows.length >= 3 && hasBikeOrRun && (ctx.readinessHistory || []).length >= 3;
+  const usableRows = rows.filter(kalmarActivityHasUsableRangeInput);
+  const firstDate = kalmarFirstContextDate(ctx);
+  const ageDays = firstDate ? kalmarDaysBetween(firstDate, ctx.cutoffIso) : 0;
+  const bikeRows = usableRows.filter(row => kalmarIsSport(row, 'bike') || kalmarIsSport(row, 'multi'));
+  const runRows = usableRows.filter(row => kalmarIsSport(row, 'run') || kalmarIsSport(row, 'multi'));
+  const swimRows = usableRows.filter(row => kalmarIsSport(row, 'swim') || kalmarIsSport(row, 'multi'));
+  if(!firstDate) return { ok:false, reason:'brak datowanych danych' };
+  if(ageDays < 10) return { ok:false, reason:`rozruch danych ${ageDays}/10 dni` };
+  if(usableRows.length < 2) return { ok:false, reason:`za mało treningów ${usableRows.length}/2` };
+  if(!bikeRows.length && !runRows.length && !swimRows.length) return { ok:false, reason:'brak rozpoznanych treningów endurance' };
+  return {
+    ok:true,
+    reason:'punkt możliwy',
+    ageDays,
+    activityCount:usableRows.length,
+    bikeCount:bikeRows.length,
+    runCount:runRows.length,
+    swimCount:swimRows.length,
+    morningCount:(ctx.readinessHistory || []).length
+  };
+}
+
+function kalmarHasEnoughHistoricalData(ctx){
+  return kalmarHistoricalPointStatus(ctx).ok;
 }
 
 function buildKalmarForecastAt(cutoffDate){
   const ctx = kalmarHistoricalContextUntil(cutoffDate);
-  if(!kalmarHasEnoughHistoricalData(ctx)) return null;
+  const status = kalmarHistoricalPointStatus(ctx);
+  if(!status.ok) return null;
   return withKalmarDataContext(ctx, () => {
     const forecast = buildKalmarForecast();
     const point = kalmarForecastSnapshotFromForecast(forecast, ctx.cutoffIso);
     if(!point || forecast.status === 'empty') return null;
     return {
       ...point,
+      confidence: status.morningCount < 3 && forecast.confidence === 'niska' ? 'wstępna' : forecast.confidence,
       source:'historical',
       modelLabel:'trend historyczny modelu',
       activityCount:(ctx.proActivities.length + ctx.cards.length),
-      morningCount:ctx.readinessHistory.length
+      morningCount:ctx.readinessHistory.length,
+      diagnosticReason: status.reason
     };
   });
 }
@@ -2755,6 +2800,17 @@ function buildHistoricalKalmarForecastPoints(){
     .map(date => buildKalmarForecastAt(date))
     .filter(Boolean)
     .slice(-26);
+}
+
+function kalmarForecastHistoryDiagnostics(){
+  return kalmarWeeklyCutoffDates().map(date => {
+    const ctx = kalmarHistoricalContextUntil(date);
+    const status = kalmarHistoricalPointStatus(ctx);
+    if(!status.ok) return `${date} — odrzucony: ${status.reason}`;
+    const point = buildKalmarForecastAt(date);
+    if(!point) return `${date} — odrzucony: model nie zwrócił zakresu`;
+    return `${date} — punkt: ${kalmarMinutesToHM(point.lowerMinutes)}–${kalmarMinutesToHM(point.upperMinutes)}, pewność ${point.confidence}`;
+  });
 }
 
 function kalmarForecastHistoryWeekCount(points){
@@ -3430,17 +3486,22 @@ function renderKalmarForecast(){
     statusEl.className = `coach-mode-pill kalmar-status-${forecast.status}`;
   }
   saveKalmarForecastSnapshot(forecast);
-  renderKalmarForecastHistory();
+  renderKalmarForecastHistory(forecast);
 }
 
-function renderKalmarForecastHistory(){
+function renderKalmarForecastHistory(currentForecast = null){
   const chart = $('kalmarForecastHistoryChart');
   const note = $('kalmarForecastHistoryNote');
   if(!chart) return;
   const historical = buildHistoricalKalmarForecastPoints();
   const snapshots = readKalmarForecastHistory();
-  const points = mergeKalmarForecastHistoryPoints(historical, snapshots);
+  const currentPoint = kalmarForecastSnapshotFromForecast(currentForecast, kalmarTodayIso());
+  const points = mergeKalmarForecastHistoryPoints(
+    historical,
+    currentPoint ? [...snapshots, { ...currentPoint, source:'snapshot', modelLabel:'aktualna prognoza' }] : snapshots
+  );
   const coverage = kalmarHistoricalDataCoverage();
+  const diagnostics = kalmarForecastHistoryDiagnostics();
   chart.innerHTML = kalmarForecastHistorySvg(points);
   const weeks = kalmarForecastHistoryWeekCount(points);
   if(note){
@@ -3448,7 +3509,8 @@ function renderKalmarForecastHistory(){
       const first = points[0]?.date;
       note.textContent = `Dostępna historia: ${weeks} ${weeks === 1 ? 'tydzień' : 'tygodni'}, od ${first ? fmtDate(first) : 'pierwszego punktu'}. Trend historyczny modelu jest liczony tylko z danych dostępnych do daty punktu.`;
     }else if(coverage.days){
-      note.textContent = `Dane w pamięci aplikacji: ${coverage.days} dni, od ${fmtDate(coverage.from)}. Historia prognozy jest jeszcze za krótka do wiarygodnego trendu.`;
+      const lastDiag = diagnostics.slice(-3).join(' | ');
+      note.textContent = `Dane w pamięci aplikacji: ${coverage.days} dni, od ${fmtDate(coverage.from)}. Historia prognozy jest jeszcze za krótka do wiarygodnego trendu. ${lastDiag}`;
     }else{
       note.textContent = 'Historia prognozy jest jeszcze budowana. Brak wystarczających danych treningowych i porannych.';
     }
