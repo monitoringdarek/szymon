@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.6';
+const VERSION = 'szymon-ai-coach-v5.5.7-hotfix';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -162,7 +162,10 @@ function aiCacheNow(){
   return Date.now();
 }
 
-function readAiCache(key, maxAgeMs){
+/* v5.5.7 — czytnik zwraca też savedAt, żeby dało się ocenić, czy
+   analiza AI powstała PRZED pojawieniem się danych regeneracyjnych
+   D+1 (baner "Odśwież AI"). readAiCache zachowuje stare API. */
+function readAiCacheEntry(key, maxAgeMs){
   try{
     const raw = localStorage.getItem(key);
     if(!raw) return null;
@@ -172,10 +175,15 @@ function readAiCache(key, maxAgeMs){
       localStorage.removeItem(key);
       return null;
     }
-    return parsed.value;
+    return { savedAt, value: parsed.value };
   }catch{
     return null;
   }
+}
+
+function readAiCache(key, maxAgeMs){
+  const entry = readAiCacheEntry(key, maxAgeMs);
+  return entry ? entry.value : null;
 }
 
 function writeAiCache(key, value){
@@ -1376,7 +1384,7 @@ function proCostTitle(pro, analytics, segments){
   if(isRun && Number.isFinite(load) && load >= 120 && load < 180 && (!Number.isFinite(hrMax) || hrMax < 178) && (!Number.isFinite(hrAvg) || hrAvg < 158)){
     return 'Koszt: konkretny, ale kontrolowany bodziec. Dla Szymona to nie alarm — poranek pokaże, jak szybko wracamy do pracy.';
   }
-  if(Number.isFinite(load) && load >= 120) return 'Koszt: solidny bodziec roboczy. Nie dramatyzujemy, ale kolejny krok zależy od snu, energii i tętna spoczynkowego.';
+  if(Number.isFinite(load) && load >= 120) return `Koszt: solidny bodziec roboczy (load ${fmtNumber(load)}). Kolejny krok zależy od snu, energii i tętna spoczynkowego.`;
   if(Number.isFinite(hrMax) && hrMax >= 180) return 'Koszt głównie sercowo-naczyniowy. Tętno weszło wysoko, więc jutro liczy się kontrola reakcji, nie straszenie odpoczynkiem.';
   return 'Koszt wygląda spokojniej. Pełną ocenę daje dopiero poranek po treningu i odczucie zawodnika.';
 }
@@ -1410,6 +1418,17 @@ function proContextForActivity(pro){
   }) || null;
 }
 
+/* v5.5.7 — pomocnicze: metryki poranne przypięte do konkretnej daty.
+   Kolejność źródeł: okno kontekstu z Supabase, potem readinessHistory
+   (60 dni). Świadomie BEZ fallbacku do globalnego dzisiejszego
+   `readiness` — historyczny trening nie może pokazywać danych
+   z innego dnia. */
+function readinessHistoryForDate(date){
+  const iso = fmtDateIso(date);
+  if(!iso) return null;
+  return (readinessHistory || []).find(row => fmtDateIso(row?.metric_date) === iso) || null;
+}
+
 function proDailyForOffset(pro, offset){
   const context = proContextForActivity(pro);
   const baseDate = fmtDateIso(context?.workout_date || pro?.workout_date || pro?.started_at);
@@ -1417,27 +1436,275 @@ function proDailyForOffset(pro, offset){
   const targetDate = addDaysIso(baseDate, offset);
   if(!targetDate) return null;
   const dailyWindow = parseJsonArray(context?.daily_metrics_window);
-  return metricForDate(dailyWindow, targetDate);
+  return metricForDate(dailyWindow, targetDate) || readinessHistoryForDate(targetDate);
 }
 
+/* v5.5.7-hotfix — osobista baza RHR/HRV liczona z readinessHistory,
+   ZAKOTWICZONA w dacie treningu: wyłącznie dni WCZEŚNIEJSZE niż
+   workout_date (do ~45 dni wstecz), bez dnia treningu i bez danych
+   późniejszych. Dzięki temu analiza historycznej jednostki nie
+   zmienia się z upływem czasu. Bez kotwicy zwraca null. */
+function recoveryMetricBaseline(field, beforeDate, minSamples = 5, days = 45){
+  const anchor = fmtDateIso(beforeDate);
+  if(!anchor) return null;
+  const cutoff = addDaysIso(anchor, -days);
+  const values = (readinessHistory || [])
+    .filter(row => {
+      const d = fmtDateIso(row?.metric_date);
+      return d && d < anchor && (!cutoff || d >= cutoff);
+    })
+    .map(row => kalmarNum(row?.[field]))
+    .filter(v => v != null && v > 0)
+    .sort((a, b) => a - b);
+  if(values.length < minSamples) return null;
+  const mid = Math.floor(values.length / 2);
+  const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+  return { median, count: values.length };
+}
+
+function fmtMinAsHours(value){
+  const n = Number(value);
+  if(!Number.isFinite(n) || n <= 0) return 'brak danych';
+  const total = Math.round(n);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if(h <= 0) return `${m} min`;
+  if(m === 0) return `${h} godz.`;
+  return `${h} godz. ${m} min`;
+}
+
+/* ===========================================================
+   v5.5.7 — WSPÓLNA OCENA REAKCJI PO NOCY (D+1)
+   Jedno źródło prawdy dla: karty ODPOWIEDŹ PO NOCY, końcówki
+   WERDYKTU TRENERA i banera świeżości analizy AI — żeby teksty
+   nigdy się wzajemnie nie wykluczały.
+   Statusy:
+   - 'incomplete' — brak porannych danych z dnia po treningu,
+   - 'costly'     — wyraźny koszt (mocny sygnał albo 2+ słabsze),
+   - 'neutral'    — pojedynczy słabszy sygnał lub dane fragmentaryczne,
+   - 'good'       — sygnały spójnie spokojne.
+   Zasada tonu (wewnętrzna, nie do UI): oceniamy doświadczonego
+   zawodnika endurance — nazywamy koszt liczbami, bez straszenia
+   i bez traktowania każdego bodźca jak alarmu.
+   =========================================================== */
+function assessOvernightResponse(pro){
+  const before = proDailyForOffset(pro, 0);
+  const after = proDailyForOffset(pro, 1);
+  const hasAfter = Boolean(after && (
+    after.sleep_minutes != null
+    || after.body_battery_end != null
+    || after.body_battery_start != null
+    || after.avg_stress != null
+    || after.resting_hr != null
+    || after.training_readiness_score != null
+    || after.hrv_status != null
+    || after.hrv_avg != null
+  ));
+  if(!hasAfter){
+    return { status: 'incomplete', partial: false, before, after: null, metrics: {}, signals: { strong: [], mild: [], calm: [] } };
+  }
+
+  const workoutDate = fmtDateIso(pro?.workout_date || pro?.started_at);
+
+  const m = {
+    sleepMin: kalmarNum(after.sleep_minutes),
+    readinessBefore: kalmarNum(before?.training_readiness_score),
+    readinessAfter: kalmarNum(after.training_readiness_score),
+    stress: kalmarNum(after.avg_stress),
+    rhr: kalmarNum(after.resting_hr),
+    batteryStart: kalmarNum(after.body_battery_start),
+    batteryEnd: kalmarNum(after.body_battery_end),
+    hrvAvg: kalmarNum(after.hrv_avg),
+    hrvStatus: after.hrv_status || null
+  };
+  m.readinessDelta = (m.readinessBefore != null && m.readinessAfter != null)
+    ? Math.round(m.readinessAfter - m.readinessBefore)
+    : null;
+  const rhrBase = recoveryMetricBaseline('resting_hr', workoutDate);
+  m.rhrBaseline = rhrBase ? Math.round(rhrBase.median) : null;
+  m.rhrDelta = (m.rhr != null && m.rhrBaseline != null) ? Math.round(m.rhr - m.rhrBaseline) : null;
+  const hrvBase = recoveryMetricBaseline('hrv_avg', workoutDate);
+  m.hrvBaseline = hrvBase ? Math.round(hrvBase.median) : null;
+
+  /* v5.5.7-hotfix — Data Guard: liczymy NIEZALEŻNE metryki poranne.
+     1 metryka → 'incomplete' (partial); 2 metryki → maks. 'neutral';
+     'good' wymaga >=3 metryk, w tym co najmniej jednej z: gotowość,
+     Body Battery, RHR, HRV (sam sen + stres nie wystarczą). */
+  const present = {
+    sleep: m.sleepMin != null,
+    readiness: m.readinessAfter != null,
+    battery: m.batteryEnd != null || m.batteryStart != null,
+    stress: m.stress != null,
+    rhr: m.rhr != null,
+    hrv: m.hrvAvg != null || Boolean(m.hrvStatus)
+  };
+  m.present = present;
+  m.presentCount = Object.values(present).filter(Boolean).length;
+  const corePresent = present.readiness || present.battery || present.rhr || present.hrv;
+
+  const strong = [];
+  const mild = [];
+  const calm = [];
+
+  if(m.readinessAfter != null){
+    if(m.readinessAfter <= 35){
+      strong.push(`gotowość rano tylko ${Math.round(m.readinessAfter)}/100`);
+    }else if(m.readinessDelta != null && m.readinessDelta <= -15){
+      strong.push(`gotowość spadła z ${Math.round(m.readinessBefore)} do ${Math.round(m.readinessAfter)}/100`);
+    }else if(m.readinessDelta != null && m.readinessDelta <= -8){
+      mild.push(`gotowość niżej niż przed jednostką (${Math.round(m.readinessBefore)} → ${Math.round(m.readinessAfter)}/100)`);
+    }else if(m.readinessDelta != null){
+      calm.push(`gotowość stabilna (${Math.round(m.readinessBefore)} → ${Math.round(m.readinessAfter)}/100)`);
+    }else if(m.readinessAfter >= 55){
+      calm.push(`gotowość rano ${Math.round(m.readinessAfter)}/100`);
+    }else{
+      mild.push(`gotowość rano ${Math.round(m.readinessAfter)}/100`);
+    }
+  }
+
+  if(m.sleepMin != null){
+    if(m.sleepMin < 360) mild.push(`krótki sen (${fmtMinAsHours(m.sleepMin)})`);
+    else if(m.sleepMin >= 420) calm.push(`sen ${fmtMinAsHours(m.sleepMin)}`);
+  }
+
+  if(m.stress != null){
+    if(m.stress >= 45) mild.push(`podwyższony stres (${Math.round(m.stress)})`);
+    else if(m.stress <= 30) calm.push(`stres ${Math.round(m.stress)}`);
+  }
+
+  if(m.rhrDelta != null){
+    if(m.rhrDelta >= 5) strong.push(`tętno spoczynkowe ${Math.round(m.rhr)} bpm wyraźnie nad Twoją bazą (${m.rhrBaseline})`);
+    else if(m.rhrDelta <= 2) calm.push(`tętno spoczynkowe ${Math.round(m.rhr)} bpm w normie względem bazy (${m.rhrBaseline})`);
+    else mild.push(`tętno spoczynkowe ${Math.round(m.rhr)} bpm lekko nad bazą (${m.rhrBaseline})`);
+  }
+
+  if(m.hrvAvg != null && m.hrvBaseline != null){
+    if(m.hrvAvg < m.hrvBaseline * 0.85) mild.push(`HRV ${fmtNumber(m.hrvAvg)} ms poniżej Twojej bazy (${m.hrvBaseline} ms)`);
+    else calm.push(`HRV ${fmtNumber(m.hrvAvg)} ms przy bazie ${m.hrvBaseline} ms`);
+  }
+
+  if(m.batteryStart != null && m.batteryEnd != null && m.batteryEnd - m.batteryStart >= 15){
+    calm.push(`Body Battery doładowane z ${Math.round(m.batteryStart)} do ${Math.round(m.batteryEnd)}`);
+  }else if(m.batteryEnd != null && m.batteryEnd < 40){
+    mild.push(`Body Battery rano tylko ${Math.round(m.batteryEnd)}`);
+  }
+
+  let status;
+  if(m.presentCount <= 1){
+    status = 'incomplete';
+  }else if(strong.length || mild.length >= 2){
+    /* Ostrzeżenie o koszcie też wymaga pokrycia danymi: przy dwóch
+       metrykach zostajemy przy 'neutral' z nazwanymi sygnałami. */
+    status = m.presentCount >= 3 ? 'costly' : 'neutral';
+  }else if(mild.length === 1){
+    status = 'neutral';
+  }else if(!calm.length){
+    status = 'neutral';
+  }else if(m.presentCount >= 3 && corePresent){
+    status = 'good';
+  }else{
+    status = 'neutral';
+  }
+
+  return { status, partial: status === 'incomplete', before, after, metrics: m, signals: { strong, mild, calm } };
+}
+
+/* v5.5.7 — końcówka werdyktu zależna od dostępności danych D+1.
+   Przed kolejną nocą: jedno stałe zdanie o uzupełnieniu oceny.
+   Po kolejnej nocy: wniosek z reakcji organizmu, z liczbami. */
+function verdictOvernightTail(pro){
+  const a = assessOvernightResponse(pro);
+  if(a.status === 'incomplete'){
+    return a.partial
+      ? 'Poranne dane po treningu są na razie niepełne — reakcję organizmu ocenimy po komplecie synchronizacji.'
+      : 'Ocena wykonania jest gotowa. Reakcję organizmu uzupełnimy po kolejnej nocy.';
+  }
+  const m = a.metrics;
+  const facts = [];
+  if(m.readinessAfter != null) facts.push(`gotowość ${Math.round(m.readinessAfter)}/100`);
+  if(m.stress != null) facts.push(`stres ${Math.round(m.stress)}`);
+  if(m.rhr != null) facts.push(`tętno spoczynkowe ${Math.round(m.rhr)} bpm`);
+  const factsText = facts.length ? ` (${facts.join(', ')})` : '';
+  if(a.status === 'good'){
+    return `Kolejny poranek nie pokazał wyraźnego wzrostu kosztu regeneracyjnego${factsText}.`;
+  }
+  if(a.status === 'costly'){
+    const why = a.signals.strong.concat(a.signals.mild).slice(0, 2).join(', ');
+    return `Kolejny poranek pokazał realny koszt tej jednostki${why ? ` — ${why}` : ''}. Dziś kontrolujemy powrót do pracy zamiast dokładać jakość.`;
+  }
+  const why = a.signals.strong[0] || a.signals.mild[0] || '';
+  return `Poranek po treningu wypadł umiarkowanie${why ? `: ${why}` : ''}. Pozostałe sygnały${factsText} nie wskazują na przeciążenie.`;
+}
+
+/* v5.5.7 — STAN PRZED budowany kompozycyjnie z realnych danych
+   poranka dnia treningu (metric_date === workout_date). Tekst jest
+   historyczny: liczy się wyłącznie z danych przypiętych do daty
+   jednostki, więc nigdy nie zmienia się po fakcie. Bez fallbacku
+   do globalnego dzisiejszego `readiness`. */
 function proBeforeText(pro){
-  const daily = proDailyForOffset(pro, 0) || readiness || null;
+  const daily = proDailyForOffset(pro, 0);
+  const dateIso = fmtDateIso(pro?.workout_date || pro?.started_at);
+  const dateLabel = dateIso ? fmtDate(dateIso) : 'dnia treningu';
   if(!daily){
-    return 'Brakuje pełnego stanu przed treningiem, więc oceniamy ostrożnie: najpierw bodziec, potem reakcja organizmu po nocy.';
+    return `Brak zapisanych danych porannych z ${dateLabel} — ocena opiera się na samym wykonaniu jednostki, bez kontekstu regeneracji.`;
   }
-  const readinessScore = daily.training_readiness_score != null ? Math.round(Number(daily.training_readiness_score)) : null;
-  const sleep = daily.sleep_minutes != null ? fmtMin(daily.sleep_minutes) : null;
-  const battery = daily.body_battery_end ?? daily.body_battery_start ?? null;
-  const stress = daily.avg_stress != null ? Math.round(Number(daily.avg_stress)) : null;
-  const lowReadiness = readinessScore != null && readinessScore < 45;
-  const shortSleep = Number(daily.sleep_minutes) > 0 && Number(daily.sleep_minutes) < 360;
-  if(lowReadiness || shortSleep){
-    return 'Szymon nie wchodził w ten trening idealnie świeży. To nie blokuje pracy, ale zwiększa znaczenie kontroli po wysiłku.';
+
+  const readinessScore = kalmarNum(daily.training_readiness_score);
+  const sleepMin = kalmarNum(daily.sleep_minutes);
+  const stress = kalmarNum(daily.avg_stress);
+  const battery = kalmarNum(daily.body_battery_end ?? daily.body_battery_start);
+  const rhr = kalmarNum(daily.resting_hr);
+  const rhrBase = recoveryMetricBaseline('resting_hr', dateIso);
+  const sentences = [];
+
+  if(readinessScore != null){
+    const level = readinessScore >= 70 ? 'dobra'
+      : readinessScore >= 50 ? 'umiarkowana'
+      : readinessScore >= 35 ? 'obniżona'
+      : 'niska';
+    sentences.push(`Przed treningiem gotowość była ${level} (${Math.round(readinessScore)}/100).`);
   }
-  if(readinessScore != null || sleep || battery != null || stress != null){
-    return 'Szymon wszedł w trening z czytelnym kontekstem regeneracji. Patrzymy na wykonanie, koszt i reakcję po nocy — bez oceniania go jak początkującego.';
+
+  const sleepPart = sleepMin != null
+    ? (sleepMin >= 450 ? `Sen ${fmtMinAsHours(sleepMin)} zapewniał pełną nocną regenerację`
+      : sleepMin >= 360 ? `Sen ${fmtMinAsHours(sleepMin)} zapewniał wystarczającą regenerację`
+      : `Krótki sen (${fmtMinAsHours(sleepMin)}) ograniczał regenerację przed jednostką`)
+    : '';
+  const stressPart = stress != null
+    ? (stress <= 25 ? `niski stres (${Math.round(stress)}) nie ograniczał wykonania jednostki`
+      : stress <= 45 ? `stres był umiarkowany (${Math.round(stress)})`
+      : `podwyższony stres (${Math.round(stress)}) mógł zwiększać koszt jednostki`)
+    : '';
+  if(sleepPart && stressPart) sentences.push(`${sleepPart}, a ${stressPart}.`);
+  else if(sleepPart) sentences.push(`${sleepPart}.`);
+  else if(stressPart) sentences.push(`${stressPart.charAt(0).toUpperCase()}${stressPart.slice(1)}.`);
+
+  if(battery != null){
+    if(battery >= 70){
+      sentences.push(`Body Battery ${Math.round(battery)} dawało dużą rezerwę energii, także na mocniejszą pracę.`);
+    }else if(battery >= 40){
+      sentences.push(`Body Battery ${Math.round(battery)} wskazywało średnią rezerwę — organizm był gotowy do pracy, ale bez dużego marginesu na bardzo mocny akcent.`);
+    }else{
+      sentences.push(`Body Battery ${Math.round(battery)} wskazywało ograniczoną rezerwę, więc organizm był gotowy do kontrolowanego treningu, ale bez marginesu na bardzo mocny akcent.`);
+    }
   }
-  return 'Stan przed treningiem jest częściowy. Analiza opiera się na dostępnych danych i nie dopowiada braków.';
+
+  if(rhr != null && rhrBase){
+    const delta = Math.round(rhr - rhrBase.median);
+    if(delta >= 5){
+      sentences.push(`Tętno spoczynkowe ${Math.round(rhr)} bpm było wyraźnie powyżej Twojej bazy (${Math.round(rhrBase.median)}) — sygnał niepełnej odbudowy jeszcze przed jednostką.`);
+    }else{
+      sentences.push(`Tętno spoczynkowe ${Math.round(rhr)} bpm mieściło się w Twojej normie (baza ${Math.round(rhrBase.median)}).`);
+    }
+  }
+
+  const hrvText = daily.hrv_status || (daily.hrv_avg != null ? `${fmtNumber(daily.hrv_avg)} ms` : '');
+  if(hrvText) sentences.push(`HRV: ${hrvText}.`);
+
+  if(!sentences.length){
+    return `Dane poranne z ${dateLabel} są fragmentaryczne — analiza opiera się na dostępnych liczbach i nie dopowiada braków.`;
+  }
+  return sentences.join(' ');
 }
 
 /* Porównanie do ostatnich 2-3 sesji tej samej dyscypliny — osobna,
@@ -1504,6 +1771,10 @@ function proWorkoutVerdict(pro, analytics, segments){
   const labelCap = proTrainingTypeLabel(pro);
   const label = labelCap.toLowerCase();
   const load = kalmarNum(pro?.training_load);
+  /* v5.5.7 — końcówka werdyktu zależy od dostępności danych D+1:
+     przed kolejną nocą informuje o uzupełnieniu, po niej zamyka
+     werdykt wnioskiem z reakcji organizmu. */
+  const overnightTail = verdictOvernightTail(pro);
 
   const nonEnduranceLabel = nonEnduranceSportLabel(pro);
   if(nonEnduranceLabel){
@@ -1518,12 +1789,13 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${nonEnduranceLabel}.`,
       factsText,
-      'To trening uzupełniający, nie główny bodziec pod Kalmar — nie liczymy go jak biegu czy roweru.'
+      'To trening uzupełniający, nie główny bodziec pod Kalmar — nie liczymy go jak biegu czy roweru.',
+      overnightTail
     );
   }
 
   if(load == null){
-    return 'Brak pełnych danych kosztu tego treningu — pełną ocenę da dopiero poranek po treningu.';
+    return joinVerdictParts('Brak pełnych danych kosztu tego treningu — wykonanie oceniamy na dostępnych liczbach.', overnightTail);
   }
 
   const ifValue = kalmarNum(analytics?.bike_if_value ?? pro?.intensity_factor);
@@ -1546,7 +1818,8 @@ function proWorkoutVerdict(pro, analytics, segments){
       return joinVerdictParts(
         'Start był solidny, ale rower poszedł bardzo mocno i to zostawiło koszt na biegu.',
         comparisonText,
-        'To jest dokładnie to, co trzeba pilnować pod Kalmar: rower ma budować wynik, nie zabierać go biegowi.'
+        'To jest dokładnie to, co trzeba pilnować pod Kalmar: rower ma budować wynik, nie zabierać go biegowi.',
+        overnightTail
       );
     }
   }
@@ -1556,7 +1829,7 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} był mocniejszy niż zwykła praca — jechałeś na górnej granicy, nie w spokojnym tempie. To nie alarm, ale to był mocny bodziec, nie rutynowa jazda.`,
       comparisonText,
-      'Następny akcent czeka na dobry poranek.'
+      overnightTail
     );
   }
 
@@ -1566,7 +1839,7 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} wyszedł ponad Twój typowy zakres.`,
       comparisonText,
-      'Nie dramatyzujemy, ale następnej jakości nie dokładamy bez dobrej odpowiedzi po nocy.'
+      overnightTail
     );
   }
 
@@ -1575,7 +1848,8 @@ function proWorkoutVerdict(pro, analytics, segments){
   if(regenTrend?.bad && (!hasBaseline || classification.tier === 'normal' || classification.tier === 'elevated')){
     return joinVerdictParts(
       `Sam ${label} nie ma w sobie nic niepokojącego, ale to już kilka dni, gdzie obciążenie rośnie szybciej niż regeneracja.`,
-      comparisonText ? `${comparisonText} To dokładanie się sumuje, nie zaczyna od zera.` : 'Warto to obserwować w najbliższych dniach, nie oceniać pojedynczo.'
+      comparisonText ? `${comparisonText} To dokładanie się sumuje, nie zaczyna od zera.` : 'Warto to obserwować w najbliższych dniach, nie oceniać pojedynczo.',
+      overnightTail
     );
   }
 
@@ -1584,7 +1858,8 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} był mocniejszy niż zwykła praca dla Twojego aktualnego poziomu.`,
       comparisonText,
-      'To nadal wygląda na kontrolowany bodziec, ale kolejny mocny krok zależy od poranka.'
+      'To nadal wygląda na kontrolowany bodziec.',
+      overnightTail
     );
   }
 
@@ -1594,7 +1869,8 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} był OK i mieści się w Twoim zwykłym zakresie.`,
       comparisonText,
-      'Jedno do zapamiętania: po podobnych treningach Twoja regeneracja bywała wolniejsza — jeśli jutro poranek będzie słabszy, to nie zaskoczenie, tylko Twój wzorzec.'
+      'Jedno do zapamiętania: po podobnych treningach Twoja regeneracja bywała wolniejsza.',
+      overnightTail
     );
   }
 
@@ -1603,7 +1879,8 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} był OK — spokojna, kontrolowana robota, dokładnie w Twoim normalnym zakresie.`,
       comparisonText,
-      'Pełny obraz dorzuci poranek, ale już teraz to wygląda na zdrowy bodziec pod Kalmar.'
+      'To wygląda na zdrowy bodziec pod Kalmar.',
+      overnightTail
     );
   }
 
@@ -1613,31 +1890,36 @@ function proWorkoutVerdict(pro, analytics, segments){
     return joinVerdictParts(
       `${labelCap} był mocnym bodźcem.`,
       comparisonText,
-      'To nie jest automatyczny alarm, ale następny akcent musi poczekać na poranne dane.'
+      'To nie jest automatyczny alarm.',
+      overnightTail
     );
   }
   if(load >= 120){
     return joinVerdictParts(
       `${labelCap} był konkretny, ale wygląda na kontrolowany.`,
       comparisonText,
-      'To nie była odbudowa, ale też nie ma powodu robić z tego dramatu.'
+      'To nie była odbudowa, ale koszt pozostał kontrolowany.',
+      overnightTail
     );
   }
   return joinVerdictParts(
     `${labelCap} wygląda na lekką, kontrolowaną jednostkę.`,
     comparisonText,
-    'Pełną ocenę da dopiero poranek po treningu.'
+    overnightTail
   );
 }
 
 function proBeforeControlLine(pro){
-  const daily = proDailyForOffset(pro, 0) || readiness || null;
+  /* v5.5.7 — wyłącznie dane przypięte do workout_date (okno kontekstu
+     lub readinessHistory); bez fallbacku do dzisiejszego readiness. */
+  const daily = proDailyForOffset(pro, 0);
   if(!daily) return 'Sen brak danych • Body Battery brak danych • Stress brak danych • gotowość brak danych';
   const sleep = daily.sleep_minutes != null ? fmtMin(daily.sleep_minutes) : 'brak danych';
   const battery = daily.body_battery_end ?? daily.body_battery_start;
   const stress = daily.avg_stress != null ? Math.round(Number(daily.avg_stress)) : null;
   const readinessScore = daily.training_readiness_score != null ? Math.round(Number(daily.training_readiness_score)) : null;
-  return `Sen ${sleep} • Body Battery ${battery ?? 'brak danych'} • Stress ${stress ?? 'brak danych'} • gotowość ${readinessScore != null ? `${readinessScore}/100` : 'brak danych'}`;
+  const rhr = daily.resting_hr != null ? `${Math.round(Number(daily.resting_hr))} bpm` : 'brak danych';
+  return `Sen ${sleep} • Body Battery ${battery ?? 'brak danych'} • Stress ${stress ?? 'brak danych'} • gotowość ${readinessScore != null ? `${readinessScore}/100` : 'brak danych'} • RHR ${rhr}`;
 }
 
 function proTrainingTypeLabel(pro){
@@ -1646,52 +1928,128 @@ function proTrainingTypeLabel(pro){
   return sportLabel(type || 'Trening');
 }
 
+function joinPolishList(items){
+  if(!items || !items.length) return '';
+  if(items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(', ')} i ${items[items.length - 1]}`;
+}
+
 function proRecoveryStatus(pro){
   const activityDate = fmtDateIso(pro?.workout_date || pro?.started_at);
   const tomorrow = addDaysIso(activityDate, 1);
-  const after = proDailyForOffset(pro, 1);
-  const hasRecoveryData = Boolean(after && (
-    after.sleep_minutes != null
-    || after.body_battery_end != null
-    || after.body_battery_start != null
-    || after.avg_stress != null
-    || after.resting_hr != null
-    || after.training_readiness_score != null
-    || after.hrv_status != null
-    || after.hrv_avg != null
-  ));
+  /* v5.5.7 — jedno źródło prawdy: ta sama ocena zasila kartę,
+     końcówkę werdyktu i baner AI. Sekcja odpowiada na jedno pytanie:
+     jak organizm przyjął TEN trening. Porównuje stan przed i po,
+     cytuje liczby i nie planuje kolejnych jednostek (to rola
+     ekranu "Dzisiaj"). */
+  const a = assessOvernightResponse(pro);
 
-  if(hasRecoveryData){
-    const sleep = after.sleep_minutes != null ? fmtMin(after.sleep_minutes) : 'brak danych';
-    const battery = after.body_battery_end ?? after.body_battery_start ?? 'brak danych';
-    const stress = after.avg_stress != null ? Math.round(Number(after.avg_stress)) : 'brak danych';
-    const rhr = after.resting_hr != null ? Math.round(Number(after.resting_hr)) : 'brak danych';
-    const readinessScore = after.training_readiness_score != null ? `${Math.round(Number(after.training_readiness_score))}/100` : 'brak danych';
-    const hrv = after.hrv_status || (after.hrv_avg != null ? `${fmtNumber(after.hrv_avg)} ms` : 'brak danych');
-    const readinessN = Number(after.training_readiness_score);
-    const sleepN = Number(after.sleep_minutes);
-    const stressN = Number(after.avg_stress);
-    let title = 'Po tej nocy można już uczciwie ocenić koszt regeneracji po treningu.';
-    if(Number.isFinite(readinessN) && readinessN <= 35){
-      title = 'Poranek po treningu pokazuje wyraźny koszt — dziś nie dokładamy jakości, tylko kontrolujemy powrót do pracy.';
-    }else if(Number.isFinite(sleepN) && sleepN < 360){
-      title = 'Dane z kolejnej nocy są dostępne, ale krótki sen każe kontrolować kolejny bodziec.';
-    }else if(Number.isFinite(stressN) && stressN <= 30){
-      title = 'Dane z kolejnej nocy są spokojne — bodziec wygląda przyjęty, można planować kolejny krok bez dramatyzowania.';
+  /* v5.5.7-hotfix — Data Guard: jedna poranna metryka to za mało
+     na jakikolwiek wniosek o reakcji organizmu. Nazywamy, co jest,
+     i czego brakuje. */
+  if(a.status === 'incomplete' && a.partial){
+    const m = a.metrics;
+    const missing = [];
+    if(!m.present?.readiness) missing.push('gotowości');
+    if(!m.present?.battery) missing.push('Body Battery');
+    if(!m.present?.rhr) missing.push('RHR');
+    if(!m.present?.hrv) missing.push('HRV');
+    const allSignals = a.signals.strong.concat(a.signals.mild, a.signals.calm);
+    const availableText = m.present?.sleep && m.presentCount === 1
+      ? `Dostępny sen (${fmtMinAsHours(m.sleepMin)}) wygląda ${m.sleepMin >= 420 ? 'dobrze' : 'słabo'}, ale`
+      : allSignals.length
+        ? `Dostępne sygnały: ${allSignals.join(', ')}. Jednak`
+        : 'Jednak';
+    return {
+      status: 'Odpowiedź częściowa',
+      title: 'Dane po nocy są niepełne.',
+      text: `${availableText} bez ${joinPolishList(missing)} nie oceniamy pełnej reakcji organizmu. Sekcja uzupełni się po komplecie porannej synchronizacji.`
+    };
+  }
+
+  if(a.status !== 'incomplete'){
+    const m = a.metrics;
+    const limitedData = m.presentCount != null && m.presentCount < 3;
+
+    const title = a.status === 'good'
+      ? 'Organizm dobrze zareagował na ten trening.'
+      : a.status === 'costly'
+        ? 'Poranek po treningu pokazuje wyraźny koszt tej jednostki.'
+        : limitedData
+          ? 'Dostępne dane po nocy są częściowe — reakcję organizmu oceniamy tylko wstępnie.'
+          : 'Organizm zareagował na trening umiarkowanie — bez wyraźnego przeciążenia, ale i bez pełnej odbudowy.';
+
+    const parts = [];
+
+    const sleepFrag = m.sleepMin != null ? `Szymon spał ${fmtMinAsHours(m.sleepMin)}` : '';
+    let readinessFrag = '';
+    if(m.readinessAfter != null && m.readinessBefore != null){
+      const cmp = Math.abs(m.readinessDelta) <= 3 ? 'praktycznie tyle samo co'
+        : m.readinessDelta > 0 ? 'więcej niż'
+        : 'mniej niż';
+      readinessFrag = `gotowość rano wyniosła ${Math.round(m.readinessAfter)}/100 — ${cmp} ${Math.round(m.readinessBefore)}/100 przed jednostką`;
+    }else if(m.readinessAfter != null){
+      readinessFrag = `gotowość rano wyniosła ${Math.round(m.readinessAfter)}/100 (brak zapisu sprzed jednostki do porównania)`;
     }
+    if(sleepFrag && readinessFrag) parts.push(`${sleepFrag}, a ${readinessFrag}.`);
+    else if(sleepFrag) parts.push(`${sleepFrag}.`);
+    else if(readinessFrag) parts.push(`${readinessFrag.charAt(0).toUpperCase()}${readinessFrag.slice(1)}.`);
+
+    if(m.stress != null || m.rhr != null){
+      const stressBenign = m.stress == null || m.stress < 45;
+      const rhrBenign = m.rhrDelta == null ? true : m.rhrDelta < 5;
+      const stressBit = m.stress != null ? `Stres ${Math.round(m.stress)}` : '';
+      const rhrBit = m.rhr != null
+        ? `tętno spoczynkowe ${Math.round(m.rhr)} bpm${m.rhrBaseline != null ? ` (Twoja baza: ${m.rhrBaseline})` : ''}`
+        : '';
+      const joined = [stressBit, rhrBit].filter(Boolean).join(' i ');
+      if(stressBenign && rhrBenign){
+        parts.push(`${joined} nie wskazują na nadmierny koszt treningu.`);
+      }else{
+        const issues = [];
+        if(!stressBenign) issues.push(`stres ${Math.round(m.stress)} pozostaje podwyższony`);
+        if(!rhrBenign) issues.push(`tętno spoczynkowe ${Math.round(m.rhr)} bpm jest ${m.rhrDelta} uderzeń nad Twoją bazą (${m.rhrBaseline})`);
+        parts.push(`Sygnał kosztu: ${issues.join(', ')}.`);
+      }
+    }
+
+    if(m.batteryStart != null && m.batteryEnd != null && m.batteryEnd > m.batteryStart){
+      const full = m.batteryEnd >= 80;
+      parts.push(`Body Battery wzrosło z ${Math.round(m.batteryStart)} do ${Math.round(m.batteryEnd)}, więc noc przyniosła ${full ? 'pełną odbudowę' : 'wyraźne doładowanie, choć nie pełną odbudowę'}.`);
+    }else if(m.batteryEnd != null || m.batteryStart != null){
+      parts.push(`Body Battery rano: ${Math.round(m.batteryEnd ?? m.batteryStart)}.`);
+    }
+
+    if(m.hrvAvg != null || m.hrvStatus){
+      const hrvVal = m.hrvStatus || `${fmtNumber(m.hrvAvg)} ms`;
+      parts.push(`HRV: ${hrvVal}${m.hrvBaseline != null && m.hrvAvg != null ? ` przy Twojej bazie ${m.hrvBaseline} ms` : ''}.`);
+    }else if(a.status === 'good'){
+      parts.push('Brak HRV ogranicza pewność oceny, ale dostępne dane nie pokazują oznak przeciążenia.');
+    }else{
+      parts.push('Brak HRV ogranicza pewność tej oceny.');
+    }
+
+    if(limitedData){
+      const missingCore = [];
+      if(!m.present?.readiness) missingCore.push('gotowości');
+      if(!m.present?.battery) missingCore.push('Body Battery');
+      if(!m.present?.rhr) missingCore.push('RHR');
+      if(missingCore.length) parts.push(`Ocena pozostaje częściowa — brakuje ${joinPolishList(missingCore)}.`);
+    }
+
     return {
       status: 'Odpowiedź gotowa',
       title,
-      text: `Sen ${sleep} • Body Battery ${battery} • Stress ${stress} • tętno spoczynkowe ${rhr} • gotowość ${readinessScore} • HRV ${hrv}.`
+      text: parts.join(' ')
     };
   }
 
   return {
     status: 'Rano',
-    title: 'Pełną reakcję organizmu sprawdzimy rano.',
+    title: 'Reakcję organizmu na ten trening ocenimy po danych z kolejnego poranka.',
     text: tomorrow
-      ? `Ocena po nocy pojawi się po danych z ${fmtDate(tomorrow)}. Na teraz wystarczy werdykt treningu i plan kolejnego kroku.`
-      : 'Ocena po nocy pojawi się po kolejnym poranku. Na teraz wystarczy werdykt treningu i plan kolejnego kroku.'
+      ? `Sekcja uzupełni się automatycznie po synchronizacji porannych danych z ${fmtDate(tomorrow)}.`
+      : 'Sekcja uzupełni się automatycznie po synchronizacji danych z kolejnego poranka.'
   };
 }
 
@@ -3961,6 +4319,33 @@ function readCachedActivityAiAnalysis(activity){
   return cached;
 }
 
+/* v5.5.7 — baner świeżości analizy AI. Gemini nadal NIE uruchamia
+   się automatycznie: jeśli zapisana analiza powstała zanim pojawiły
+   się dane regeneracyjne D+1, pokazujemy tylko informację z prośbą
+   o ręczne odświeżenie. Przybliżenie: cache zapisany najpóźniej
+   w dniu treningu na pewno nie widział danych z kolejnego poranka. */
+function activityAiAnalysisStale(activity){
+  const key = activityAiCacheKey(activity);
+  if(!key) return false;
+  const entry = readAiCacheEntry(key, AI_ACTIVITY_CACHE_MAX_AGE_MS);
+  if(!entry?.savedAt) return false;
+  const workoutDate = fmtDateIso(activity?.workout_date || activity?.started_at);
+  if(!workoutDate) return false;
+  const nextMorning = readinessHistoryForDate(addDaysIso(workoutDate, 1));
+  const hasAfter = Boolean(nextMorning && (
+    nextMorning.sleep_minutes != null
+    || nextMorning.training_readiness_score != null
+    || nextMorning.resting_hr != null
+    || nextMorning.body_battery_end != null
+    || nextMorning.body_battery_start != null
+    || nextMorning.avg_stress != null
+  ));
+  if(!hasAfter) return false;
+  const savedDate = new Date(entry.savedAt);
+  if(Number.isNaN(savedDate.getTime())) return false;
+  return fmtDateIso(savedDate.toISOString()) <= workoutDate;
+}
+
 function writeCachedActivityAiAnalysis(activity, analysis){
   const key = activityAiCacheKey(activity);
   if(!key || !analysis) return;
@@ -4307,9 +4692,16 @@ function renderAiAnalysisInto(target, analysis, status, activity){
     </div>
   `;
 
+  /* v5.5.7 — informacja o nowych danych D+1 przy analizie z cache;
+     lokalny werdykt i odpowiedź po nocy aktualizują się bez Gemini. */
+  const staleBanner = status === 'cache' && activityAiAnalysisStale(activity)
+    ? '<div class="ai-stale-banner">Pojawiły się nowe dane regeneracyjne po treningu. Odśwież AI, aby uzupełnić analizę.</div>'
+    : '';
+
   const nightSummary = renderAnalysisBlock('Odpowiedź po nocy', analysis.nightResponse, 'night-response-section night-response-visible');
   target.innerHTML = [
     statusBadge,
+    staleBanner,
     controls,
     visibleSummary,
     nightSummary,
@@ -4430,7 +4822,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=556').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=5571').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();
