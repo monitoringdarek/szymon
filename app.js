@@ -2594,11 +2594,166 @@ function saveKalmarForecastSnapshot(forecast){
   return next;
 }
 
+function kalmarForecastPointWithSource(item, source = 'snapshot'){
+  const point = kalmarForecastSnapshotFromForecast(item, String(item?.date || '').slice(0, 10));
+  if(!point) return null;
+  return {
+    ...point,
+    source: item?.source || source,
+    modelLabel: item?.modelLabel || (source === 'historical' ? 'trend historyczny modelu' : 'snapshot lokalny')
+  };
+}
+
 function prepareKalmarForecastHistoryPoints(history){
   return (Array.isArray(history) ? history : [])
-    .map(item => kalmarForecastSnapshotFromForecast(item, String(item?.date || '').slice(0, 10)))
+    .map(item => kalmarForecastPointWithSource(item, item?.source || 'snapshot'))
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-26);
+}
+
+function mergeKalmarForecastHistoryPoints(historicalPoints, snapshotPoints){
+  const byDate = new Map();
+  prepareKalmarForecastHistoryPoints(snapshotPoints).forEach(point => byDate.set(point.date, point));
+  prepareKalmarForecastHistoryPoints(historicalPoints).forEach(point => byDate.set(point.date, { ...point, source:'historical', modelLabel:'trend historyczny modelu' }));
+  return Array.from(byDate.values())
+    .filter(point => point.date >= kalmarForecastHistoryStartDate())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-26);
+}
+
+function kalmarForecastHistoryStartDate(todayIso = kalmarTodayIso()){
+  const today = new Date(`${todayIso}T00:00:00`);
+  if(Number.isNaN(today.getTime())) return '2026-01-01';
+  const sixMonths = new Date(today);
+  sixMonths.setMonth(sixMonths.getMonth() - 6);
+  const sixIso = sixMonths.toISOString().slice(0, 10);
+  return sixIso > '2026-01-01' ? sixIso : '2026-01-01';
+}
+
+function kalmarDataDate(row, keys){
+  for(const key of keys){
+    const iso = fmtDateIso(row?.[key]);
+    if(iso) return iso;
+  }
+  return '';
+}
+
+function kalmarRowsUntil(rows, keys, cutoffIso, allowUndated = false){
+  return (Array.isArray(rows) ? rows : []).filter(row => {
+    const iso = kalmarDataDate(row, keys);
+    if(!iso) return allowUndated;
+    return iso <= cutoffIso;
+  });
+}
+
+function kalmarLatestReadinessUntil(rows, cutoffIso){
+  return kalmarRowsUntil(rows, ['metric_date', 'journal_date', 'date'], cutoffIso)
+    .sort((a, b) => kalmarDataDate(b, ['metric_date', 'journal_date', 'date']).localeCompare(kalmarDataDate(a, ['metric_date', 'journal_date', 'date'])))[0] || null;
+}
+
+function kalmarHistoricalDataCoverage(){
+  const dates = [
+    ...kalmarRowsUntil([...(proActivities || []), ...(cards || [])], ['workout_date', 'started_at', 'date'], '9999-12-31').map(row => kalmarDataDate(row, ['workout_date', 'started_at', 'date'])),
+    ...kalmarRowsUntil(readinessHistory || [], ['metric_date', 'journal_date', 'date'], '9999-12-31').map(row => kalmarDataDate(row, ['metric_date', 'journal_date', 'date'])),
+    ...kalmarRowsUntil(load28d || [], ['workout_date', 'metric_date', 'date'], '9999-12-31').map(row => kalmarDataDate(row, ['workout_date', 'metric_date', 'date']))
+  ].filter(Boolean).sort();
+  if(!dates.length) return { days:0, weeks:0, from:null, to:null, activityCount:0, morningCount:0, loadCount:0 };
+  const from = dates[0];
+  const to = dates[dates.length - 1];
+  const first = new Date(`${from}T00:00:00`);
+  const last = new Date(`${to}T00:00:00`);
+  const days = Number.isNaN(first.getTime()) || Number.isNaN(last.getTime()) ? 0 : Math.max(1, Math.round((last - first) / 86400000) + 1);
+  return {
+    days,
+    weeks: Math.max(1, Math.ceil(days / 7)),
+    from,
+    to,
+    activityCount: kalmarRowsUntil([...(proActivities || []), ...(cards || [])], ['workout_date', 'started_at', 'date'], '9999-12-31').length,
+    morningCount: kalmarRowsUntil(readinessHistory || [], ['metric_date', 'journal_date', 'date'], '9999-12-31').length,
+    loadCount: kalmarRowsUntil(load28d || [], ['workout_date', 'metric_date', 'date'], '9999-12-31').length
+  };
+}
+
+function withKalmarDataContext(ctx, fn){
+  const previous = { readiness, readinessHistory, cards, load28d, proActivities, athleteThresholds };
+  try{
+    readiness = ctx.readiness;
+    readinessHistory = ctx.readinessHistory;
+    cards = ctx.cards;
+    load28d = ctx.load28d;
+    proActivities = ctx.proActivities;
+    athleteThresholds = ctx.athleteThresholds;
+    return fn();
+  }finally{
+    readiness = previous.readiness;
+    readinessHistory = previous.readinessHistory;
+    cards = previous.cards;
+    load28d = previous.load28d;
+    proActivities = previous.proActivities;
+    athleteThresholds = previous.athleteThresholds;
+  }
+}
+
+function kalmarHistoricalContextUntil(cutoffDate){
+  const cutoffIso = fmtDateIso(cutoffDate);
+  if(!cutoffIso) return null;
+  const filteredReadiness = kalmarRowsUntil(readinessHistory || [], ['metric_date', 'journal_date', 'date'], cutoffIso);
+  return {
+    cutoffIso,
+    readiness: kalmarLatestReadinessUntil(filteredReadiness, cutoffIso),
+    readinessHistory: filteredReadiness,
+    cards: kalmarRowsUntil(cards || [], ['workout_date', 'started_at', 'date'], cutoffIso),
+    load28d: kalmarRowsUntil(load28d || [], ['workout_date', 'metric_date', 'date'], cutoffIso),
+    proActivities: kalmarRowsUntil(proActivities || [], ['workout_date', 'started_at', 'date'], cutoffIso),
+    athleteThresholds: kalmarRowsUntil(athleteThresholds || [], ['effective_date', 'observed_at', 'created_at', 'updated_at', 'date'], cutoffIso, false)
+  };
+}
+
+function kalmarHasEnoughHistoricalData(ctx){
+  if(!ctx) return false;
+  const rows = [...(ctx.proActivities || []), ...(ctx.cards || [])];
+  const sportRows = rows.filter(row => kalmarIsSport(row, 'bike') || kalmarIsSport(row, 'run') || kalmarIsSport(row, 'swim') || kalmarIsSport(row, 'multi'));
+  const hasBikeOrRun = sportRows.some(row => kalmarIsSport(row, 'bike') || kalmarIsSport(row, 'run') || kalmarIsSport(row, 'multi'));
+  return sportRows.length >= 3 && hasBikeOrRun && (ctx.readinessHistory || []).length >= 3;
+}
+
+function buildKalmarForecastAt(cutoffDate){
+  const ctx = kalmarHistoricalContextUntil(cutoffDate);
+  if(!kalmarHasEnoughHistoricalData(ctx)) return null;
+  return withKalmarDataContext(ctx, () => {
+    const forecast = buildKalmarForecast();
+    const point = kalmarForecastSnapshotFromForecast(forecast, ctx.cutoffIso);
+    if(!point || forecast.status === 'empty') return null;
+    return {
+      ...point,
+      source:'historical',
+      modelLabel:'trend historyczny modelu',
+      activityCount:(ctx.proActivities.length + ctx.cards.length),
+      morningCount:ctx.readinessHistory.length
+    };
+  });
+}
+
+function kalmarWeeklyCutoffDates(){
+  const start = kalmarForecastHistoryStartDate();
+  const today = kalmarTodayIso();
+  const dates = [];
+  const cursor = new Date(`${start}T00:00:00`);
+  const end = new Date(`${today}T00:00:00`);
+  if(Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) return [today];
+  while(cursor <= end){
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  if(!dates.includes(today)) dates.push(today);
+  return dates;
+}
+
+function buildHistoricalKalmarForecastPoints(){
+  return kalmarWeeklyCutoffDates()
+    .map(date => buildKalmarForecastAt(date))
+    .filter(Boolean)
     .slice(-26);
 }
 
@@ -2678,6 +2833,7 @@ function kalmarForecastHistorySvg(points){
         data-confidence="${escapeHtml(p.confidence || 'brak danych')}" />
     `;
   }).join('');
+  const lastLabel = last.date === kalmarTodayIso() ? 'dziś' : fmtDate(last.date);
   return `
     <svg class="kalmar-history-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Historia prognozy ukończenia 226 km">
       <rect x="0" y="0" width="${width}" height="${height}" rx="16" class="kalmar-chart-bg"/>
@@ -2688,7 +2844,7 @@ function kalmarForecastHistorySvg(points){
       <polyline points="${middle}" class="kalmar-chart-line"/>
       ${pointsHtml}
       <text x="${xFor(clean.length - 1) - 6}" y="${Math.max(28, yFor(last.middleMinutes) - 12)}" text-anchor="end" class="kalmar-chart-today">
-        dziś ${escapeHtml(`${kalmarMinutesToHM(last.lowerMinutes)}–${kalmarMinutesToHM(last.upperMinutes)}`)}
+        ${escapeHtml(lastLabel)} ${escapeHtml(`${kalmarMinutesToHM(last.lowerMinutes)}–${kalmarMinutesToHM(last.upperMinutes)}`)}
       </text>
       ${xLabels}
       <text x="${pad.left}" y="${pad.top - 4}" class="kalmar-chart-caption">szybciej</text>
@@ -3281,13 +3437,21 @@ function renderKalmarForecastHistory(){
   const chart = $('kalmarForecastHistoryChart');
   const note = $('kalmarForecastHistoryNote');
   if(!chart) return;
-  const points = prepareKalmarForecastHistoryPoints(readKalmarForecastHistory());
+  const historical = buildHistoricalKalmarForecastPoints();
+  const snapshots = readKalmarForecastHistory();
+  const points = mergeKalmarForecastHistoryPoints(historical, snapshots);
+  const coverage = kalmarHistoricalDataCoverage();
   chart.innerHTML = kalmarForecastHistorySvg(points);
   const weeks = kalmarForecastHistoryWeekCount(points);
   if(note){
-    note.textContent = points.length >= 2
-      ? `Historia prognozy budowana od uruchomienia modelu. Dostępne dane: ${weeks} ${weeks === 1 ? 'tydzień' : 'tygodni'}.`
-      : 'Historia prognozy jest zależna od tej przeglądarki i może zniknąć po wyczyszczeniu danych.';
+    if(points.length >= 2){
+      const first = points[0]?.date;
+      note.textContent = `Dostępna historia: ${weeks} ${weeks === 1 ? 'tydzień' : 'tygodni'}, od ${first ? fmtDate(first) : 'pierwszego punktu'}. Trend historyczny modelu jest liczony tylko z danych dostępnych do daty punktu.`;
+    }else if(coverage.days){
+      note.textContent = `Dane w pamięci aplikacji: ${coverage.days} dni, od ${fmtDate(coverage.from)}. Historia prognozy jest jeszcze za krótka do wiarygodnego trendu.`;
+    }else{
+      note.textContent = 'Historia prognozy jest jeszcze budowana. Brak wystarczających danych treningowych i porannych.';
+    }
   }
   bindKalmarForecastHistoryTooltip(chart);
 }
@@ -3380,19 +3544,19 @@ async function loadAllData(){
   await refreshSession();
   const [readinessRows, readinessHistoryRows, weeklyRows, latestRows, cardRows, loadRows, thresholdRows, powerRows, runRows, profileRows, suggestionRows, proActivityRows, proSegmentRows, proAnalyticsRows] = await Promise.all([
     loadOne('readiness', `${READINESS_ENDPOINT}?select=*&limit=1`),
-    loadOne('readinessHistory', `${READINESS_HISTORY_ENDPOINT}?select=*&order=metric_date.desc&limit=60`),
+    loadOne('readinessHistory', `${READINESS_HISTORY_ENDPOINT}?select=*&order=metric_date.desc&limit=190`),
     loadOne('weekly', `${WEEKLY_ENDPOINT}?select=*&limit=1`),
     loadOne('latest', `${LATEST_ENDPOINT}?select=*&limit=1`),
-    loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=30`),
-    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=28`),
+    loadOne('cards', `${CARDS_ENDPOINT}?select=*&order=workout_date.desc&limit=220`),
+    loadOne('load28d', `${LOAD_28D_ENDPOINT}?select=workout_date,daily_training_load,daily_duration_min,daily_distance_km,activity_count&limit=190`),
     loadOne('thresholds', `${ATHLETE_THRESHOLDS_ENDPOINT}?select=*&athlete_key=eq.szymon`),
     loadOne('powerIntervals', `${POWER_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_sec.asc&limit=250`),
     loadOne('runIntervals', `${RUN_INTERVALS_ENDPOINT}?select=*&athlete_key=eq.szymon&order=garmin_activity_id.asc,target_m.asc&limit=250`),
     loadOne('thresholdProfileContext', `${ATHLETE_PROFILE_CONTEXT_ENDPOINT}?select=*&athlete_key=eq.szymon&order=sport.asc,threshold_type.asc`),
     loadOne('thresholdSuggestions', `${THRESHOLD_SUGGESTIONS_ENDPOINT}?select=*&athlete_key=eq.szymon&suggestion_status=eq.pending&order=created_at.desc`),
-    loadOne('proActivities', `${GARMIN_ACTIVITIES_ENDPOINT}?select=*&order=workout_date.desc&limit=40`),
-    loadOne('proSegments', `${GARMIN_SEGMENTS_ENDPOINT}?select=*&order=segment_order.asc&limit=500`),
-    loadOne('proAnalytics', `${GARMIN_ANALYTICS_ENDPOINT}?select=*&limit=100`)
+    loadOne('proActivities', `${GARMIN_ACTIVITIES_ENDPOINT}?select=*&order=workout_date.desc&limit=220`),
+    loadOne('proSegments', `${GARMIN_SEGMENTS_ENDPOINT}?select=*&order=segment_order.asc&limit=2500`),
+    loadOne('proAnalytics', `${GARMIN_ANALYTICS_ENDPOINT}?select=*&limit=500`)
   ]);
   readiness = readinessRows[0] || null;
   readinessHistory = readinessHistoryRows;
