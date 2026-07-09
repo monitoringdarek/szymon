@@ -1,4 +1,4 @@
-const VERSION = 'szymon-ai-coach-v5.5.7-hotfix';
+const VERSION = 'szymon-ai-coach-v5.5.8-kalmar-forecast-history';
 const IRONMAN_KALMAR_DATE = '2026-08-15';
 const AUTH_SESSION_KEY = 'szymonAiCoachProV5Session';
 const LOGIN_TIMEOUT_MS = 15000;
@@ -32,6 +32,7 @@ const GARMIN_ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/garmin_activity_analy
 const AI_CACHE_VERSION = 'v555';
 const AI_ACTIVITY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:activity:`;
 const AI_TODAY_CACHE_PREFIX = `szymonAiCoach:${AI_CACHE_VERSION}:today:`;
+const KALMAR_FORECAST_HISTORY_KEY = `szymonAiCoach:v558:kalmarForecastHistory:${VERSION}`;
 const AI_ACTIVITY_CACHE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const AI_TODAY_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const aiAnalysisCache = new Map();
@@ -2528,6 +2529,173 @@ function kalmarRangeText(lowSec, highSec){
   return `${kalmarTimeHM(lowSec)}–${kalmarTimeHM(highSec)}`;
 }
 
+function kalmarMinutesToHM(minutes){
+  const value = kalmarNum(minutes);
+  if(value == null) return 'brak danych';
+  const total = Math.max(0, Math.round(value));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+function kalmarTodayIso(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function kalmarForecastSnapshotFromForecast(forecast, date = kalmarTodayIso()){
+  const lower = kalmarNum(forecast?.lowerMinutes);
+  const upper = kalmarNum(forecast?.upperMinutes);
+  const middle = kalmarNum(forecast?.middleMinutes);
+  if(lower == null || upper == null || middle == null) return null;
+  if(lower <= 0 || upper <= 0 || middle <= 0) return null;
+  if(lower > upper) return null;
+  return {
+    date,
+    lowerMinutes: Math.round(lower),
+    upperMinutes: Math.round(upper),
+    middleMinutes: Math.round(middle),
+    confidence: forecast?.confidence || 'brak danych',
+    modelVersion: VERSION
+  };
+}
+
+function readKalmarForecastHistory(){
+  try{
+    const raw = localStorage.getItem(KALMAR_FORECAST_HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if(!Array.isArray(parsed)) return [];
+    const byDate = new Map();
+    parsed.forEach(item => {
+      const point = kalmarForecastSnapshotFromForecast(item, String(item?.date || '').slice(0, 10));
+      if(point?.date) byDate.set(point.date, point);
+    });
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-183);
+  }catch(err){
+    console.warn('Nie udało się odczytać historii prognozy Kalmar:', err);
+    return [];
+  }
+}
+
+function saveKalmarForecastSnapshot(forecast){
+  const point = kalmarForecastSnapshotFromForecast(forecast);
+  if(!point) return readKalmarForecastHistory();
+  const history = readKalmarForecastHistory();
+  const withoutToday = history.filter(item => item.date !== point.date);
+  const next = [...withoutToday, point].sort((a, b) => a.date.localeCompare(b.date)).slice(-183);
+  try{
+    localStorage.setItem(KALMAR_FORECAST_HISTORY_KEY, JSON.stringify(next));
+  }catch(err){
+    console.warn('Nie udało się zapisać historii prognozy Kalmar:', err);
+  }
+  return next;
+}
+
+function prepareKalmarForecastHistoryPoints(history){
+  return (Array.isArray(history) ? history : [])
+    .map(item => kalmarForecastSnapshotFromForecast(item, String(item?.date || '').slice(0, 10)))
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-26);
+}
+
+function kalmarForecastHistoryWeekCount(points){
+  if(!Array.isArray(points) || !points.length) return 0;
+  const first = new Date(`${points[0].date}T00:00:00`);
+  const last = new Date(`${points[points.length - 1].date}T00:00:00`);
+  if(Number.isNaN(first.getTime()) || Number.isNaN(last.getTime())) return 0;
+  return Math.max(1, Math.ceil((last.getTime() - first.getTime() + 86400000) / (7 * 86400000)));
+}
+
+function kalmarForecastHistoryAxis(points){
+  const values = [];
+  points.forEach(p => {
+    [p.lowerMinutes, p.upperMinutes, p.middleMinutes].forEach(v => {
+      const n = kalmarNum(v);
+      if(n != null) values.push(n);
+    });
+  });
+  if(!values.length) return { min: 10.5 * 60, max: 13.5 * 60, ticks: [630, 690, 750, 810] };
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const top = Math.max(9 * 60, Math.floor((minValue - 20) / 30) * 30);
+  const bottom = Math.min(16 * 60, Math.ceil((maxValue + 20) / 30) * 30);
+  const ticks = [];
+  for(let m = top; m <= bottom; m += 30) ticks.push(m);
+  return { min: top, max: bottom > top ? bottom : top + 120, ticks };
+}
+
+function kalmarForecastHistoryEmptyHtml(){
+  return `
+    <div class="kalmar-history-empty">
+      Historia prognozy jest jeszcze budowana. Potrzebujemy kolejnych odczytów, aby pokazać wiarygodny trend.
+    </div>
+  `;
+}
+
+function kalmarForecastHistorySvg(points){
+  const clean = prepareKalmarForecastHistoryPoints(points);
+  if(clean.length < 2) return kalmarForecastHistoryEmptyHtml();
+  const width = 360;
+  const height = 210;
+  const pad = { left: 42, right: 28, top: 18, bottom: 34 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
+  const axis = kalmarForecastHistoryAxis(clean);
+  const xFor = index => clean.length === 1 ? pad.left + chartW : pad.left + (index / (clean.length - 1)) * chartW;
+  const yFor = minutes => pad.top + ((minutes - axis.min) / (axis.max - axis.min)) * chartH;
+  const lower = clean.map((p, i) => `${xFor(i)},${yFor(p.lowerMinutes)}`).join(' ');
+  const upper = clean.map((p, i) => `${xFor(i)},${yFor(p.upperMinutes)}`).join(' ');
+  const middle = clean.map((p, i) => `${xFor(i)},${yFor(p.middleMinutes)}`).join(' ');
+  const band = `${upper} ${clean.map((p, i) => `${xFor(clean.length - 1 - i)},${yFor(clean[clean.length - 1 - i].lowerMinutes)}`).join(' ')}`;
+  const first = clean[0];
+  const last = clean[clean.length - 1];
+  const labelEvery = Math.max(1, Math.ceil(clean.length / 4));
+  const xLabels = clean.map((p, i) => {
+    if(i !== 0 && i !== clean.length - 1 && i % labelEvery !== 0) return '';
+    const date = new Date(`${p.date}T00:00:00`);
+    const label = Number.isNaN(date.getTime()) ? p.date.slice(5) : date.toLocaleDateString('pl-PL', { month:'short', day:'numeric' });
+    return `<text x="${xFor(i)}" y="${height - 9}" text-anchor="middle" class="kalmar-chart-axis">${escapeHtml(label)}</text>`;
+  }).join('');
+  const yGrid = axis.ticks.map(tick => {
+    const y = yFor(tick);
+    return `
+      <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" class="kalmar-chart-grid"/>
+      <text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" class="kalmar-chart-axis">${escapeHtml(kalmarMinutesToHM(tick))}</text>
+    `;
+  }).join('');
+  const pointsHtml = clean.map((p, i) => {
+    const isLast = i === clean.length - 1;
+    return `
+      <circle class="kalmar-chart-point${isLast ? ' is-last' : ''}" cx="${xFor(i)}" cy="${yFor(p.middleMinutes)}" r="${isLast ? 5 : 4}"
+        tabindex="0"
+        data-date="${escapeHtml(p.date)}"
+        data-range="${escapeHtml(`${kalmarMinutesToHM(p.lowerMinutes)}–${kalmarMinutesToHM(p.upperMinutes)}`)}"
+        data-middle="${escapeHtml(kalmarMinutesToHM(p.middleMinutes))}"
+        data-confidence="${escapeHtml(p.confidence || 'brak danych')}" />
+    `;
+  }).join('');
+  return `
+    <svg class="kalmar-history-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Historia prognozy ukończenia 226 km">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="16" class="kalmar-chart-bg"/>
+      ${yGrid}
+      <polygon points="${band}" class="kalmar-chart-band"/>
+      <polyline points="${lower}" class="kalmar-chart-boundary"/>
+      <polyline points="${upper}" class="kalmar-chart-boundary"/>
+      <polyline points="${middle}" class="kalmar-chart-line"/>
+      ${pointsHtml}
+      <text x="${xFor(clean.length - 1) - 6}" y="${Math.max(28, yFor(last.middleMinutes) - 12)}" text-anchor="end" class="kalmar-chart-today">
+        dziś ${escapeHtml(`${kalmarMinutesToHM(last.lowerMinutes)}–${kalmarMinutesToHM(last.upperMinutes)}`)}
+      </text>
+      ${xLabels}
+      <text x="${pad.left}" y="${pad.top - 4}" class="kalmar-chart-caption">szybciej</text>
+    </svg>
+  `;
+}
+
 function kalmarIsSport(record, group){
   const text = `${record?.sport_type || ''} ${record?.activity_type || ''} ${record?.event_name || ''} ${record?.activity_name || ''}`.toLowerCase();
   if(group === 'bike') return text.includes('bike') || text.includes('cycl') || text.includes('kolar') || hasSegment(record, 'bike');
@@ -2951,7 +3119,10 @@ function buildKalmarForecast(){
       guard:'Brak danych do prognozy — nie udaję wyniku.',
       coachTip:'Brak danych z treningów i poranków.\nCel: pierwsza synchronizacja Garmin.\nBez tego to byłoby zgadywanie.',
       details:'Brak aktywności, progów i danych porannych.',
-      status:'empty'
+      status:'empty',
+      lowerMinutes:null,
+      upperMinutes:null,
+      middleMinutes:null
     };
   }
 
@@ -3077,7 +3248,10 @@ function buildKalmarForecast(){
     guard,
     coachTip,
     details,
-    status: confidence === 'niska' ? 'weak' : 'ok'
+    status: confidence === 'niska' ? 'weak' : 'ok',
+    lowerMinutes: Math.round(low / 60),
+    upperMinutes: Math.round(high / 60),
+    middleMinutes: Math.round(totalReal / 60)
   };
 }
 
@@ -3099,6 +3273,55 @@ function renderKalmarForecast(){
     statusEl.textContent = forecast.status === 'empty' ? 'czekam na Garmin PRO' : forecast.status === 'weak' ? 'prognoza wczesna' : 'model aktualny';
     statusEl.className = `coach-mode-pill kalmar-status-${forecast.status}`;
   }
+  saveKalmarForecastSnapshot(forecast);
+  renderKalmarForecastHistory();
+}
+
+function renderKalmarForecastHistory(){
+  const chart = $('kalmarForecastHistoryChart');
+  const note = $('kalmarForecastHistoryNote');
+  if(!chart) return;
+  const points = prepareKalmarForecastHistoryPoints(readKalmarForecastHistory());
+  chart.innerHTML = kalmarForecastHistorySvg(points);
+  const weeks = kalmarForecastHistoryWeekCount(points);
+  if(note){
+    note.textContent = points.length >= 2
+      ? `Historia prognozy budowana od uruchomienia modelu. Dostępne dane: ${weeks} ${weeks === 1 ? 'tydzień' : 'tygodni'}.`
+      : 'Historia prognozy jest zależna od tej przeglądarki i może zniknąć po wyczyszczeniu danych.';
+  }
+  bindKalmarForecastHistoryTooltip(chart);
+}
+
+function bindKalmarForecastHistoryTooltip(root){
+  const tooltip = $('kalmarForecastHistoryTooltip');
+  if(!root || !tooltip) return;
+  const show = (target, event) => {
+    if(!target?.dataset) return;
+    tooltip.innerHTML = `
+      <b>${escapeHtml(target.dataset.date || 'brak daty')}</b>
+      <span>Zakres: ${escapeHtml(target.dataset.range || 'brak danych')}</span>
+      <span>Środek: ${escapeHtml(target.dataset.middle || 'brak danych')}</span>
+      <span>Pewność: ${escapeHtml(target.dataset.confidence || 'brak danych')}</span>
+    `;
+    tooltip.hidden = false;
+    const box = root.getBoundingClientRect();
+    const clientX = event?.clientX ?? box.left + Number(target.getAttribute('cx') || 0);
+    const clientY = event?.clientY ?? box.top + Number(target.getAttribute('cy') || 0);
+    tooltip.style.left = `${Math.min(Math.max(clientX - box.left + 8, 8), Math.max(8, box.width - 156))}px`;
+    tooltip.style.top = `${Math.min(Math.max(clientY - box.top - 58, 8), Math.max(8, box.height - 78))}px`;
+  };
+  const hide = () => { tooltip.hidden = true; };
+  root.querySelectorAll('.kalmar-chart-point').forEach(point => {
+    point.addEventListener('pointerenter', event => show(point, event));
+    point.addEventListener('pointermove', event => show(point, event));
+    point.addEventListener('pointerleave', hide);
+    point.addEventListener('focus', event => show(point, event));
+    point.addEventListener('blur', hide);
+    point.addEventListener('click', event => {
+      event.preventDefault();
+      show(point, event);
+    });
+  });
 }
 
 
@@ -4822,7 +5045,7 @@ function bindEvents(){
 async function init(){
   bindEvents();
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('service-worker.js?v=5571').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js?v=558').catch(() => {});
   }
   if(loadSession() && await refreshSession()){
     showApp();

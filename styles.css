@@ -3121,6 +3121,126 @@ body.visual-pro-v542{
 .kalmar-status-ok{color:#c8ffd9 !important; border-color:rgba(53,211,157,.35) !important;}
 .kalmar-status-weak{color:#ffe2a0 !important; border-color:rgba(248,214,109,.35) !important;}
 .kalmar-status-empty{color:#dbeeff !important; border-color:rgba(88,166,255,.30) !important;}
+.kalmar-forecast-history-card{
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  gap:12px;
+  border-color:rgba(255,106,26,.26) !important;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(255,106,26,.16), transparent 34%),
+    linear-gradient(145deg, rgba(9,28,54,.92), rgba(4,14,29,.94)) !important;
+}
+.kalmar-forecast-history-card .section-head{
+  align-items:flex-start !important;
+}
+.kalmar-forecast-history-card h2{
+  margin:5px 0 0;
+  color:#f5fbff;
+  font-size:18px;
+  line-height:1.15;
+}
+.kalmar-history-chart{
+  position:relative;
+  min-height:218px;
+  border:1px solid rgba(163,188,228,.16);
+  border-radius:18px;
+  background:rgba(2,10,24,.35);
+  overflow:hidden;
+}
+.kalmar-history-svg{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.kalmar-chart-bg{
+  fill:rgba(3,12,26,.42);
+}
+.kalmar-chart-grid{
+  stroke:rgba(163,188,228,.18);
+  stroke-width:1;
+  stroke-dasharray:3 5;
+}
+.kalmar-chart-axis{
+  fill:#8fa4bf;
+  font-size:10px;
+  font-weight:700;
+}
+.kalmar-chart-caption{
+  fill:#8fa4bf;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.kalmar-chart-band{
+  fill:rgba(255,106,26,.14);
+  stroke:rgba(255,106,26,.18);
+  stroke-width:1;
+}
+.kalmar-chart-boundary{
+  fill:none;
+  stroke:rgba(255,201,61,.34);
+  stroke-width:1.25;
+  stroke-dasharray:4 5;
+}
+.kalmar-chart-line{
+  fill:none;
+  stroke:#ff6a1a;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:drop-shadow(0 0 8px rgba(255,106,26,.34));
+}
+.kalmar-chart-point{
+  fill:#ffb057;
+  stroke:#061426;
+  stroke-width:2;
+  cursor:pointer;
+}
+.kalmar-chart-point.is-last{
+  fill:#ff6a1a;
+  stroke:#fff1df;
+  stroke-width:2.5;
+  filter:drop-shadow(0 0 9px rgba(255,106,26,.55));
+}
+.kalmar-chart-today{
+  fill:#ffe0c0;
+  font-size:10px;
+  font-weight:900;
+}
+.kalmar-history-empty{
+  min-height:218px;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  color:#cfe1f7;
+  text-align:center;
+  line-height:1.45;
+}
+.kalmar-history-tooltip{
+  position:absolute;
+  z-index:5;
+  width:148px;
+  display:grid;
+  gap:3px;
+  padding:9px 10px;
+  border:1px solid rgba(255,106,26,.38);
+  border-radius:13px;
+  background:rgba(3,11,24,.94);
+  box-shadow:0 14px 38px rgba(0,0,0,.38);
+  color:#f5fbff;
+  pointer-events:none;
+}
+.kalmar-history-tooltip b{
+  color:#ffb057;
+  font-size:12px;
+}
+.kalmar-history-tooltip span{
+  color:#dce8f7;
+  font-size:11px;
+  line-height:1.25;
+}
 @media(min-width:680px){
   .kalmar-forecast-grid{grid-template-columns:repeat(3,1fr);}
 }
@@ -3128,6 +3248,8 @@ body.visual-pro-v542{
   .visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five button em{font-size:9px !important;}
   .visual-pro-v542 .bottom-nav.human-bottom-nav.nav-five .pro-nav-icon{width:22px !important;height:22px !important;}
   .kalmar-forecast-range{font-size:40px;}
+  .kalmar-history-chart{min-height:205px;}
+  .kalmar-forecast-history-card h2{font-size:16px;}
 }
 
 

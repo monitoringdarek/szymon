@@ -1,10 +1,10 @@
-const CACHE_NAME = 'szymon-ai-coach-v5.5.7-hotfix';
+const CACHE_NAME = 'szymon-ai-coach-v5.5.8-kalmar-forecast-history';
 const ASSETS = [
   './',
-  './index.html?v=5571',
-  './styles.css?v=5571',
-  './app.js?v=5571',
-  './manifest.json?v=5571'
+  './index.html?v=558',
+  './styles.css?v=558',
+  './app.js?v=558',
+  './manifest.json?v=558'
 ];
 
 self.addEventListener('install', event => {
